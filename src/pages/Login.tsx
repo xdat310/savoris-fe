@@ -15,15 +15,12 @@ const DEMO = [
   { username: 'kho', password: '12345', label: 'Kho' },
 ]
 
-// TEMPORARY for testing (2026-10-10): quick sign-in also through ngrok and the Wi-Fi IP, so anyone holding the link gets in.
-// Remove before sharing the link widely: put back `&& ['localhost', '127.0.0.1'].includes(window.location.hostname)`
 const QUICK_LOGIN = import.meta.env.DEV
 
 const WEEKDAY = new Intl.DateTimeFormat('vi-VN', { weekday: 'long' })
 const DAY = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 const CLOCK = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
 
-// The quán writes the date on its board every morning; the login slate does the same
 function useNow() {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -39,7 +36,6 @@ export function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  // Which sign-in is running: 'form' or the username of a quick-login tile
   const [busy, setBusy] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
 
@@ -60,60 +56,65 @@ export function Login() {
   }
 
   const weekday = WEEKDAY.format(now)
+  const dayLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1) + ', ' + DAY.format(now)
+
   return (
     <div className="login">
-      <section className="board-surface login-board" aria-label="DineChain">
-        <img className="login-photo" src={photo} alt="" />
-        <h1>Dine<span>Chain</span></h1>
-        <div className="login-today">
-          <span className="login-day">{weekday.charAt(0).toUpperCase() + weekday.slice(1)}, {DAY.format(now)}</span>
-          <span className="login-clock num">{CLOCK.format(now)}</span>
-        </div>
-      </section>
+      <img className="login-photo" src={photo} alt="" />
+      <div className="login-veil" aria-hidden="true" />
 
-      <section className="login-form">
-        <div className="login-card">
+      <header className="login-header">
+        <span className="login-wordmark">Dine<span>Chain</span></span>
+      </header>
+
+      <div className="login-stage">
+        <div className="login-time-block">
+          <span className="login-clock num">{CLOCK.format(now)}</span>
+          <span className="login-day">{dayLabel}</span>
+        </div>
+
+        <section className="login-panel" aria-label="Đăng nhập">
           <form onSubmit={submit} className="login-fields">
-            <div>
-              <h2>Đăng nhập</h2>
+            <div className="login-panel-head">
+              <h1>Đăng nhập</h1>
               <p>Dùng tài khoản nhân viên do quản lý cấp.</p>
             </div>
             {error && <ErrorNotice message={error} />}
-            <label className="field">
-              Tên đăng nhập
-              <input className="input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+            <label className="login-field">
+              <span>Tên đăng nhập</span>
+              <input className="login-input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
             </label>
-            <label className="field">
-              Mật khẩu
-              <div style={{ position: 'relative' }}>
-                <input className="input" type={showPw ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ paddingRight: '2.5rem' }} />
-                <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-2, #888)', display: 'flex', alignItems: 'center', padding: 0 }}>
-                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            <label className="login-field">
+              <span>Mật khẩu</span>
+              <div className="login-pw-wrap">
+                <input className="login-input" type={showPw ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <button type="button" className="login-pw-toggle" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </label>
-            <button className="btn btn-primary btn-lg btn-block" disabled={busy !== null}>
-              {busy === 'form' ? <span className="spinner" aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}
+            <button className="login-submit" disabled={busy !== null}>
+              {busy === 'form' ? <span className="spinner" aria-hidden="true" /> : <LogIn size={16} aria-hidden="true" />}
               Vào ca
             </button>
           </form>
 
-          {/* Bootstrap accounts are a development convenience: never shown on a production build or to other devices */}
-          {QUICK_LOGIN && <div className="quick-login">
-            <h3>Vào nhanh <span>tài khoản ban đầu, mật khẩu 12345</span></h3>
-            <div className="quick-grid">
-              {DEMO.map((d) => (
-                <button key={d.username} type="button" className="quick-role" disabled={busy !== null}
-                  onClick={() => signIn(d.username, d.password, d.username)}>
-                  <span className="quick-label">{d.label}</span>
-                  <span className="quick-user">{busy === d.username ? <span className="spinner" aria-hidden="true" /> : d.username}</span>
-                </button>
-              ))}
+          {QUICK_LOGIN && (
+            <div className="quick-login">
+              <h3>Vào nhanh <span>tài khoản ban đầu · mật khẩu 12345</span></h3>
+              <div className="quick-grid">
+                {DEMO.map((d) => (
+                  <button key={d.username} type="button" className="quick-role" disabled={busy !== null}
+                    onClick={() => signIn(d.username, d.password, d.username)}>
+                    <span className="quick-label">{d.label}</span>
+                    <span className="quick-user">{busy === d.username ? <span className="spinner" aria-hidden="true" /> : d.username}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>}
-        </div>
-      </section>
+          )}
+        </section>
+      </div>
     </div>
   )
 }
