@@ -175,7 +175,7 @@ function Shifts({ branchId }: { branchId: number }) {
             {shifts.data?.map((s) => (
               <div key={s.id} className="row" style={{ justifyContent: 'space-between' }}>
                 <strong>{s.name}</strong>
-                <span className="chalk num" style={{ fontSize: 22, color: 'var(--navy)' }}>{s.startTime?.slice(0, 5)} – {s.endTime?.slice(0, 5)}</span>
+                <span className="chalk num" style={{ fontSize: 22, color: 'var(--ink)' }}>{s.startTime?.slice(0, 5)} – {s.endTime?.slice(0, 5)}</span>
               </div>
             ))}
             {shifts.data?.length === 0 && <span className="muted">Chưa có ca nào.</span>}

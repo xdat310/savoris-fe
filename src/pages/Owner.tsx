@@ -52,7 +52,7 @@ function Overview() {
   return (
     <div>
       <p style={{ fontSize: 17, margin: '0 0 18px', lineHeight: 1.7 }}>
-        Tiền mặt thực thu hôm nay <strong className="chalk" style={{ fontSize: 30, color: 'var(--navy)' }}>{money(d.revenueToday)}</strong>
+        Tiền mặt thực thu hôm nay <strong className="chalk" style={{ fontSize: 30, color: 'var(--accent)' }}>{money(d.revenueToday)}</strong>
         <span className="muted" style={{ fontSize: 14 }}> (đã trừ hoàn tiền)</span>.
         {' '}<strong className="num">{d.completedOrdersToday}</strong> đơn hoàn tất, <strong className="num">{d.openOrders}</strong> đơn đang mở.
         {' '}
@@ -160,7 +160,7 @@ function ChainMenu() {
         <div className="panel-head"><h2>Danh mục</h2></div>
         <div style={{ padding: 8 }}>
           {categories.data?.map((c) => (
-            <button key={c.id} className="rail-link" style={{ width: '100%', border: 'none', background: c.id === activeCat ? 'var(--navy)' : 'none', color: c.id === activeCat ? 'var(--on-navy)' : 'var(--ink)', cursor: 'pointer' }} onClick={() => setCatId(c.id!)}>
+            <button key={c.id} className="rail-link" style={{ width: '100%', border: 'none', background: c.id === activeCat ? 'var(--accent)' : 'none', color: c.id === activeCat ? 'var(--navy-deep)' : 'var(--ink)', cursor: 'pointer' }} onClick={() => setCatId(c.id!)}>
               {c.name}
             </button>
           ))}
@@ -187,6 +187,7 @@ function ChainMenu() {
                         : <span style={{ width: 44, height: 33, background: 'var(--sand)', borderRadius: 2, flex: 'none' }} aria-hidden="true" />}
                       <input className="input" type="url" placeholder="Link ảnh" defaultValue={it.imageUrl ?? ''} key={it.imageUrl ?? 'none'} style={{ width: 110, minHeight: 34 }}
                         onBlur={(e) => e.target.value.trim() !== (it.imageUrl ?? '') && update(it, { imageUrl: e.target.value.trim() })} aria-label={`Link ảnh ${it.name}`} />
+                      <PhotoUpload compact label={`Tải ảnh ${it.name} lên`} onError={setError} onUploaded={(url) => update(it, { imageUrl: url })} />
                     </div>
                   </td>
                   <td className="num muted" style={{ whiteSpace: 'nowrap' }}>{it.code}</td>
@@ -251,10 +252,53 @@ function ChainMenu() {
             </select>
           </label>
           <label className="field">Link ảnh món (không bắt buộc)<input className="input" type="url" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://…/pho.jpg" /></label>
+          <div className="row" style={{ gap: 8, alignSelf: 'flex-end', flexWrap: 'nowrap' }}>
+            {form.imageUrl && <img src={form.imageUrl} alt="" style={{ width: 44, height: 33, objectFit: 'cover', borderRadius: 2 }} />}
+            <PhotoUpload label="Tải ảnh lên" onError={setError} onUploaded={(url) => setForm((f) => ({ ...f, imageUrl: url }))} />
+          </div>
           <button className="btn btn-primary" disabled={!activeCat}><Plus size={16} aria-hidden="true" /> Thêm món</button>
         </form>
       </div>
     </div>
+  )
+}
+
+// Picks a photo from the computer, stores it on Cloudinary through the API and hands back its link
+function PhotoUpload({ label, compact, onUploaded, onError }: {
+  label: string; compact?: boolean; onUploaded: (url: string) => void; onError: (message: string | null) => void
+}) {
+  const [busy, setBusy] = useState(false)
+
+  async function pick(file?: File) {
+    if (!file) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      onError('Chỉ nhận ảnh PNG, JPG hoặc WebP.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      onError('Ảnh tối đa 5MB.')
+      return
+    }
+    onError(null)
+    setBusy(true)
+    try {
+      onUploaded((await upload<{ url: string }>('/images', file, 'POST')).url)
+    } catch (err) {
+      onError(err instanceof ApiError && err.code === 'IMAGE_STORAGE_NOT_CONFIGURED'
+        ? 'Chưa cài Cloudinary: đặt biến CLOUDINARY_URL cho backend rồi khởi động lại.'
+        : err instanceof Error ? err.message : 'Không tải được ảnh lên')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <label className={compact ? `icon-btn${busy ? ' is-busy' : ''}` : `btn${busy ? ' is-busy' : ''}`} title={label} aria-label={compact ? label : undefined}>
+      {busy ? <span className="spinner" aria-hidden="true" /> : <Upload size={compact ? 15 : 16} aria-hidden="true" />}
+      {!compact && label}
+      <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy}
+        onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
+    </label>
   )
 }
 
@@ -318,7 +362,7 @@ function Promotions() {
                 const running = p.isActive && new Date(p.endAt!).getTime() > now
                 return (
                   <tr key={p.id}>
-                    <td className="chalk" style={{ fontSize: 20, color: 'var(--navy)' }}><Strikable on={!running}>{p.code}</Strikable></td>
+                    <td className="chalk" style={{ fontSize: 20, color: 'var(--accent)' }}><Strikable on={!running}>{p.code}</Strikable></td>
                     <td><div style={{ fontWeight: 600 }}>{p.name}</div><div className="muted" style={{ fontSize: 13 }}>{describe(p)}</div></td>
                     <td className="num">{money(p.minOrderAmount)}</td>
                     <td className="num" style={{ fontSize: 13 }}>{dateTime(p.startAt)} → {dateTime(p.endAt)}</td>
@@ -395,7 +439,7 @@ function Vat() {
     <form className="panel panel-pad" style={{ maxWidth: 520, display: 'grid', gap: 14 }} onSubmit={save}>
       <div>
         <div className="muted" style={{ fontSize: 14 }}>Thuế VAT đang áp dụng cho mọi đơn mới</div>
-        <div className="chalk" style={{ fontSize: 56, lineHeight: 1.1, color: 'var(--navy)' }}>{number(vat.data.percent, 2)}%</div>
+        <div className="chalk" style={{ fontSize: 56, lineHeight: 1.1, color: 'var(--ink)' }}>{number(vat.data.percent, 2)}%</div>
         <p className="muted" style={{ margin: 0, fontSize: 14 }}>VAT tính trên phần còn lại sau khuyến mãi và điểm. Đơn đã tạo giữ nguyên số tiền cũ.</p>
       </div>
       {error && <ErrorNotice message={error} />}
