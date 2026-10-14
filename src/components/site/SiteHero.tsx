@@ -121,9 +121,7 @@ export function SiteHero({ config, onCtaClick }: Props) {
           </div>
         )}
 
-        <h1 className="sh-hero-brand">
-          Dine<span>Chain</span>
-        </h1>
+        <h1 className="sh-hero-brand">Savoris</h1>
 
         <p className="sh-hero-desc">{c.description}</p>
 
