@@ -3,14 +3,14 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth'
 import { ErrorNotice } from '../components/Feedback'
+import logoBg from '../assets/savoris-logo.webp'
 
 const DEMO = [
-  { username: 'admin',   password: '12345', label: 'Quản trị viên' },
-  { username: 'quanly',  password: '12345', label: 'Quản lý' },
-  { username: 'thungan', password: '12345', label: 'Thu ngân' },
-  { username: 'phucvu',  password: '12345', label: 'Phục vụ' },
-  { username: 'daubep',  password: '12345', label: 'Đầu bếp' },
-  { username: 'kho',     password: '12345', label: 'Kho' },
+  { username: 'admin',   password: 'savoris123', label: 'Quản trị viên' },
+  { username: 'quanly',  password: 'savoris123', label: 'Quản lý' },
+  { username: 'phucvu',  password: 'savoris123', label: 'Phục vụ' },
+  { username: 'daubep',  password: 'savoris123', label: 'Đầu bếp' },
+  { username: 'kho',     password: 'savoris123', label: 'Kho' },
 ]
 
 const DEV = import.meta.env.DEV
@@ -32,22 +32,15 @@ export function Login() {
   function submit(e: FormEvent) { e.preventDefault(); signIn(username, password, 'form') }
 
   return (
-    <div className="al">
-      {/* ── Left hero panel ── */}
-      <div className="al-left" aria-hidden="true">
-        <div className="al-lattice" />
-        <div className="al-left-body">
-          <p className="al-eyebrow">HỆ THỐNG QUẢN LÝ CHUỖI</p>
-          <h1 className="al-headline">
-            Tinh tế.<br />Đồng bộ.<br />Không<br />gián đoạn.
-          </h1>
-          <p className="al-mark">Dine<span>Chain</span></p>
-        </div>
-      </div>
-
-      {/* ── Right form panel ── */}
-      <div className="al-right">
+    <div className="al" style={{ backgroundImage: `url(${logoBg})` }}>
+      <div className="al-overlay" />
+      <div className="al-center">
         <div className="al-form-wrap">
+          <div className="al-brand">
+            <span className="al-brand-name">SAVORIS</span>
+            <span className="al-brand-rule" />
+            <span className="al-brand-sub">STAFF PORTAL</span>
+          </div>
           <h2 className="al-form-title">Đăng nhập</h2>
           <p className="al-form-sub">Tài khoản nhân viên do quản lý cấp.</p>
 
@@ -78,8 +71,6 @@ export function Login() {
               </div>
             </label>
 
-            <button type="button" className="al-forgot">Quên mật khẩu?</button>
-
             <button className="al-submit" disabled={busy !== null}>
               {busy === 'form' ? <span className="spinner" aria-hidden="true" /> : 'ĐĂNG NHẬP'}
             </button>
@@ -87,7 +78,7 @@ export function Login() {
 
           {DEV && (
             <div className="al-quick">
-              <p className="al-quick-label">Vào nhanh <span>· mật khẩu 12345</span></p>
+              <p className="al-quick-label">Vào nhanh</p>
               <div className="al-quick-grid">
                 {DEMO.map((d) => (
                   <button key={d.username} className="al-quick-card" disabled={busy !== null}
