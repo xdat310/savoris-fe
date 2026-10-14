@@ -11,7 +11,7 @@ const SEED: SiteGalleryItem[] = [
   { id: 1, order: 1, image_url: heroPho,  public_id: '', caption: 'Phở bò hầm 12 tiếng' },
   { id: 2, order: 2, image_url: mamCom,   public_id: '', caption: 'Mâm cơm Việt truyền thống' },
   { id: 3, order: 3, image_url: bunCha,   public_id: '', caption: 'Bún chả Hà Nội' },
-  { id: 4, order: 4, image_url: phoTop,   public_id: '', caption: 'Không gian DineChain Hoàn Kiếm' },
+  { id: 4, order: 4, image_url: phoTop,   public_id: '', caption: 'Không gian Savoris Hoàn Kiếm' },
   { id: 5, order: 5, image_url: mamCom,   public_id: '', caption: 'Chi nhánh Tây Hồ' },
   { id: 6, order: 6, image_url: heroPho,  public_id: '', caption: 'Sân thượng Đà Nẵng' },
 ]

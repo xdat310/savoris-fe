@@ -73,8 +73,8 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick }: 
       <header className={`sh${scrolled ? ' sh--solid' : ''}`} role="banner">
         <div className="sh-inner">
           {/* Logo / Wordmark */}
-          <Link to="/" className="sh-logo" aria-label="DineChain — trang chủ">
-            <span className="sh-logo-dine">Dine</span><span className="sh-logo-chain">Chain</span>
+          <Link to="/" className="sh-logo" aria-label="Savoris — trang chủ">
+            <span className="sh-logo-dine">Savoris</span>
           </Link>
 
           {/* Desktop nav */}

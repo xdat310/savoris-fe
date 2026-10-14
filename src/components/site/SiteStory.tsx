@@ -10,14 +10,14 @@ const SEED: SiteSection[] = [
     id: 1, order: 1, visible: true, image_side: 'right',
     image_url: mamCom, public_id: '',
     title: 'Ẩm thực\ntinh hoa',
-    body: 'Chúng tôi tin rằng mỗi bữa ăn là một câu chuyện. Từ nguyên liệu được tuyển chọn kỹ lưỡng từ những vùng đất tốt nhất Việt Nam, đến bàn tay điêu luyện của đội ngũ đầu bếp đã qua đào tạo quốc tế — DineChain mang đến trải nghiệm ẩm thực vượt ra ngoài khái niệm bữa ăn thông thường.',
+    body: 'Chúng tôi tin rằng mỗi bữa ăn là một câu chuyện. Từ nguyên liệu được tuyển chọn kỹ lưỡng từ những vùng đất tốt nhất Việt Nam, đến bàn tay điêu luyện của đội ngũ đầu bếp đã qua đào tạo quốc tế — Savoris mang đến trải nghiệm ẩm thực vượt ra ngoài khái niệm bữa ăn thông thường.',
     link_text: 'Tìm hiểu thêm', link_url: '#ve-chung-toi',
   },
   {
     id: 2, order: 2, visible: true, image_side: 'left',
     image_url: phoTop, public_id: '',
     title: 'Tinh tế.\nNăng lượng.\nSáng tạo.',
-    body: 'Không gian DineChain được thiết kế để nuôi dưỡng cả thể xác lẫn tâm hồn. Ánh sáng ấm, âm nhạc tinh tế, và sự phục vụ tận tâm tạo nên một bầu không khí khó quên. Dù là buổi tối hẹn hò hay bữa trưa đối tác, mỗi chi tiết đều được chắt lọc.',
+    body: 'Không gian Savoris được thiết kế để nuôi dưỡng cả thể xác lẫn tâm hồn. Ánh sáng ấm, âm nhạc tinh tế, và sự phục vụ tận tâm tạo nên một bầu không khí khó quên. Dù là buổi tối hẹn hò hay bữa trưa đối tác, mỗi chi tiết đều được chắt lọc.',
     link_text: 'Xem không gian', link_url: '#thu-vien',
   },
   {

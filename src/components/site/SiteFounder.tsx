@@ -7,7 +7,7 @@ const SEED: FounderData = {
   name: 'Nguyễn Minh Khôi',
   title: 'Nhà sáng lập kiêm Giám đốc Điều hành',
   quote: 'Tôi không mở nhà hàng để bán thức ăn — tôi tạo ra nơi mà con người cảm thấy được trân trọng.',
-  bio: 'Với hơn 20 năm trong ngành F&B tại Việt Nam và châu Á, Minh Khôi đã từng làm việc cùng các đầu bếp Michelin tại Tokyo và Singapore trước khi trở về Hà Nội để xây dựng DineChain. Triết lý của ông là đơn giản: nguyên liệu tốt nhất, kỹ thuật tốt nhất, và sự chăm chú không ngừng vào từng chi tiết nhỏ nhất.',
+  bio: 'Với hơn 20 năm trong ngành F&B tại Việt Nam và châu Á, Minh Khôi đã từng làm việc cùng các đầu bếp Michelin tại Tokyo và Singapore trước khi trở về Hà Nội để xây dựng Savoris. Triết lý của ông là đơn giản: nguyên liệu tốt nhất, kỹ thuật tốt nhất, và sự chăm chú không ngừng vào từng chi tiết nhỏ nhất.',
 }
 
 function useFadeIn(ref: React.RefObject<Element | null>) {

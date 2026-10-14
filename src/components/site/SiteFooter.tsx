@@ -42,7 +42,7 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
       <div className="ftr-inner">
         {/* Logo */}
         <div className="ftr-brand">
-          <Link to="/" className="ftr-logo">Dine<span>Chain</span></Link>
+          <Link to="/" className="ftr-logo">Savoris</Link>
           <p className="ftr-tagline">Ẩm thực tinh hoa — Không gian đẳng cấp</p>
         </div>
 
@@ -92,7 +92,7 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
       </div>
 
       <div className="ftr-bottom">
-        <small>© {year} DineChain · {config?.copyright ?? 'Ẩm thực Việt đương đại'}</small>
+        <small>© {year} Savoris · {config?.copyright ?? 'Ẩm thực Việt đương đại'}</small>
       </div>
     </footer>
   )
