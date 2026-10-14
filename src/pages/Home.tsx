@@ -14,6 +14,7 @@ import { SiteFounder } from '../components/site/SiteFounder'
 import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteHero } from '../components/site/SiteHero'
+import { SiteManifesto } from '../components/site/SiteManifesto'
 import { SiteOrderModal } from '../components/site/SiteOrderModal'
 import { SiteStory } from '../components/site/SiteStory'
 import { SiteTimeline } from '../components/site/SiteTimeline'
@@ -55,6 +56,7 @@ export function Home() {
         config={hero}
         onCtaClick={() => setOrderOpen(true)}
       />
+      <SiteManifesto />
       <SiteStory sections={sections} />
       <SiteTimeline milestones={milestones} />
       <SiteGallery items={gallery} />

@@ -68,6 +68,7 @@ function StoryBlock({ s, index }: { s: SiteSection; index: number }) {
         <div className="story-vignette" aria-hidden="true" />
       </div>
       <div className="story-copy">
+        <span className="story-eyebrow">0{index + 1}</span>
         <h2 className="story-title">
           {s.title.split('\n').map((line, i) => (
             <span key={i}>{line}<br /></span>
