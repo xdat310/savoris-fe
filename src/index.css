@@ -1462,10 +1462,15 @@ table.data tr.is-current td { background: var(--accent-wash); }
 
 /* ── Logo / Wordmark ── */
 .sh-logo {
-  text-decoration: none; flex: none;
-  font-family: var(--dc-serif); font-size: 24px; font-weight: 500; letter-spacing: 0.04em;
-  line-height: 1;
+  text-decoration: none; flex: none; display: block;
+  line-height: 0;
 }
+.sh-logo-img {
+  height: 52px; width: auto; display: block;
+  mix-blend-mode: lighten;
+  transition: opacity 200ms;
+}
+.sh-logo:hover .sh-logo-img { opacity: 0.85; }
 .sh-logo-dine  { color: var(--dc-text); }
 .sh-logo-chain { color: var(--dc-gold); }
 
@@ -1640,12 +1645,15 @@ table.data tr.is-current td { background: var(--accent-wash); }
   border: 1px solid rgba(255,255,255,0.2);
 }
 
-/* Brand name */
+/* Brand logo in hero */
+.sh-hero-logo {
+  height: clamp(100px, 16vw, 200px); width: auto;
+  mix-blend-mode: lighten;
+  display: block;
+}
+/* Brand name (fallback — hidden now logo is used) */
 .sh-hero-brand {
-  margin: 0;
-  font-family: var(--dc-serif); font-weight: 300;
-  font-size: clamp(40px, 6vw, 88px); line-height: 0.95;
-  letter-spacing: 0.18em; text-transform: uppercase; color: var(--dc-text);
+  display: none;
 }
 .sh-hero-brand span { color: var(--dc-text); }
 
@@ -2448,12 +2456,14 @@ table.data tr.is-current td { background: var(--accent-wash); }
   grid-template-columns: 1.5fr repeat(3, 1fr) 1fr;
   gap: 40px;
 }
-.ftr-brand { display: flex; flex-direction: column; gap: 10px; }
-.ftr-logo {
-  font-family: var(--dc-serif); font-size: 22px; font-weight: 500;
-  letter-spacing: 0.04em; color: var(--dc-text); text-decoration: none;
-  display: inline-block;
+.ftr-brand { display: flex; flex-direction: column; }
+.ftr-logo { text-decoration: none; display: inline-block; line-height: 0; }
+.ftr-logo-img {
+  height: 80px; width: auto; display: block;
+  mix-blend-mode: lighten; opacity: 0.9;
+  transition: opacity 200ms;
 }
+.ftr-logo:hover .ftr-logo-img { opacity: 1; }
 .ftr-logo span { color: var(--dc-gold); }
 .ftr-tagline {
   font-size: 12px; color: var(--dc-text-muted);

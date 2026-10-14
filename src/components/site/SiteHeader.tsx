@@ -2,6 +2,7 @@ import { ChevronDown, Menu, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { PublicBranch, SiteNavItem } from '../../api/site'
+import logoSrc from '../../assets/savoris-logo.webp'
 
 const FALLBACK_NAV: SiteNavItem[] = [
   { id: 1, label: 'THỰC ĐƠN',      link: '#thuc-don',    order: 1, visible: true },
@@ -78,7 +79,7 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick }: 
         <div className="sh-inner">
           {/* Logo */}
           <Link to="/" className="sh-logo" aria-label="Savoris — trang chủ">
-            <span className="sh-logo-dine">Savoris</span>
+            <img src={logoSrc} alt="Savoris Fine Dining" className="sh-logo-img" />
           </Link>
 
           {/* Desktop nav */}

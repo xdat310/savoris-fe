@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { SiteFooter as FooterData } from '../../api/site'
+import logoSrc from '../../assets/savoris-logo.webp'
 
 const YEAR = new Date().getFullYear()
 
@@ -42,8 +43,9 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
       <div className="ftr-inner">
         {/* Logo */}
         <div className="ftr-brand">
-          <Link to="/" className="ftr-logo">Savoris</Link>
-          <p className="ftr-tagline">Ẩm thực tinh hoa — Không gian đẳng cấp</p>
+          <Link to="/" className="ftr-logo" aria-label="Savoris — trang chủ">
+            <img src={logoSrc} alt="Savoris Fine Dining" className="ftr-logo-img" />
+          </Link>
         </div>
 
         {/* Link columns */}
