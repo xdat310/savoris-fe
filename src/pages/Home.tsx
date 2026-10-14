@@ -1,27 +1,71 @@
 import { useEffect, useState } from 'react'
-import type { HeroConfig, PublicBranch, SiteNavItem } from '../api/site'
-import { getBranches, getHero, getNav } from '../api/site'
+import type {
+  HeroConfig, PublicBranch, SiteFooter as FooterData,
+  SiteFounder as FounderData, SiteGalleryItem, SiteMilestone,
+  SiteNavItem, SiteSection,
+} from '../api/site'
+import {
+  getBranches, getFooterConfig, getFounder, getGallery,
+  getHero, getMilestones, getNav, getSections,
+} from '../api/site'
+import { SiteContact } from '../components/site/SiteContact'
+import { SiteFooter } from '../components/site/SiteFooter'
+import { SiteFounder } from '../components/site/SiteFounder'
+import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteHero } from '../components/site/SiteHero'
+import { SiteOrderModal } from '../components/site/SiteOrderModal'
+import { SiteStory } from '../components/site/SiteStory'
+import { SiteTimeline } from '../components/site/SiteTimeline'
 
 export function Home() {
   const [nav, setNav] = useState<SiteNavItem[]>([])
   const [hero, setHero] = useState<HeroConfig | null>(null)
   const [branches, setBranches] = useState<PublicBranch[]>([])
+  const [sections, setSections] = useState<SiteSection[]>([])
+  const [milestones, setMilestones] = useState<SiteMilestone[]>([])
+  const [gallery, setGallery] = useState<SiteGalleryItem[]>([])
+  const [founder, setFounder] = useState<FounderData | null>(null)
+  const [footer, setFooter] = useState<FooterData | null>(null)
+  const [orderOpen, setOrderOpen] = useState(false)
 
   useEffect(() => {
     getNav().then(setNav).catch(() => {})
     getHero().then(setHero).catch(() => {})
     getBranches().then(setBranches).catch(() => {})
+    getSections().then(setSections).catch(() => {})
+    getMilestones().then(setMilestones).catch(() => {})
+    getGallery().then(setGallery).catch(() => {})
+    getFounder().then(setFounder).catch(() => {})
+    getFooterConfig().then(setFooter).catch(() => {})
   }, [])
+
+  function scrollTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <div className="dc-site">
-      <SiteHeader nav={nav} branches={branches} />
-      <SiteHero config={hero} />
-
-      {/* Sections will be added below — story, timeline, gallery, founder, contact, footer */}
-      <div style={{ minHeight: '100vh', background: 'var(--dc-bg-alt)' }} />
+      <SiteHeader
+        nav={nav}
+        branches={branches}
+        onOrderClick={() => setOrderOpen(true)}
+      />
+      <SiteHero
+        config={hero}
+        onCtaClick={() => setOrderOpen(true)}
+      />
+      <SiteStory sections={sections} />
+      <SiteTimeline milestones={milestones} />
+      <SiteGallery items={gallery} />
+      <SiteFounder founder={founder} />
+      <SiteContact branches={branches} />
+      <SiteFooter
+        config={footer}
+        onReserveClick={() => setOrderOpen(true)}
+        onScrollTo={scrollTo}
+      />
+      <SiteOrderModal open={orderOpen} onClose={() => setOrderOpen(false)} />
     </div>
   )
 }
