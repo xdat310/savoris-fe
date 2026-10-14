@@ -1,8 +1,10 @@
-import { Boxes, ChefHat, Copy, CupSoda, Plus, Power, RefreshCw, Store, Trash2, Upload } from 'lucide-react'
+import { Boxes, ChefHat, Copy, CupSoda, KeyRound, Plus, Power, RefreshCw, Store, Trash2, Upload, UserMinus } from 'lucide-react'
 import { Fragment, useState, type FormEvent } from 'react'
-import { ApiError, get, post, put, upload } from '../api/client'
+import { ApiError, del, get, post, put, upload } from '../api/client'
 import type {
-  ChainDashboardResponse, CreatePromotionRequest, DishBranchResponse, DishExclusionResponse, IngredientResponse, RecipeLineResponse, MenuCategoryResponse, MenuItemResponse, PromotionResponse, TransferQrSetting, VatSetting, BankAccountSetting,
+  AuditLogResponse, BranchResponse, ChainDashboardResponse, CreateBranchRequest, CreatePromotionRequest, CreateStaffRequest,
+  DishBranchResponse, DishExclusionResponse, IngredientResponse, RecipeLineResponse, MenuCategoryResponse, MenuItemResponse,
+  PromotionResponse, StaffDetailResponse, TransferQrSetting, UpdateBranchRequest, VatSetting, BankAccountSetting,
 } from '../api/types'
 import { useAuth } from '../auth'
 import { Strikable } from '../components/ChalkStrike'
@@ -12,7 +14,7 @@ import { useToast } from '../components/Toast'
 import { dateTime, money, number, time } from '../lib/format'
 import { useData } from '../lib/useData'
 
-type Tab = 'overview' | 'menu' | 'promotions' | 'vat' | 'transfer'
+type Tab = 'overview' | 'branches' | 'accounts' | 'menu' | 'promotions' | 'vat' | 'transfer' | 'logs'
 
 export function Owner() {
   const [tab, setTab] = useState<Tab>('overview')
@@ -25,15 +27,27 @@ export function Owner() {
         </div>
       </div>
       <div className="tabs" role="tablist">
-        {([['overview', 'Tổng quan hôm nay'], ['menu', 'Menu chung'], ['promotions', 'Khuyến mãi'], ['vat', 'Thuế VAT'], ['transfer', 'Chuyển khoản']] as const).map(([id, label]) => (
+        {([
+          ['overview',   'Tổng quan'],
+          ['branches',   'Chi nhánh'],
+          ['accounts',   'Tài khoản QL'],
+          ['menu',       'Menu chung'],
+          ['promotions', 'Khuyến mãi'],
+          ['vat',        'Thuế VAT'],
+          ['transfer',   'Chuyển khoản'],
+          ['logs',       'Nhật ký'],
+        ] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
-      {tab === 'overview' && <Overview />}
-      {tab === 'menu' && <ChainMenu />}
+      {tab === 'overview'   && <Overview />}
+      {tab === 'branches'   && <Branches />}
+      {tab === 'accounts'   && <ManagerAccounts />}
+      {tab === 'menu'       && <ChainMenu />}
       {tab === 'promotions' && <Promotions />}
-      {tab === 'vat' && <Vat />}
-      {tab === 'transfer' && <div className="transfer-tab"><BankTransfer /><TransferQr /></div>}
+      {tab === 'vat'        && <Vat />}
+      {tab === 'transfer'   && <div className="transfer-tab"><BankTransfer /><TransferQr /></div>}
+      {tab === 'logs'       && <AuditLogs />}
     </div>
   )
 }
@@ -773,6 +787,282 @@ function RecipeEditor({ dish, onSaved }: { dish: MenuItemResponse; onSaved: () =
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <button className="btn btn-sm btn-ghost" disabled={(ingredients.data?.length ?? 0) === 0} onClick={() => setLines([...current, { ingredientId: '', quantity: '1' }])}><Plus size={14} aria-hidden="true" /> Thêm nguyên liệu</button>
         <button className="btn btn-sm btn-primary" disabled={busy || lines === null} onClick={save}>{busy && <span className="spinner" aria-hidden="true" />} Lưu nguyên liệu</button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- branches (ADMIN)
+
+function Branches() {
+  const { reloadBranches } = useAuth()
+  const list = useData(() => get<BranchResponse[]>('/branches'), [])
+  const toast = useToast()
+  const [error, setError] = useState<string | null>(null)
+  const blank: CreateBranchRequest = { code: '', name: '', address: '', city: '', phone: '' }
+  const [f, setF] = useState(blank)
+
+  async function act(fn: () => Promise<unknown>, ok: string) {
+    setError(null)
+    try { await fn(); toast(ok) } catch (e) { setError(e instanceof ApiError ? e.message : 'Có lỗi xảy ra') }
+  }
+
+  function create(e: FormEvent) {
+    e.preventDefault()
+    act(async () => {
+      await post('/branches', f)
+      setF(blank)
+      await list.reload()
+      await reloadBranches()
+    }, 'Đã tạo chi nhánh')
+  }
+
+  function close(b: BranchResponse) {
+    if (!window.confirm(`Đóng cửa ${b.name}? Thao tác này đánh dấu chi nhánh KHÔNG hoạt động.`)) return
+    act(async () => {
+      await del(`/branches/${b.id}`)
+      await list.reload()
+      await reloadBranches()
+    }, `Đã đóng cửa ${b.name}`)
+  }
+
+  function save(b: BranchResponse, patch: Partial<UpdateBranchRequest>) {
+    act(async () => {
+      await put(`/branches/${b.id}`, { name: b.name!, address: b.address!, city: b.city!, phone: b.phone, ...patch })
+      await list.reload()
+      await reloadBranches()
+    }, 'Đã cập nhật chi nhánh')
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      {error && <ErrorNotice message={error} />}
+      <div className="panel">
+        <div className="panel-head"><h2>Danh sách chi nhánh</h2></div>
+        {list.loading ? <Loading /> : (
+          <table className="data">
+            <thead><tr><th>Mã</th><th>Tên chi nhánh</th><th>Địa chỉ</th><th>Thành phố</th><th>Điện thoại</th><th>Trạng thái</th><th /></tr></thead>
+            <tbody>
+              {list.data?.map((b) => (
+                <tr key={b.id}>
+                  <td className="num muted">{b.code}</td>
+                  <td>
+                    <input className="input" defaultValue={b.name ?? ''} key={b.name} style={{ minWidth: 160 }}
+                      onBlur={(e) => e.target.value !== b.name && save(b, { name: e.target.value })} />
+                  </td>
+                  <td>
+                    <input className="input" defaultValue={b.address ?? ''} key={b.address} style={{ minWidth: 200 }}
+                      onBlur={(e) => e.target.value !== b.address && save(b, { address: e.target.value })} />
+                  </td>
+                  <td>
+                    <input className="input" defaultValue={b.city ?? ''} key={b.city} style={{ minWidth: 120 }}
+                      onBlur={(e) => e.target.value !== b.city && save(b, { city: e.target.value })} />
+                  </td>
+                  <td>
+                    <input className="input" defaultValue={b.phone ?? ''} key={b.phone} style={{ minWidth: 120 }}
+                      onBlur={(e) => e.target.value !== b.phone && save(b, { phone: e.target.value })} />
+                  </td>
+                  <td>
+                    {b.status === 'ACTIVE' ? <Chip tone="ok">Hoạt động</Chip>
+                      : b.status === 'CLOSED' ? <Chip tone="bad">Đóng cửa</Chip>
+                      : <Chip tone="neutral">Không hoạt động</Chip>}
+                  </td>
+                  <td className="right">
+                    {b.status === 'ACTIVE' && (
+                      <button className="btn btn-sm btn-danger" onClick={() => close(b)}>
+                        <Power size={14} aria-hidden="true" /> Đóng cửa
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <form className="panel panel-pad" onSubmit={create} style={{ display: 'grid', gap: 14 }}>
+        <h2 style={{ margin: 0, fontSize: 17 }}>Thêm chi nhánh mới</h2>
+        <div className="grid-form">
+          <label className="field">Mã CN (VD: HK)<input className="input" required minLength={2} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></label>
+          <label className="field">Tên chi nhánh<input className="input" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+          <label className="field">Địa chỉ<input className="input" required value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></label>
+          <label className="field">Thành phố<input className="input" required value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></label>
+          <label className="field">Điện thoại<input className="input" inputMode="tel" value={f.phone ?? ''} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
+          <button className="btn btn-primary"><Plus size={16} aria-hidden="true" /> Tạo chi nhánh</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- manager accounts (ADMIN)
+
+function ManagerAccounts() {
+  const { branches } = useAuth()
+  const [branchId, setBranchId] = useState<number | null>(branches[0]?.id ?? null)
+  const staff = useData(
+    () => branchId ? get<StaffDetailResponse[]>(`/staff/branch/${branchId}`) : Promise.resolve([]),
+    [branchId]
+  )
+  const toast = useToast()
+  const [error, setError] = useState<string | null>(null)
+  const blank = { fullName: '', username: '', phone: '', email: '', password: '', hourlyRate: '0' }
+  const [f, setF] = useState(blank)
+
+  async function act(fn: () => Promise<unknown>, ok: string) {
+    setError(null)
+    try { await fn(); toast(ok) } catch (e) { setError(e instanceof ApiError ? e.message : 'Có lỗi xảy ra') }
+  }
+
+  function hire(e: FormEvent) {
+    e.preventDefault()
+    if (!branchId) return
+    act(async () => {
+      await post('/staff', {
+        code: `QL${Date.now() % 1000000}`, fullName: f.fullName.trim(), username: f.username.trim(),
+        email: f.email.trim(), phone: f.phone.trim(), role: 'BRANCH_MANAGER' as CreateStaffRequest['role'],
+        branchId, hourlyRate: Number(f.hourlyRate), password: f.password,
+      } satisfies CreateStaffRequest)
+      setF(blank)
+      await staff.reload()
+    }, 'Đã tạo tài khoản Quản lý')
+  }
+
+  function resetPw(s: StaffDetailResponse) {
+    const pw = window.prompt(`Mật khẩu mới cho ${s.fullName} (ít nhất 5 ký tự):`)
+    if (!pw) return
+    act(() => put(`/staff/${s.id}/password`, { newPassword: pw }), `Đã đặt lại mật khẩu cho ${s.fullName}`)
+  }
+
+  function revoke(s: StaffDetailResponse) {
+    if (!window.confirm(`Khoá tài khoản ${s.fullName}? Họ sẽ không đăng nhập được nữa.`)) return
+    act(async () => {
+      await del(`/staff/${s.id}`)
+      await staff.reload()
+    }, `Đã khoá ${s.fullName}`)
+  }
+
+  const managers = staff.data?.filter((s) => s.role === 'BRANCH_MANAGER') ?? []
+
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      {error && <ErrorNotice message={error} />}
+      <div className="row" style={{ alignItems: 'center', gap: 12 }}>
+        <label className="field" style={{ margin: 0 }}>
+          <span className="muted" style={{ fontSize: 13 }}>Chi nhánh</span>
+          <select className="select" value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value))}>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="panel">
+        <div className="panel-head"><h2>Quản lý chi nhánh</h2></div>
+        {staff.loading ? <Loading /> : managers.length === 0 ? <Empty title="Chi nhánh chưa có Quản lý" /> : (
+          <table className="data">
+            <thead><tr><th>Họ tên</th><th>Tài khoản</th><th>Điện thoại</th><th>Trạng thái</th><th /></tr></thead>
+            <tbody>
+              {managers.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 600 }}>{s.fullName}</td>
+                  <td className="muted">{s.username}</td>
+                  <td className="num">{s.phone}</td>
+                  <td>
+                    {s.status === 'ACTIVE' ? <Chip tone="ok">Hoạt động</Chip>
+                      : s.status === 'RESIGNED' ? <Chip tone="bad">Đã khoá</Chip>
+                      : <Chip tone="neutral">{s.status}</Chip>}
+                  </td>
+                  <td className="right">
+                    <div className="row" style={{ justifyContent: 'flex-end' }}>
+                      <button className="btn btn-sm" onClick={() => resetPw(s)}><KeyRound size={14} /> Đặt lại mật khẩu</button>
+                      {s.status === 'ACTIVE' && (
+                        <button className="btn btn-sm btn-danger" onClick={() => revoke(s)}><UserMinus size={14} /> Khoá tài khoản</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <form className="panel panel-pad" onSubmit={hire} style={{ display: 'grid', gap: 14 }}>
+        <h2 style={{ margin: 0, fontSize: 17 }}>Cấp tài khoản Quản lý mới</h2>
+        <div className="grid-form">
+          <label className="field">Họ tên<input className="input" required value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></label>
+          <label className="field">Tên đăng nhập<input className="input" required minLength={3} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
+          <label className="field">Mật khẩu ban đầu<input className="input" required minLength={5} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
+          <label className="field">Điện thoại<input className="input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
+          <label className="field">Email<input className="input" required type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+          <button className="btn btn-primary" disabled={!branchId}><Plus size={16} aria-hidden="true" /> Tạo tài khoản Quản lý</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- audit logs (ADMIN)
+
+function AuditLogs() {
+  const { branches } = useAuth()
+  const [branchId, setBranchId] = useState<string>('')
+  const [action, setAction] = useState('')
+  const [entityType, setEntityType] = useState('')
+  const logs = useData(
+    () => get<AuditLogResponse[]>(`/audit-logs?size=100${branchId ? `&branchId=${branchId}` : ''}${action ? `&action=${action}` : ''}${entityType ? `&entityType=${entityType}` : ''}`),
+    [branchId, action, entityType]
+  )
+
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <label className="field" style={{ margin: 0 }}>
+          <span className="muted" style={{ fontSize: 13 }}>Chi nhánh</span>
+          <select className="select" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <option value="">Tất cả</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+        <label className="field" style={{ margin: 0 }}>
+          <span className="muted" style={{ fontSize: 13 }}>Hành động</span>
+          <select className="select" value={action} onChange={(e) => setAction(e.target.value)}>
+            <option value="">Tất cả</option>
+            {['CREATE', 'UPDATE', 'DELETE', 'RESIGN', 'PAYMENT', 'VOID_REQUEST', 'VOID_RESOLVE'].map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field" style={{ margin: 0 }}>
+          <span className="muted" style={{ fontSize: 13 }}>Loại đối tượng</span>
+          <select className="select" value={entityType} onChange={(e) => setEntityType(e.target.value)}>
+            <option value="">Tất cả</option>
+            {['STAFF', 'ORDER', 'ORDER_ITEM', 'BRANCH', 'PAYMENT'].map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="panel">
+        <div className="panel-head"><h2>Nhật ký hoạt động</h2><span className="muted" style={{ fontSize: 13 }}>100 mục gần nhất</span></div>
+        {logs.loading ? <Loading /> : (logs.data?.length ?? 0) === 0 ? <Empty title="Chưa có nhật ký" /> : (
+          <table className="data">
+            <thead><tr><th>Thời gian</th><th>Hành động</th><th>Đối tượng</th><th>ID</th><th>Nhân viên</th><th>Chi nhánh</th><th>Giá trị mới</th></tr></thead>
+            <tbody>
+              {logs.data!.map((l) => (
+                <tr key={l.id}>
+                  <td className="num" style={{ whiteSpace: 'nowrap' }}>{dateTime(l.createdAt)}</td>
+                  <td><span className="sys-role-badge">{l.action}</span></td>
+                  <td className="muted">{l.entityType}</td>
+                  <td className="num muted">{l.entityId}</td>
+                  <td className="num">{l.staffId ?? '—'}</td>
+                  <td className="num">{l.branchId ? branches.find((b) => b.id === l.branchId)?.name ?? l.branchId : '—'}</td>
+                  <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }} className="muted">
+                    {l.newValue}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

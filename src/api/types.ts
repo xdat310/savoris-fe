@@ -1,5 +1,17 @@
 // Generated from the backend OpenAPI spec (/v3/api-docs) by scripts/gen-api-types.mjs. Do not edit by hand.
 
+export interface AuditLogResponse {
+  id?: number;
+  staffId?: number;
+  branchId?: number;
+  action?: string;
+  entityType?: string;
+  entityId?: number;
+  oldValue?: string;
+  newValue?: string;
+  createdAt?: string;
+}
+
 export interface AddOrderItemsRequest {
   items: OrderItemRequest[];
 }

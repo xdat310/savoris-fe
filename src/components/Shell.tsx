@@ -53,7 +53,7 @@ export function Shell() {
   const opsLinks = [
     can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Icon: LayoutDashboard },
     can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Icon: Users },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
+    (role === 'BRANCH_MANAGER' || can.owner(role)) && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Icon: ReceiptText },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,      label: 'Bếp',               Icon: ChefHat },
