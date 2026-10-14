@@ -36,7 +36,7 @@ export function TakeawayTrack() {
       navigator.vibrate?.([300, 120, 300, 120, 500])
     }
     wasReady.current = ready
-    document.title = ready ? '🔔 Món đã xong · DineChain' : 'DineChain'
+    document.title = ready ? '🔔 Món đã xong · Savoris' : 'Savoris'
   }, [ready, order.data])
 
   if (order.loading) return <div className="guest"><Loading label="Đang mở đơn…" /></div>

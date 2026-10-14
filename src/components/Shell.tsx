@@ -1,25 +1,29 @@
 import {
-  Bell, BookOpen, CalendarClock, ChefHat, ChevronDown,
-  ExternalLink, Globe, Image, LayoutDashboard, LogOut,
-  Package, QrCode, ReceiptText, Search, Settings, Users,
+  Bell, BookOpen, ChefHat, ChevronDown,
+  ExternalLink, Globe, LayoutDashboard, LogOut,
+  Package, QrCode, ReceiptText, Settings, Users,
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { STAFF, can, useAuth } from '../auth'
 import { ROLE_LABEL } from '../lib/format'
 
-// ── Page title from path ─────────────────────────────────────────────────
 const TITLES: Record<string, string> = {
-  [`${STAFF}/chuoi`]:    'Toàn chuỗi',
-  [`${STAFF}/ban-hang`]: 'Bán hàng',
-  [`${STAFF}/bep`]:      'Bếp',
-  [`${STAFF}/quan-ly`]:  'Quản lý chi nhánh',
-  [`${STAFF}/ma-qr`]:    'Mã QR bàn',
-  [`${STAFF}/kho`]:      'Kho & nhập hàng',
-  [`${STAFF}/ca-cua-toi`]: 'Ca của tôi',
+  [`${STAFF}/chuoi`]:         'Toàn chuỗi',
+  [`${STAFF}/chi-nhanh`]:     'Chi nhánh',
+  [`${STAFF}/ban-hang`]:      'Bán hàng',
+  [`${STAFF}/bep`]:           'Bếp',
+  [`${STAFF}/ma-qr`]:         'Mã QR bàn',
+  [`${STAFF}/kho`]:           'Kho & nhập hàng',
+  [`${STAFF}/ca-cua-toi`]:    'Ca của tôi',
+  [`${STAFF}/cai-dat`]:       'Cài đặt hệ thống',
+  [`${STAFF}/website`]:       'Website CMS',
+  [`${STAFF}/website/trang-chu`]: 'Trang chủ',
+  [`${STAFF}/website/thuc-don`]:  'Thực đơn website',
+  [`${STAFF}/website/lien-he`]:   'Liên hệ & Chi nhánh',
 }
 
-// ── Full-screen roles (tablet / kiosk — no sidebar) ──────────────────────
+// CHEF and WAITER get a fullscreen kiosk layout — no sidebar
 const FULLSCREEN_ROLES = ['CASHIER', 'WAITER', 'CHEF']
 
 export function Shell() {
@@ -30,41 +34,49 @@ export function Shell() {
   const isFullscreen = FULLSCREEN_ROLES.includes(role ?? '')
   const pageTitle = TITLES[pathname] ?? 'Savoris'
 
-  // ── Branch dropdown (admin) ──────────────────────────────────────────
+  // Swap favicon to fork-knife icon while inside staff area
+  useEffect(() => {
+    const el = document.getElementById('favicon-main') as HTMLLinkElement | null
+    if (!el) return
+    const prev = el.href
+    el.href = '/favicon-staff.svg'
+    el.type = 'image/svg+xml'
+    return () => { el.href = prev; el.type = 'image/png' }
+  }, [])
+
   const [branchOpen, setBranchOpen] = useState(false)
   const branchRef = useRef<HTMLDivElement>(null)
 
-  // ── Nav links ────────────────────────────────────────────────────────
+  // ── RBAC nav links per spec ──────────────────────────────────────────
+  // ADMIN: dashboard (with transfer QR built-in) + branch mgmt + settings
+  // BRANCH_MANAGER: branch ops + website menu editor
   const opsLinks = [
-    can.owner(role)  && { to: `${STAFF}/chuoi`,    label: 'Toàn chuỗi',       Icon: LayoutDashboard },
-    can.manage(role) && { to: `${STAFF}/quan-ly`,  label: 'Chi nhánh',         Icon: Users },
-    can.manage(role) && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
-    can.stock(role)  && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
-    can.pos(role)    && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Icon: ReceiptText },
-    can.kitchen(role)&& { to: `${STAFF}/bep`,      label: 'Bếp',               Icon: ChefHat },
-    can.shifts(role) && { to: `${STAFF}/ca-cua-toi`, label: 'Ca của tôi',      Icon: CalendarClock },
+    can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Icon: LayoutDashboard },
+    can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Icon: Users },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Icon: ReceiptText },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,      label: 'Bếp',               Icon: ChefHat },
+    can.owner(role)           && { to: `${STAFF}/cai-dat`,  label: 'Cài đặt',            Icon: Settings },
+    role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
   ].filter(Boolean) as { to: string; label: string; Icon: typeof Users }[]
 
-  const cmsLinks = can.manage(role) ? [
-    { to: `${STAFF}/website/trang-chu`, label: 'Trang chủ',       Icon: Globe },
-    { to: `${STAFF}/website/thuc-don`,  label: 'Thực đơn website', Icon: BookOpen },
-    { to: `${STAFF}/website/thu-vien`,  label: 'Thư viện ảnh',     Icon: Image },
-    { to: `${STAFF}/website/cai-dat`,   label: 'Cài đặt',          Icon: Settings },
+  // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages the full CMS
+  const cmsLinks = (role === 'BRANCH_MANAGER' || can.owner(role)) ? [
+    { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Icon: BookOpen },
+    { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Icon: Globe },
   ] : []
 
   // ── Shared top bar ───────────────────────────────────────────────────
   const TopBar = (
     <header className={`ad-top${isFullscreen ? ' ad-top--full' : ''}`}>
-      {isFullscreen && (
-        <span className="ad-top-mark">Savoris</span>
-      )}
+      {isFullscreen && <span className="ad-top-mark">Savoris</span>}
       <h1 className="ad-top-title">{pageTitle}</h1>
       <div className="ad-top-actions">
-        <button className="ad-top-icon" aria-label="Tìm kiếm"><Search size={18} /></button>
-        <button className="ad-top-icon" aria-label="Thông báo"><Bell size={18} /></button>
         <a className="ad-top-site" href="/" target="_blank" rel="noopener noreferrer">
           <ExternalLink size={14} aria-hidden="true" /> Xem website
         </a>
+        <button className="ad-top-icon" aria-label="Thông báo"><Bell size={18} /></button>
         {isFullscreen && (
           <button className="ad-top-logout" onClick={logout} aria-label="Đăng xuất">
             <LogOut size={16} /> Thoát
@@ -74,14 +86,12 @@ export function Shell() {
     </header>
   )
 
-  // ── Full-screen layout (cashier / waiter / chef) ─────────────────────
+  // ── Fullscreen layout (CHEF / WAITER / CASHIER) ──────────────────────
   if (isFullscreen) {
     return (
       <div className="ad-shell ad-shell--full">
         {TopBar}
-        <main className="ad-main">
-          <Outlet />
-        </main>
+        <main className="ad-main"><Outlet /></main>
       </div>
     )
   }
@@ -91,10 +101,12 @@ export function Shell() {
     <div className="ad-shell">
       <aside className="ad-rail">
 
-        {/* Logo */}
+        {/* Brand mark */}
         <div className="ad-rail-mark">Savoris</div>
 
-        {/* Branch switcher */}
+        {/* Branch context
+            - ADMIN: branch dropdown (can switch, Toàn chuỗi by default)
+            - BRANCH_MANAGER: fixed to their branch (locked) */}
         {staff.branchId ? (
           <div className="ad-branch-fixed">
             <span className="ad-branch-label">Chi nhánh</span>
@@ -130,7 +142,7 @@ export function Shell() {
           </div>
         )}
 
-        {/* VẬN HÀNH group */}
+        {/* VẬN HÀNH */}
         <nav className="ad-nav" aria-label="Vận hành">
           <span className="ad-nav-group">VẬN HÀNH</span>
           {opsLinks.map(({ to, label, Icon }) => (
@@ -141,7 +153,7 @@ export function Shell() {
           ))}
         </nav>
 
-        {/* WEBSITE group */}
+        {/* WEBSITE */}
         {cmsLinks.length > 0 && (
           <nav className="ad-nav" aria-label="Website CMS">
             <span className="ad-nav-group">WEBSITE</span>
@@ -154,7 +166,7 @@ export function Shell() {
           </nav>
         )}
 
-        {/* Footer */}
+        {/* User footer */}
         <div className="ad-rail-foot">
           <div className="ad-who">
             <div className="ad-who-avatar" aria-hidden="true">
@@ -171,12 +183,9 @@ export function Shell() {
         </div>
       </aside>
 
-      {/* Body: topbar + main */}
       <div className="ad-body">
         {TopBar}
-        <main className="ad-main">
-          <Outlet />
-        </main>
+        <main className="ad-main"><Outlet /></main>
       </div>
     </div>
   )

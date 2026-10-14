@@ -1,4 +1,4 @@
-import { get } from './client'
+import { get, put, upload } from './client'
 
 // ── Nav ──────────────────────────────────────────────────────────────────
 export interface SiteNavItem {
@@ -12,18 +12,12 @@ export const getNav = () => get<SiteNavItem[]>('/site/nav')
 
 // ── Hero ─────────────────────────────────────────────────────────────────
 export type HeroMediaType = 'image' | 'slideshow' | 'video'
-
-export interface HeroMedia {
-  url: string
-  public_id: string
-  alt?: string
-}
-
+export interface HeroMedia { url: string; public_id: string; alt?: string }
 export interface HeroConfig {
   type: HeroMediaType
   media: HeroMedia[]
-  overlay_opacity: number       // 0–1, default 0.45
-  brand_name?: string           // optional override; fallback: wordmark
+  overlay_opacity: number
+  brand_name?: string
   badge_enabled: boolean
   badge_line1: string
   badge_line2: string
@@ -33,7 +27,66 @@ export interface HeroConfig {
 }
 export const getHero = () => get<HeroConfig>('/site/hero')
 
-// ── Branches (used by nav dropdown + contact section) ───────────────────
+// ── Story sections ────────────────────────────────────────────────────────
+export interface SiteSection {
+  id: number
+  image_url: string
+  public_id: string
+  title: string
+  body: string
+  link_text?: string
+  link_url?: string
+  image_side: 'left' | 'right'
+  order: number
+  visible: boolean
+}
+export const getSections = () => get<SiteSection[]>('/site/sections')
+
+// ── Milestones ────────────────────────────────────────────────────────────
+export interface SiteMilestone {
+  id: number
+  year: string
+  title: string
+  description: string
+  order: number
+}
+export const getMilestones = () => get<SiteMilestone[]>('/site/milestones')
+
+// ── Gallery ───────────────────────────────────────────────────────────────
+export interface SiteGalleryItem {
+  id: number
+  image_url: string
+  public_id: string
+  caption?: string
+  order: number
+}
+export const getGallery = () => get<SiteGalleryItem[]>('/site/gallery')
+
+// ── Founder ───────────────────────────────────────────────────────────────
+export interface SiteFounder {
+  portrait_url: string
+  portrait_public_id: string
+  name: string
+  title: string
+  quote: string
+  bio: string
+  signature_url?: string
+}
+export const getFounder = () => get<SiteFounder>('/site/founder')
+
+// ── Order modal (service-type cards) ─────────────────────────────────────
+export interface SiteOrderCard {
+  bg_url: string
+  title: string
+  description: string
+}
+export interface SiteOrderConfig {
+  dine_in: SiteOrderCard
+  takeaway: SiteOrderCard
+}
+export const getOrderConfig = () => get<SiteOrderConfig>('/site/order-config')
+
+// ── Branches (nav dropdown + contact section) ─────────────────────────────
 export interface PublicBranch {
   id: number
   code: string
@@ -47,5 +100,54 @@ export interface PublicBranch {
   lng?: number
   google_maps_embed?: string
   hours?: { days: string; time: string }[]
+  acceptingTakeaway?: boolean
 }
 export const getBranches = () => get<PublicBranch[]>('/public/branches')
+
+// ── Footer ────────────────────────────────────────────────────────────────
+export interface SiteFooter {
+  facebook_url?: string
+  instagram_url?: string
+  tiktok_url?: string
+  copyright?: string
+}
+export const getFooterConfig = () => get<SiteFooter>('/site/footer')
+
+// ── Menu (public) ─────────────────────────────────────────────────────────
+export interface PublicDish {
+  id: number
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  categoryId: number
+  featured: boolean
+  available: boolean
+}
+export interface PublicCategory { id: number; name: string; order: number }
+export interface PublicMenu {
+  categories: PublicCategory[]
+  dishes: PublicDish[]
+  vatPercent?: number
+}
+export const getPublicMenu = (branchSlug?: string) =>
+  get<PublicMenu>(`/public/menu${branchSlug ? `?branch=${branchSlug}` : ''}`)
+
+// ── Site-wide config fetch (admin CMS bulk load) ──────────────────────────
+export const getAllSiteConfig = () => get<Record<string, unknown>>('/site/all')
+
+// ── CMS PUT (ADMIN only) ──────────────────────────────────────────────────
+export const updateHero        = (body: HeroConfig)        => put<HeroConfig>('/site/hero', body)
+export const updateSections    = (body: SiteSection[])     => put<SiteSection[]>('/site/sections', body)
+export const updateMilestones  = (body: SiteMilestone[])   => put<SiteMilestone[]>('/site/milestones', body)
+export const updateGallery     = (body: SiteGalleryItem[]) => put<SiteGalleryItem[]>('/site/gallery', body)
+export const updateFounder     = (body: SiteFounder)       => put<SiteFounder>('/site/founder', body)
+export const updateOrderConfig = (body: SiteOrderConfig)   => put<SiteOrderConfig>('/site/order-config', body)
+export const updateFooter      = (body: SiteFooter)        => put<SiteFooter>('/site/footer', body)
+export const updateNav         = (body: SiteNavItem[])     => put<SiteNavItem[]>('/site/nav', body)
+export const updateManifesto   = (body: { quote: string; author: string; authorTitle: string }) =>
+  put<{ quote: string; author: string; authorTitle: string }>('/site/manifesto', body)
+
+// ── Image upload (admin, to Cloudinary via backend) ───────────────────────
+export const uploadSiteImage = (file: File) =>
+  upload<{ url: string }>('/images/site', file, 'POST')

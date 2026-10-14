@@ -8,12 +8,15 @@ import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { useToast } from '../components/Toast'
 import { useData } from '../lib/useData'
 
-const BASE_KEY = 'dinechain.qrBase'
+const BASE_KEY = 'savoris.qrBase'
+const LEGACY_BASE_KEY = 'dinechain.qrBase'
 
 // localhost only works on this computer; a phone needs the Wi-Fi address (or an ngrok URL typed in by hand)
 function defaultBase() {
   try {
-    const saved = localStorage.getItem(BASE_KEY)
+    const saved = localStorage.getItem(BASE_KEY) ?? localStorage.getItem(LEGACY_BASE_KEY)
+    if (saved && !localStorage.getItem(BASE_KEY)) localStorage.setItem(BASE_KEY, saved)
+    if (saved) localStorage.removeItem(LEGACY_BASE_KEY)
     if (saved) return saved
   } catch {
     // storage blocked: fall through to the computed address

@@ -518,7 +518,7 @@ function BankTransfer() {
             onChange={(e) => setForm({ ...f, accountNumber: e.target.value.replace(/\D/g, '') })} />
         </label>
         <label className="field bank-form-wide">Chủ tài khoản <span className="muted">(khách thấy để yên tâm chuyển đúng)</span>
-          <input className="input" placeholder="CONG TY TNHH DINECHAIN" value={f.accountName} maxLength={100}
+          <input className="input" placeholder="CONG TY TNHH SAVORIS" value={f.accountName} maxLength={100}
             onChange={(e) => setForm({ ...f, accountName: e.target.value.toUpperCase() })} />
         </label>
         <div className="row bank-form-wide">

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { readMigratedStorage } from './lib/storage'
 import { get, getSession, onSessionChange, post, saveSession, type Session } from './api/client'
 import type { AuthResponse, BranchResponse } from './api/types'
 
@@ -16,14 +17,15 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null)
-const BRANCH_KEY = 'dinechain.branch'
+const BRANCH_KEY = 'savoris.branch'
+const LEGACY_BRANCH_KEY = 'dinechain.branch'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(getSession())
   const [branches, setBranches] = useState<BranchResponse[]>([])
   const [pickedBranch, setPickedBranch] = useState<number | undefined>(() => {
     try {
-      const v = localStorage.getItem(BRANCH_KEY)
+      const v = readMigratedStorage(localStorage, BRANCH_KEY, LEGACY_BRANCH_KEY)
       return v ? Number(v) : undefined
     } catch {
       return undefined
@@ -81,18 +83,20 @@ export function useAuth() {
 }
 
 export const can = {
+  // Functional permissions (used throughout the app for feature access)
   pos: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'].includes(role ?? ''),
-  // Cashiers and waiters hand dishes out from the POS ("Bưng ra"); the kitchen screen is for cooking
   kitchen: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CHEF'].includes(role ?? ''),
-  // Taking the money, closing and cancelling a bill
   cash: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CASHIER'].includes(role ?? ''),
-  // Dropping a dish the kitchen already started
   cancelCooking: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''),
-  // The chain owner is not scheduled on shifts
   shifts: (role?: string) => role !== 'ADMIN',
   manage: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''),
   stock: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'WAREHOUSE'].includes(role ?? ''),
   owner: (role?: string) => role === 'ADMIN',
+  // Sidebar nav visibility per RBAC spec
+  siteAdmin: (role?: string) => role === 'ADMIN',          // full website CMS
+  menuCms: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''), // thực đơn website
+  branchAdmin: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''), // /chi-nhanh
+  isStaff: (role?: string) => ['CHEF', 'WAITER', 'CASHIER'].includes(role ?? ''), // front-of-house (fullscreen)
 }
 
 // Everything for the restaurant's own people (owner, managers, staff) lives under this prefix; guests use the root
@@ -101,7 +105,7 @@ export const STAFF = '/nha-hang'
 export function homeFor(role?: string) {
   if (role === 'ADMIN') return `${STAFF}/chuoi`
   if (role === 'CHEF') return `${STAFF}/bep`
-  if (role === 'BRANCH_MANAGER') return `${STAFF}/quan-ly`
+  if (role === 'BRANCH_MANAGER') return `${STAFF}/chi-nhanh`
   if (role === 'WAREHOUSE') return `${STAFF}/kho`
   return `${STAFF}/ban-hang`
 }

@@ -1,19 +1,23 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import bunCha from '../../assets/photos/bun-cha.webp'
-import heroPho from '../../assets/photos/hero-pho.webp'
-import mamCom from '../../assets/photos/mam-com.webp'
-import phoTop from '../../assets/photos/pho-top.webp'
+import beefWine     from '../../assets/photos/beef-steak-wine.webp'
+import slicedSteak  from '../../assets/photos/sliced-steak.webp'
+import steakPlate   from '../../assets/photos/steak-plate.webp'
+import steakCloseup from '../../assets/photos/steak-closeup.webp'
+import gourmet      from '../../assets/photos/gourmet-dishes.webp'
+import interior     from '../../assets/photos/restaurant-interior.webp'
+import fineDining   from '../../assets/photos/fine-dining-tokyo.webp'
 import type { SiteGalleryItem } from '../../api/site'
 
 const SEED: SiteGalleryItem[] = [
-  { id: 1, order: 1, image_url: heroPho,  public_id: '', caption: 'Phở bò hầm 12 tiếng' },
-  { id: 2, order: 2, image_url: mamCom,   public_id: '', caption: 'Mâm cơm Việt truyền thống' },
-  { id: 3, order: 3, image_url: bunCha,   public_id: '', caption: 'Bún chả Hà Nội' },
-  { id: 4, order: 4, image_url: phoTop,   public_id: '', caption: 'Không gian Savoris Hoàn Kiếm' },
-  { id: 5, order: 5, image_url: mamCom,   public_id: '', caption: 'Chi nhánh Tây Hồ' },
-  { id: 6, order: 6, image_url: heroPho,  public_id: '', caption: 'Sân thượng Đà Nẵng' },
+  { id: 1, order: 1, image_url: beefWine,     public_id: '', caption: 'Bò Wagyu A5 — Sốt rượu vang đỏ Bordeaux' },
+  { id: 2, order: 2, image_url: steakCloseup, public_id: '', caption: 'Bít tết thăn ngoại — Sốt truffle đen Périgord' },
+  { id: 3, order: 3, image_url: gourmet,      public_id: '', caption: 'Thực đơn Degustación 8 món — Chef\'s Table' },
+  { id: 4, order: 4, image_url: interior,     public_id: '', caption: 'Không gian Savoris Hoàn Kiếm — Tầng 5' },
+  { id: 5, order: 5, image_url: fineDining,   public_id: '', caption: 'Khai vị đặc trưng — Savoris Tây Hồ' },
+  { id: 6, order: 6, image_url: slicedSteak,  public_id: '', caption: 'Sliced Wagyu — Sân thượng Đà Nẵng' },
+  { id: 7, order: 7, image_url: steakPlate,   public_id: '', caption: 'Bò bít tết thăn lưng — Sốt béarnaise' },
 ]
 
 function cdnGrid(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_800/') : url }

@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-React + Vite + TypeScript single-page app in its own repository (`DineChain-fe`), talking to the Spring Boot backend (`DineChain` repository) at `/api/v1` with JWT bearer tokens. Chosen by the user.
+React + Vite + TypeScript single-page app in its own repository, talking to the Spring Boot backend repository at `/api/v1` with JWT bearer tokens. Chosen by the user.
 
 ## Users
 
@@ -38,14 +38,14 @@ Built around the dinner rush: each branch's kitchen load is measured from real c
 
 ## Capabilities and Constraints
 
-- Backend API already exists and is the source of truth (96 endpoints, documented in Swagger and in the backend repository at `docs/postman/DineChain.postman_collection.json`).
+- Backend API already exists and is the source of truth (96 endpoints, documented in Swagger and in the backend repository at `docs/postman/Savoris.postman_collection.json`).
 - UI language: Vietnamese. Currency: VND, no decimals.
 - Not in scope: delivery-platform integration (planned later with a third party), online card/bank payments.
 - Kitchen screen has no push channel yet; it refreshes by polling.
 
 ## Brand Commitments
 
-Name: DineChain. No logo, slogan or brand colours exist yet; do not invent a logo or tagline.
+Name: Savoris. No logo, slogan or brand colours exist yet; do not invent a logo or tagline.
 
 ## Evidence on Hand
 

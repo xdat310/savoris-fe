@@ -11,16 +11,20 @@ import { rememberTakeaway } from '../lib/seat'
 import { useData } from '../lib/useData'
 import { NearMe } from '../components/NearMe'
 import { byDistance, formatKm, useMyLocation } from '../lib/geo'
-import phoTop from '../assets/photos/pho-top.webp'
+import beefWine from '../assets/photos/beef-steak-wine.webp'
 
 interface Line { dish: BranchMenuItemResponse; quantity: number }
 type PayMethod = 'CASH' | 'BANK_TRANSFER'
 
-const BRANCH_KEY = 'dinechain.takeawayBranch'
+const BRANCH_KEY = 'savoris.takeawayBranch'
+const LEGACY_BRANCH_KEY = 'dinechain.takeawayBranch'
 
 function savedBranch(): number | null {
   try {
-    return Number(sessionStorage.getItem(BRANCH_KEY)) || null
+    const value = sessionStorage.getItem(BRANCH_KEY) ?? sessionStorage.getItem(LEGACY_BRANCH_KEY)
+    if (value && !sessionStorage.getItem(BRANCH_KEY)) sessionStorage.setItem(BRANCH_KEY, value)
+    if (value) sessionStorage.removeItem(LEGACY_BRANCH_KEY)
+    return Number(value) || null
   } catch {
     return null
   }
@@ -51,7 +55,7 @@ export function Takeaway() {
   return (
     <div className="guest">
       <header className="guest-board guest-board-photo">
-        <img className="guest-board-img" src={phoTop} alt="" />
+        <img className="guest-board-img" src={beefWine} alt="" />
         <Link to="/" className="guest-back"><ArrowLeft size={16} aria-hidden="true" /> Trang chủ</Link>
         <h1 className="page-title">Mang về</h1>
         <p className="guest-where">Chọn chi nhánh bạn sẽ đến lấy món. Trả tiền trước, bếp làm ngay sau khi quán nhận được tiền.</p>

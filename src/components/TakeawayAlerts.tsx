@@ -85,7 +85,7 @@ export function useTakeawayReminders(orders: OrderResponse[] | undefined, refund
 
   // The tab title shows how many things wait for the cashier, visible even from another tab
   useEffect(() => {
-    const base = 'DineChain'
+    const base = 'Savoris'
     document.title = alerts.length ? `(${alerts.length}) Nhắc nhở · ${base}` : base
     return () => { document.title = base }
   }, [alerts.length])

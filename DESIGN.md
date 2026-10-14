@@ -1,5 +1,5 @@
 ---
-name: DineChain
+name: Savoris
 description: A modern Vietnamese restaurant house in warm cream and deep navy, for the guest site and the staff app.
 colors:
   navy: "#232c4f"
@@ -209,13 +209,13 @@ components:
     height: "44px"
 ---
 
-# Design System: DineChain
+# Design System: Savoris
 
 ## Overview
 
 **Creative North Star: "The House on Cream and Navy"**
 
-DineChain is dressed as a modern Vietnamese restaurant house: a warm cream ground, deep navy for everything that frames the room (the staff rail, the guest band, the kitchen display, occupied tables, full-colour blocks), and one royal blue that says "act here". The brand is carried by two things only: large, narrow condensed serif type and food photography. Everything else (labels, sentences, form text, staff buttons) is a quiet grotesk. The visual style was taken from a user-pinned restaurant website (pizza4ps.com/vn) as a reference for palette, type, composition and buttons only; none of its identity is used.
+Savoris is dressed as a modern Vietnamese restaurant house: a warm cream ground, deep navy for everything that frames the room (the staff rail, the guest band, the kitchen display, occupied tables, full-colour blocks), and one royal blue that says "act here". The brand is carried by two things only: large, narrow condensed serif type and food photography. Everything else (labels, sentences, form text, staff buttons) is a quiet grotesk. The visual style was taken from a user-pinned restaurant website (pizza4ps.com/vn) as a reference for palette, type, composition and buttons only; none of its identity is used.
 
 The system runs in two modes. The guest home persuades: a full-bleed food photo, a stacked giant serif list of the ways to eat, a royal-blue panel counting open branches in boxed digits, a royal-blue/sand split (branch list beside a dish photo), and a photo-led menu grid. The guest ordering pages and the whole staff app under /nha-hang operate: dense, flat work surfaces with hairline rules (cream on the guest pages; on the staff side the user asked for a brighter house, so /nha-hang runs on pure white: white ground, white panels, a white rail with navy text, and navy kept only for action: the active link, the primary button, occupied tables and the next kitchen ticket), serif for the numbers the eye must find first (table numbers, prices, totals, change, quantities, codes) and large touch targets. The kitchen display follows the staff side: white ground, ink type, and the next ticket in each column filled navy (blue while cooking) so the one dish to act on is the only dark object in the room.
 
@@ -283,7 +283,7 @@ A warm two-pole palette: cream and navy do almost all the work, royal blue is ra
 - **Body** (400, 15px, 1.5): all UI text; 14px in tables; intro copy capped at 56ch.
 - **Body strong** (500 to 600, 16px): dish names, line items, branch names.
 - **Label** (600, 12px, 0.06 to 0.1em, uppercase): menu categories, floor areas, kitchen column names, table headers, total labels, payment legend.
-- **Wordmark** (500, 15 to 20px, 0.32em, uppercase): "DINECHAIN" in the rail, site header and footer. Text only; no logo exists.
+- **Wordmark** (500, 15 to 20px, 0.32em, uppercase): "SAVORIS" in the rail, site header and footer. Text only; no logo exists.
 
 ### Named Rules
 **The Serif Speaks Rule.** The condensed serif writes headings, prices, table numbers, totals, change, quantities, codes, counts and clocks. Sentences, labels, form text, dish names in lists and staff buttons are always Be Vietnam Pro. The guest oval is the one control set in serif capitals.
@@ -386,4 +386,4 @@ One easing (cubic-bezier(0.16, 1, 0.3, 1)). Press 120ms, hover and state 160 to 
 - **Don't** use oval buttons in the staff app; they belong to guest pages.
 - **Don't** round photos or counter digit boxes.
 - **Don't** bring back the chalkboard skin (board green, chalk colours, a handwritten face) or drift toward a grey SaaS POS.
-- **Don't** use the reference site's logo, name, photos or copy; no DineChain logo or tagline exists, so the wordmark stays text.
+- **Don't** use the reference site's logo, name, photos or copy; no Savoris logo or tagline exists, so the wordmark stays text.

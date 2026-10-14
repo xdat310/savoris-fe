@@ -43,6 +43,7 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
 export const ITEM_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Chờ bếp',
   COOKING: 'Đang nấu',
+  VOID_REQUESTED: 'Yêu cầu huỷ',
   READY: 'Xong, chờ bưng',
   SERVED: 'Đã bưng',
   CANCELLED: 'Đã huỷ',

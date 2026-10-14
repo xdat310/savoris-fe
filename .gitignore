@@ -27,3 +27,5 @@ dist-ssr
 .impeccable/review/
 .impeccable/hook.cache.json
 .impeccable/config.local.json
+.vercel
+.claude/

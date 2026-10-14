@@ -24,9 +24,10 @@ function cdnUrl(url: string, width: number) {
 interface Props {
   config?: HeroConfig | null
   onCtaClick?: () => void
+  onBookClick?: () => void
 }
 
-export function SiteHero({ config, onCtaClick }: Props) {
+export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
   const c = config ?? FALLBACK
   const [active, setActive] = useState(0)
   const [fading, setFading] = useState(false)
@@ -129,6 +130,7 @@ export function SiteHero({ config, onCtaClick }: Props) {
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
           <button className="sh-hero-cta" onClick={handleCta}>{c.cta_text}</button>
+          <button className="sh-hero-cta sh-hero-cta--ghost" onClick={onBookClick}>ĐẶT BÀN TRỰC TUYẾN</button>
           <div className="sh-hero-rule" aria-hidden="true" />
         </div>
       </div>

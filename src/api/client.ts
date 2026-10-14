@@ -1,7 +1,9 @@
 import type { AuthResponse, ErrorResponse } from './types'
+import { readMigratedStorage } from '../lib/storage'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
-const STORAGE_KEY = 'dinechain.session'
+const STORAGE_KEY = 'savoris.session'
+const LEGACY_STORAGE_KEY = 'dinechain.session'
 
 export interface Session {
   accessToken: string
@@ -43,7 +45,7 @@ export class ApiError extends Error {
 
 export function loadSession(): Session | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = readMigratedStorage(localStorage, STORAGE_KEY, LEGACY_STORAGE_KEY)
     return raw ? (JSON.parse(raw) as Session) : null
   } catch {
     return null

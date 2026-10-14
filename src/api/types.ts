@@ -341,10 +341,12 @@ export interface KitchenTicketResponse {
   itemName?: string;
   quantity?: number;
   note?: string;
-  status?: 'PENDING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED';
+  status?: 'PENDING' | 'COOKING' | 'VOID_REQUESTED' | 'READY' | 'SERVED' | 'CANCELLED';
   cookedBy?: number;
   orderedAt?: string;
   waitingMinutes?: number;
+  voidReason?: string;
+  voidResolution?: 'ACCEPT' | 'REMAKE' | 'CHARGE';
 }
 
 export interface Line {
@@ -393,9 +395,10 @@ export interface OrderItemResponse {
   unitPrice?: number;
   quantity?: number;
   amount?: number;
-  status?: 'PENDING' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED';
+  status?: 'PENDING' | 'COOKING' | 'VOID_REQUESTED' | 'READY' | 'SERVED' | 'CANCELLED';
   notes?: string;
   cancelReason?: string;
+  voidReason?: string;
   readyAt?: string;
   orderedByGuest?: boolean;
 }

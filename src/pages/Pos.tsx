@@ -1,4 +1,4 @@
-import { Ban, Check, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Search, Send, ShoppingBag, Ticket, Trash2, UserRound, Wallet, X } from 'lucide-react'
+import { Ban, Bell, Check, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Scissors, Search, Send, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, Wallet, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type {
@@ -10,7 +10,7 @@ import { Strikable } from '../components/ChalkStrike'
 import { DishThumb } from '../components/DishThumb'
 import { GuestOrderAlerts, useGuestOrderAlerts } from '../components/GuestOrderAlerts'
 import { TakeawayAlerts, useTakeawayReminders } from '../components/TakeawayAlerts'
-import { unlockSound } from '../lib/chime'
+import { chime, unlockSound } from '../lib/chime'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { Chip, LoadState } from '../components/State'
 import { useToast } from '../components/Toast'
@@ -24,8 +24,10 @@ type Selection =
   | { kind: 'new'; type: 'TAKEAWAY' | 'DELIVERY' }
   | null
 
-interface DraftLine { menuItemId: number; quantity: number }
+type Course = 1 | 2 | 3
+interface DraftLine { menuItemId: number; quantity: number; course: Course }
 
+const COURSE_LABEL: Record<Course, string> = { 1: 'Khai vị', 2: 'Món chính', 3: 'Tráng miệng' }
 const QUICK_CASH = [50000, 100000, 200000, 500000]
 
 export function Pos() {
@@ -34,21 +36,24 @@ export function Pos() {
   const [mode, setMode] = useState<'floor' | 'takeaway'>('floor')
   const [selection, setSelection] = useState<Selection>(null)
   const [draft, setDraft] = useState<DraftLine[]>([])
+  const [activeCourse, setActiveCourse] = useState<Course>(2)
+  const [flashReadyTables, setFlashReadyTables] = useState<Set<number>>(new Set())
 
   const tables = useData(() => get<TableResponse[]>(`/branches/${branchId}/tables`), [branchId], 10000)
   const orders = useData(() => get<OrderResponse[]>(`/orders/branch/${branchId}`), [branchId], 8000)
-  const menu = useData(() => get<BranchMenuItemResponse[]>(`/branches/${branchId}/menu`), [branchId], 30000)
+  const menu   = useData(() => get<BranchMenuItemResponse[]>(`/branches/${branchId}/menu`), [branchId], 30000)
   const categories = useData(() => get<MenuCategoryResponse[]>('/menu-categories/search?q='), [])
-  const load = useData(() => get<BranchLoadResponse>(`/kitchen/branches/${branchId}/load`), [branchId], 15000)
+  const load   = useData(() => get<BranchLoadResponse>(`/kitchen/branches/${branchId}/load`), [branchId], 15000)
 
   const openOrders = useMemo(() => orders.data ?? [], [orders.data])
-  // Takeaway reminders ring at the cash desk only: the cashier is the one who takes the money and hands food over
+
   const refunds = useData(
     () => (can.cash(role) ? get<OrderResponse[]>(`/orders/branch/${branchId}/refunds-due`) : Promise.resolve([])),
     [branchId, role], 15000)
   const reminders = useTakeawayReminders(orders.data, refunds.data, can.cash(role))
   const guestOrders = useGuestOrderAlerts(orders.data, true)
   const [settling, setSettling] = useState<number | null>(null)
+
   async function refunded(orderId: number) {
     if (!window.confirm('Đã chuyển trả tiền cho khách, hoặc đã kiểm tra là tiền chưa hề về?')) return
     setSettling(orderId)
@@ -62,12 +67,50 @@ export function Pos() {
       setSettling(null)
     }
   }
+
   useEffect(() => unlockSound(), [])
+
+  // Immediate bell + toast when kitchen marks dish ready
+  useEffect(() => {
+    let ch: BroadcastChannel | null = null
+    try {
+      ch = new BroadcastChannel('savoris-kitchen')
+      ch.onmessage = (ev) => {
+        if (ev.data?.type !== 'DISH_READY') return
+        if (ev.data?.type === 'VOID_RESOLVED') {
+          const { resolution, itemName: vName } = ev.data
+          const label = resolution === 'ACCEPT' ? 'Bếp chấp nhận hủy' : resolution === 'REMAKE' ? 'Bếp làm lại' : 'Bếp giữ, khách vẫn trả'
+          toast(`${vName}: ${label}`)
+          return
+        }
+        chime(2)
+        const { itemName, orderType, tableName: tName, orderCode, tableId } = ev.data
+        const where = orderType === 'DINE_IN' ? `Bàn ${tName}` : `Mang về #${orderCode?.split('-').pop()}`
+        toast(`🍽️ ${itemName} — ${where} sẵn sàng bưng`)
+        if (tableId) setFlashReadyTables((prev) => new Set([...prev, tableId]))
+      }
+    } catch { /* BroadcastChannel not supported */ }
+    return () => ch?.close()
+  }, [toast])
+
+  // Clear flash state once orders poll confirms no more READY items
   const ordersByTable = useMemo(() => {
     const map = new Map<number, OrderResponse[]>()
     for (const o of openOrders) if (o.tableId) map.set(o.tableId, [...(map.get(o.tableId) ?? []), o])
     return map
   }, [openOrders])
+
+  useEffect(() => {
+    setFlashReadyTables((prev) => {
+      if (prev.size === 0) return prev
+      const still = new Set<number>()
+      for (const tid of prev) {
+        const os = ordersByTable.get(tid) ?? []
+        if (os.some((o) => o.items?.some((it) => it.status === 'READY'))) still.add(tid)
+      }
+      return still.size === prev.size ? prev : still
+    })
+  }, [ordersByTable])
 
   const currentOrder: OrderResponse | undefined =
     selection?.kind === 'order' ? openOrders.find((o) => o.id === selection.orderId)
@@ -75,34 +118,25 @@ export function Pos() {
         : undefined
   const tableOrders = selection?.kind === 'table' ? ordersByTable.get(selection.tableId) ?? [] : []
 
-  function select(next: Selection) {
-    setSelection(next)
-    setDraft([])
-  }
+  function select(next: Selection) { setSelection(next); setDraft([]) }
 
   function addDish(item: BranchMenuItemResponse) {
-    if (!selection) {
-      toast('Chọn bàn hoặc tạo đơn mang đi trước', true)
-      return
-    }
+    if (!selection) { toast('Chọn bàn hoặc tạo đơn mang đi trước', true); return }
     setDraft((d) => {
-      const existing = d.find((l) => l.menuItemId === item.menuItemId)
+      const existing = d.find((l) => l.menuItemId === item.menuItemId && l.course === activeCourse)
       return existing
-        ? d.map((l) => (l.menuItemId === item.menuItemId ? { ...l, quantity: l.quantity + 1 } : l))
-        : [...d, { menuItemId: item.menuItemId!, quantity: 1 }]
+        ? d.map((l) => (l.menuItemId === item.menuItemId && l.course === activeCourse ? { ...l, quantity: l.quantity + 1 } : l))
+        : [...d, { menuItemId: item.menuItemId!, quantity: 1, course: activeCourse }]
     })
   }
 
   async function refreshAll() {
-    // The menu too: a ready-made dish may have just used up its stock
     await Promise.all([orders.reload(), tables.reload(), load.reload(), menu.reload()])
   }
 
   const takeawayPaused = load.data && !load.data.acceptingTakeaway
-  // Drinks and ready-made dishes: the floor staff say when they are gone, or the stock does
   const [stockPanel, setStockPanel] = useState(false)
   const readyMadeOut = (menu.data ?? []).filter((m) => !m.needsKitchen && !m.available).length
-  // Web takeaway the cashier still has to take money for (the kitchen does not see them yet)
   const waitingWeb = openOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length
 
   return (
@@ -112,7 +146,8 @@ export function Pos() {
           <div className="seg" role="group" aria-label="Loại đơn">
             <button aria-pressed={mode === 'floor'} onClick={() => setMode('floor')}>Tại bàn</button>
             <button aria-pressed={mode === 'takeaway'} onClick={() => setMode('takeaway')}>
-              Mang đi · Giao hàng{waitingWeb > 0 && <span className="seg-badge" aria-label={`${waitingWeb} đơn web chờ thanh toán`}>{waitingWeb}</span>}
+              Mang đi · Giao hàng
+              {waitingWeb > 0 && <span className="seg-badge" aria-label={`${waitingWeb} đơn web chờ thanh toán`}>{waitingWeb}</span>}
             </button>
           </div>
           <button className="btn btn-sm" aria-expanded={stockPanel} onClick={() => setStockPanel(!stockPanel)}>
@@ -123,7 +158,9 @@ export function Pos() {
             <div className="row" style={{ fontSize: 14, color: 'var(--ink-soft)' }}>
               Bếp: <LoadState status={load.data.status} />
               <span className="num">{load.data.loadPercent}%</span>
-              {load.data.estimatedWaitMinutes != null && load.data.estimatedWaitMinutes > 0 && <span>· chờ ~{load.data.estimatedWaitMinutes} phút</span>}
+              {load.data.estimatedWaitMinutes != null && load.data.estimatedWaitMinutes > 0 && (
+                <span>· chờ ~{load.data.estimatedWaitMinutes} phút</span>
+              )}
             </div>
           )}
         </div>
@@ -143,6 +180,7 @@ export function Pos() {
             tables={tables.data}
             error={tables.error}
             ordersByTable={ordersByTable}
+            flashReadyTables={flashReadyTables}
             selectedTable={selection?.kind === 'table' ? selection.tableId : undefined}
             onSelect={(tableId) => select({ kind: 'table', tableId })}
           />
@@ -157,7 +195,26 @@ export function Pos() {
           />
         )}
 
+        {/* Course selector + menu board */}
         <div style={{ marginTop: 22 }}>
+          {selection && (
+            <div className="course-tabs" role="group" aria-label="Đợt gọi món">
+              {([1, 2, 3] as Course[]).map((c) => {
+                const count = draft.filter((l) => l.course === c).length
+                return (
+                  <button
+                    key={c}
+                    className={`course-tab${activeCourse === c ? ' course-tab--on' : ''}`}
+                    onClick={() => setActiveCourse(c)}
+                    aria-pressed={activeCourse === c}
+                  >
+                    {COURSE_LABEL[c]}
+                    {count > 0 && <span className="course-tab-badge">{count}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <MenuBoard
             items={menu.data}
             categories={categories.data}
@@ -186,10 +243,7 @@ export function Pos() {
           if (order.orderType !== 'DINE_IN') setSelection({ kind: 'order', orderId: order.id! })
           setDraft([])
         }}
-        onClosed={() => {
-          refreshAll()
-          select(null)
-        }}
+        onClosed={() => { refreshAll(); select(null) }}
       />
     </div>
   )
@@ -197,9 +251,13 @@ export function Pos() {
 
 // ---------------------------------------------------------------- floor plan
 
-function FloorPlan({ tables, error, ordersByTable, selectedTable, onSelect }: {
-  tables?: TableResponse[]; error: string | null; ordersByTable: Map<number, OrderResponse[]>
-  selectedTable?: number; onSelect: (id: number) => void
+function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTable, onSelect }: {
+  tables?: TableResponse[]
+  error: string | null
+  ordersByTable: Map<number, OrderResponse[]>
+  flashReadyTables: Set<number>
+  selectedTable?: number
+  onSelect: (id: number) => void
 }) {
   if (error) return <ErrorNotice message={error} />
   if (!tables) return <Loading label="Đang tải sơ đồ bàn…" />
@@ -213,28 +271,36 @@ function FloorPlan({ tables, error, ordersByTable, selectedTable, onSelect }: {
       {[...areas.entries()].map(([areaId, list], i) => (
         <section key={areaId}>
           <h2 className="area-title">Khu {i + 1}</h2>
-          {/* compact rows split an area evenly so no table is left alone on a row */}
           <div
             className={`floor${selectedTable ? ' has-focus compact' : ''}`}
             style={{ '--cols': Math.min(list.length, 10), '--cols-narrow': Math.ceil(Math.min(list.length, 10) / 2) } as React.CSSProperties}
           >
             {list.map((t) => {
-              const open = ordersByTable.get(t.id!) ?? []
+              const open     = ordersByTable.get(t.id!) ?? []
               const occupied = open.length > 0 || t.status === 'OCCUPIED'
-              const total = open.reduce((s, o) => s + (o.totalAmount ?? 0), 0)
-              const ready = open.some((o) => o.items?.some((it) => it.status === 'READY'))
+              const total    = open.reduce((s, o) => s + (o.totalAmount ?? 0), 0)
+              const hasReady = open.some((o) => o.items?.some((it) => it.status === 'READY')) || flashReadyTables.has(t.id!)
               return (
                 <button
                   key={t.id}
-                  className={`table-tile${occupied ? ' occupied' : ''}${selectedTable === t.id ? ' selected' : ''}`}
+                  className={[
+                    'table-tile',
+                    occupied ? 'occupied' : '',
+                    hasReady ? 'has-ready' : '',
+                    selectedTable === t.id ? 'selected' : '',
+                  ].filter(Boolean).join(' ')}
                   onClick={() => onSelect(t.id!)}
                   aria-pressed={selectedTable === t.id}
-                  aria-label={`Bàn ${t.name}${occupied ? ', có khách' : ', trống'}`}
+                  aria-label={`Bàn ${t.name}${occupied ? ', có khách' : ', trống'}${hasReady ? ', có món sẵn sàng' : ''}`}
                 >
                   <span className="tno">{t.name}</span>
                   <span className="tmeta">
                     <span>{occupied ? money(total) : `${t.capacity} chỗ`}</span>
-                    {ready && <span className="tile-ready">Có món ra</span>}
+                    {hasReady && (
+                      <span className="tile-ready-badge">
+                        <Bell size={11} aria-hidden="true" /> Có món ra
+                      </span>
+                    )}
                   </span>
                 </button>
               )
@@ -246,7 +312,7 @@ function FloorPlan({ tables, error, ordersByTable, selectedTable, onSelect }: {
   )
 }
 
-// ---------------------------------------------------------------- takeaway
+// ---------------------------------------------------------------- takeaway list
 
 function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
   orders: OrderResponse[]; paused: boolean; wait?: number; selected: Selection
@@ -307,7 +373,7 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
   )
 }
 
-// ---------------------------------------------------------------- menu board (chalk)
+// ---------------------------------------------------------------- menu board
 
 function MenuBoard({ items, categories, error, onAdd, disabled }: {
   items?: BranchMenuItemResponse[]; categories?: MenuCategoryResponse[]; error: string | null
@@ -335,7 +401,7 @@ function MenuBoard({ items, categories, error, onAdd, disabled }: {
                 key={it.menuItemId}
                 className={`dish${soldOut ? ' soldout' : ''}`}
                 onClick={() => onAdd(it)}
-                disabled={soldOut}
+                disabled={soldOut || disabled}
                 aria-label={soldOut ? `${it.name}, hết món` : `Thêm ${it.name}, ${money(it.price)}`}
               >
                 <DishThumb src={it.imageUrl} name={it.name} size="sm" />
@@ -365,8 +431,10 @@ function OrderColumn(props: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
+  const [splitting, setSplitting] = useState(false)
+  const [voidItemId, setVoidItemId] = useState<number | null>(null)
+  const [voidReason, setVoidReason] = useState('')
 
-  // extras for a brand-new order
   const [phone, setPhone] = useState('')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
   const [newName, setNewName] = useState('')
@@ -390,59 +458,61 @@ function OrderColumn(props: {
 
   const priceOf = (id: number) => menu.find((m) => m.menuItemId === id)
   const draftSubtotal = draft.reduce((s, l) => s + (priceOf(l.menuItemId)?.price ?? 0) * l.quantity, 0)
-  const paid = payment.data?.status === 'PAID'
+  const paid    = payment.data?.status === 'PAID'
   const awaiting = order?.status === 'AWAITING_PAYMENT'
-  const items = order?.items ?? []
+  const items   = order?.items ?? []
   const unfinished = items.filter((i) => i.status === 'PENDING' || i.status === 'COOKING' || i.status === 'READY')
 
   async function run(action: () => Promise<unknown>, success?: string) {
-    setBusy(true)
-    setError(null)
-    try {
-      await action()
-      if (success) toast(success)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Có lỗi xảy ra')
-    } finally {
-      setBusy(false)
+    setBusy(true); setError(null)
+    try { await action(); if (success) toast(success) }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Có lỗi xảy ra') }
+    finally { setBusy(false) }
+  }
+
+  // Send items for a specific course to kitchen
+  const sendCourse = (course: Course) => {
+    const courseItems = draft
+      .filter((l) => l.course === course)
+      .map((l) => ({ menuItemId: l.menuItemId, quantity: l.quantity }))
+    if (courseItems.length === 0) return
+
+    if (order) {
+      run(async () => {
+        await post(`/orders/${order.id}/items`, { items: courseItems })
+        setDraft((d) => d.filter((x) => x.course !== course))
+        await props.onChanged()
+      }, `Đã gửi đợt ${COURSE_LABEL[course]} xuống bếp`)
+    } else {
+      run(async () => {
+        const created = await post<OrderResponse>('/orders', {
+          branchId,
+          orderType: selection.kind === 'table' ? 'DINE_IN' : selection.kind === 'new' ? selection.type : 'TAKEAWAY',
+          tableId: selection.kind === 'table' ? selection.tableId : undefined,
+          customerId: customer?.id,
+          promotionCode: promoCheck ? promo.trim() : undefined,
+          pointsToUse: points > 0 ? points : undefined,
+          items: courseItems,
+        })
+        props.onCreated(created)
+        setDraft((d) => d.filter((x) => x.course !== course))
+      }, `Đã tạo đơn & gửi đợt ${COURSE_LABEL[course]} xuống bếp`)
     }
   }
-
-  const draftItems = draft.map((l) => ({ menuItemId: l.menuItemId, quantity: l.quantity }))
-
-  const createOrder = () => run(async () => {
-    const created = await post<OrderResponse>('/orders', {
-      branchId,
-      orderType: selection.kind === 'table' ? 'DINE_IN' : selection.kind === 'new' ? selection.type : 'TAKEAWAY',
-      tableId: selection.kind === 'table' ? selection.tableId : undefined,
-      customerId: customer?.id,
-      promotionCode: promoCheck ? promo.trim() : undefined,
-      pointsToUse: points > 0 ? points : undefined,
-      items: draftItems,
-    })
-    props.onCreated(created)
-  }, 'Đã gửi bếp')
-
-  // No bank integration: the cashier checks the bank app for the amount with the order code as the transfer note
-  const confirmTransfer = () => {
-    if (!window.confirm(`Đã thấy ${money(order!.totalAmount)} với nội dung ${order!.code} về tài khoản?`)) return
-    run(async () => {
-      await post<PaymentResponse>('/payments', { orderId: order!.id, paymentMethod: 'BANK_TRANSFER' })
-      await payment.reload()
-      await props.onChanged()
-    }, `Đã xác nhận chuyển khoản ${order!.code}, món xuống bếp`)
-  }
-
-  const addItems = () => run(async () => {
-    await post(`/orders/${order!.id}/items`, { items: draftItems })
-    setDraft(() => [])
-    await props.onChanged()
-  }, 'Đã gửi thêm món')
 
   const cancelItem = (item: OrderItemResponse) => run(async () => {
     await put(`/orders/${order!.id}/items/${item.id}/cancel`, { reason: 'Huỷ tại quầy' })
     await props.onChanged()
   }, `Đã huỷ ${item.itemName}`)
+
+  const sendVoidRequest = (item: OrderItemResponse) => {
+    if (!voidReason.trim()) { setError('Nhập lý do hủy để bếp nắm tình huống'); return }
+    run(async () => {
+      await put(`/orders/${order!.id}/items/${item.id}/void-request`, { reason: voidReason.trim() })
+      setVoidItemId(null); setVoidReason('')
+      await props.onChanged()
+    }, `Đã gửi yêu cầu hủy ${item.itemName} — chờ bếp xử lý`)
+  }
 
   const serveItem = (item: OrderItemResponse) => run(async () => {
     await put(`/kitchen/items/${item.id}/served`)
@@ -462,9 +532,17 @@ function OrderColumn(props: {
     }, 'Đã huỷ đơn')
   }
 
+  const confirmTransfer = () => {
+    if (!window.confirm(`Đã thấy ${money(order!.totalAmount)} với nội dung ${order!.code} về tài khoản?`)) return
+    run(async () => {
+      await post<PaymentResponse>('/payments', { orderId: order!.id, paymentMethod: 'BANK_TRANSFER' })
+      await payment.reload()
+      await props.onChanged()
+    }, `Đã xác nhận chuyển khoản ${order!.code}, món xuống bếp`)
+  }
+
   async function lookupCustomer() {
-    setNotFound(false)
-    setCustomer(null)
+    setNotFound(false); setCustomer(null)
     try {
       setCustomer(await get<CustomerResponse>(`/customers/by-phone?phone=${encodeURIComponent(phone.trim())}`))
     } catch (e) {
@@ -488,19 +566,29 @@ function OrderColumn(props: {
     })
   }
 
-  const title = selection.kind === 'table' ? props.tableName ?? '' : order?.code ?? (selection.kind === 'new' ? ORDER_TYPE_LABEL[selection.type] : '')
+  const title = selection.kind === 'table' ? props.tableName ?? ''
+    : order?.code ?? (selection.kind === 'new' ? ORDER_TYPE_LABEL[selection.type] : '')
+
+  // Group existing items by course for display
+  const groupedDraft = ([1, 2, 3] as Course[]).map((c) => ({
+    course: c,
+    lines: draft.filter((l) => l.course === c),
+  })).filter((g) => g.lines.length > 0)
 
   return (
     <aside className="pos-order" aria-label="Đơn hàng">
       <div className="order-head">
         <div>
-          {selection.kind === 'table' ? <div className="big">Bàn {title}</div> : <div style={{ fontWeight: 700, fontSize: 20 }}>{title}</div>}
+          {selection.kind === 'table'
+            ? <div className="big"><UtensilsCrossed size={16} style={{ verticalAlign: '-2px', marginRight: 6 }} />Bàn {title}</div>
+            : <div style={{ fontWeight: 700, fontSize: 20 }}>{title}</div>}
           <div className="code">
             {order ? `${order.code} · ${ORDER_TYPE_LABEL[order.orderType!]} · mở lúc ${time(order.createdAt)}` : 'Đơn mới'}
           </div>
         </div>
         {paid && <Chip tone="ok"><Check size={14} aria-hidden="true" /> Đã thu tiền</Chip>}
       </div>
+
       {order?.guestName && (
         <div className={`web-guest${awaiting ? ' waiting' : ''}`}>
           <Globe size={16} aria-hidden="true" />
@@ -527,51 +615,111 @@ function OrderColumn(props: {
         {items.length === 0 && draft.length === 0 && (
           <Empty title={order ? 'Đơn chưa có món' : 'Chưa gọi món'}>Chạm vào món trên bảng để thêm.</Empty>
         )}
+
+        {/* ── Submitted items ── */}
         {items.map((it) => {
           const cancelled = it.status === 'CANCELLED'
+          const voidPending = it.status === 'VOID_REQUESTED'
+          const isEditingVoid = voidItemId === it.id
           return (
-            <div key={it.id} className={`line${cancelled ? ' cancelled' : ''}`}>
-              <span className="lname with-thumb"><DishThumb src={menu.find((m) => m.menuItemId === it.menuItemId)?.imageUrl} name={it.itemName} size="sm" /><Strikable on={cancelled}>{it.quantity} × {it.itemName}</Strikable></span>
+            <div key={it.id} className={`line${cancelled ? ' cancelled' : ''}${voidPending ? ' void-pending' : ''}`}>
+              <span className="lname with-thumb">
+                <DishThumb src={menu.find((m) => m.menuItemId === it.menuItemId)?.imageUrl} name={it.itemName} size="sm" />
+                <Strikable on={cancelled}>{it.quantity} × {it.itemName}</Strikable>
+              </span>
               <span className="lamt">{money(it.amount)}</span>
               <span className="lsub">
                 <ItemStatus status={it.status} />
                 {it.cancelReason && <span>· {it.cancelReason}</span>}
+                {voidPending && it.voidReason && <span className="void-reason-tag">"{it.voidReason}"</span>}
                 <span style={{ marginLeft: 'auto' }} className="row">
                   {it.status === 'READY' && !paid && (
                     <button className="btn btn-sm btn-accent" onClick={() => serveItem(it)} disabled={busy}>
                       <HandPlatter size={15} aria-hidden="true" /> Bưng ra
                     </button>
                   )}
-                  {!paid && !awaiting && (it.status === 'PENDING' || (can.cancelCooking(props.role) && (it.status === 'COOKING' || it.status === 'READY'))) && (
+                  {!paid && !awaiting && it.status === 'PENDING' && (
                     <button className="icon-btn" title="Huỷ món" aria-label={`Huỷ ${it.itemName}`} onClick={() => cancelItem(it)} disabled={busy}>
                       <X size={16} aria-hidden="true" />
                     </button>
                   )}
+                  {!paid && !awaiting && can.cancelCooking(props.role) && (it.status === 'COOKING' || it.status === 'READY') && (
+                    <button className="icon-btn" title="Huỷ món (quản lý)" aria-label={`Huỷ ${it.itemName}`} onClick={() => cancelItem(it)} disabled={busy}>
+                      <X size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                  {!paid && !awaiting && !can.cancelCooking(props.role) && (it.status === 'COOKING' || it.status === 'READY') && (
+                    <button className="btn btn-sm btn-ghost void-req-btn" title="Yêu cầu bếp xem xét hủy"
+                      onClick={() => { setVoidItemId(it.id ?? null); setVoidReason('') }} disabled={busy || voidPending}>
+                      {voidPending ? 'Đã gửi bếp' : '⚠ Báo bếp hủy'}
+                    </button>
+                  )}
                 </span>
               </span>
+              {isEditingVoid && (
+                <div className="void-dialog">
+                  <input className="input" placeholder="Lý do hủy (khách đổi ý, món lỗi…)" autoFocus
+                    value={voidReason} onChange={(e) => setVoidReason(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendVoidRequest(it)} />
+                  <div className="row">
+                    <button className="btn btn-sm btn-danger" onClick={() => sendVoidRequest(it)} disabled={busy || !voidReason.trim()}>Gửi bếp</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => setVoidItemId(null)}>Thôi</button>
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
-        {draft.map((l) => {
-          const m = priceOf(l.menuItemId)
-          return (
-            <div key={l.menuItemId} className="line">
-              <span className="lname with-thumb"><DishThumb src={m?.imageUrl} name={m?.name} size="sm" />{m?.name}</span>
-              <span className="lamt">{money((m?.price ?? 0) * l.quantity)}</span>
-              <span className="lsub">
-                <Chip tone="warn">Chưa gửi bếp</Chip>
-                <span className="qty-btns" style={{ marginLeft: 'auto' }}>
-                  <button className="icon-btn" aria-label="Bớt" onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))}><Minus size={16} /></button>
-                  <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 700, color: 'var(--ink)' }}>{l.quantity}</span>
-                  <button className="icon-btn" aria-label="Thêm" onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId ? { ...x, quantity: x.quantity + 1 } : x))}><Plus size={16} /></button>
-                  <button className="icon-btn" aria-label="Bỏ món" onClick={() => setDraft((d) => d.filter((x) => x.menuItemId !== l.menuItemId))}><Trash2 size={16} /></button>
-                </span>
-              </span>
+
+        {/* ── Draft grouped by course ── */}
+        {groupedDraft.map(({ course, lines }) => (
+          <div key={course} className="course-group">
+            <div className="course-group-head">
+              <span className="course-group-label">{COURSE_LABEL[course]}</span>
+              <button
+                className="btn btn-sm btn-accent course-send-btn"
+                disabled={busy}
+                onClick={() => sendCourse(course)}
+              >
+                <Send size={13} aria-hidden="true" />
+                {order ? `Gửi đợt ${COURSE_LABEL[course]}` : `Tạo đơn & gửi ${COURSE_LABEL[course]}`}
+              </button>
             </div>
-          )
-        })}
+            {lines.map((l) => {
+              const m = priceOf(l.menuItemId)
+              return (
+                <div key={`${l.menuItemId}-${course}`} className="line">
+                  <span className="lname with-thumb">
+                    <DishThumb src={m?.imageUrl} name={m?.name} size="sm" />
+                    {m?.name}
+                  </span>
+                  <span className="lamt">{money((m?.price ?? 0) * l.quantity)}</span>
+                  <span className="lsub">
+                    <Chip tone="warn">Chưa gửi bếp</Chip>
+                    <span className="qty-btns" style={{ marginLeft: 'auto' }}>
+                      <button className="icon-btn" aria-label="Bớt"
+                        onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))}>
+                        <Minus size={16} />
+                      </button>
+                      <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 700, color: 'var(--ink)' }}>{l.quantity}</span>
+                      <button className="icon-btn" aria-label="Thêm"
+                        onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: x.quantity + 1 } : x))}>
+                        <Plus size={16} />
+                      </button>
+                      <button className="icon-btn" aria-label="Bỏ món"
+                        onClick={() => setDraft((d) => d.filter((x) => !(x.menuItemId === l.menuItemId && x.course === course)))}>
+                        <Trash2 size={16} />
+                      </button>
+                    </span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
 
+      {/* Customer / promo extras for new orders */}
       {!order && draft.length > 0 && (
         <div className="extras">
           <div className="row">
@@ -595,13 +743,16 @@ function OrderColumn(props: {
           {customer && (customer.points ?? 0) > 0 && (
             <label className="row" style={{ fontSize: 14 }}>
               Dùng điểm
-              <input className="input num" type="number" min={0} max={customer.points} value={points} onChange={(e) => setPoints(Math.max(0, Math.min(customer.points ?? 0, Number(e.target.value))))} style={{ width: 100, flex: 'none' }} />
+              <input className="input num" type="number" min={0} max={customer.points} value={points}
+                onChange={(e) => setPoints(Math.max(0, Math.min(customer.points ?? 0, Number(e.target.value))))}
+                style={{ width: 100, flex: 'none' }} />
               <span className="muted">= {money(points * 1000)}</span>
             </label>
           )}
           <div className="row">
             <Ticket size={18} aria-hidden="true" className="muted" />
-            <input className="input" placeholder="Mã khuyến mãi" value={promo} onChange={(e) => { setPromo(e.target.value.toUpperCase()); setPromoCheck(null) }} />
+            <input className="input" placeholder="Mã khuyến mãi" value={promo}
+              onChange={(e) => { setPromo(e.target.value.toUpperCase()); setPromoCheck(null) }} />
             <button className="btn btn-sm" onClick={checkPromo} disabled={!promo.trim() || busy}>Áp mã</button>
           </div>
           {promoCheck && <div className="notice notice-ok" style={{ padding: '8px 12px' }}><Check size={16} aria-hidden="true" /> {promoCheck.name}: giảm {money(promoCheck.discount)}</div>}
@@ -624,14 +775,19 @@ function OrderColumn(props: {
           })}
         />
       ) : (
+        <>
+        {splitting && order && (
+          <SplitModal
+            order={order}
+            onClose={() => setSplitting(false)}
+          />
+        )}
         <div className="order-actions">
-          {draft.length > 0 ? (
-            <button className="btn btn-primary btn-lg btn-block" onClick={order ? addItems : createOrder} disabled={busy}>
-              <Send size={18} aria-hidden="true" /> {order ? 'Gửi thêm món' : 'Gửi bếp'} · {draft.reduce((s, l) => s + l.quantity, 0)} phần
-            </button>
-          ) : order && !paid && !can.cash(props.role) ? (
+          {/* Only show legacy "Gửi bếp all" if there are no courses in draft */}
+          {draft.length === 0 && order && !paid && !can.cash(props.role) && (
             <div className="notice notice-ok">{awaiting ? 'Đơn web chờ thu ngân thu tiền.' : 'Gọi món xong. Khách thanh toán tiền mặt tại quầy thu ngân.'}</div>
-          ) : order && awaiting && order.payMethod === 'BANK_TRANSFER' ? (
+          )}
+          {order && awaiting && order.payMethod === 'BANK_TRANSFER' && (
             <>
               <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={confirmTransfer}>
                 <Landmark size={18} aria-hidden="true" /> Đã nhận chuyển khoản · <span className="num">{money(order.totalAmount)}</span>
@@ -640,15 +796,22 @@ function OrderColumn(props: {
                 <Wallet size={16} aria-hidden="true" /> Khách trả tiền mặt thay
               </button>
             </>
-          ) : order && !paid ? (
+          )}
+          {order && !paid && !awaiting && can.cash(props.role) && draft.length === 0 && (
             <button className="btn btn-primary btn-lg btn-block" onClick={() => setPaying(true)} disabled={busy || (order.totalAmount ?? 0) < 0}>
               <Wallet size={18} aria-hidden="true" /> Thu tiền mặt · <span className="num">{money(order.totalAmount)}</span>
             </button>
-          ) : order && paid && can.cash(props.role) ? (
+          )}
+          {order && paid && can.cash(props.role) && (
             <button className="btn btn-primary btn-lg btn-block" onClick={complete} disabled={busy || unfinished.length > 0}>
               <Check size={18} aria-hidden="true" /> {unfinished.length > 0 ? `Còn ${unfinished.length} món chưa bưng` : 'Hoàn tất đơn, trả bàn'}
             </button>
-          ) : null}
+          )}
+          {order && !paid && can.cash(props.role) && items.length > 0 && (
+            <button className="btn btn-block" onClick={() => setSplitting(true)} disabled={busy}>
+              <Scissors size={16} aria-hidden="true" /> Chia hóa đơn
+            </button>
+          )}
           {order && !paid && can.cash(props.role) && (
             <button className="btn btn-danger btn-block" onClick={cancelOrder} disabled={busy}>Huỷ đơn</button>
           )}
@@ -660,6 +823,7 @@ function OrderColumn(props: {
             </div>
           )}
         </div>
+        </>
       )}
     </aside>
   )
@@ -670,7 +834,6 @@ function ItemStatus({ status }: { status?: string }) {
   return <Chip tone={tone}>{ITEM_STATUS_LABEL[status ?? ''] ?? status}</Chip>
 }
 
-// Money always shows its working: subtotal − promotion − points + VAT = total
 function MoneyProof({ order, draftSubtotal, draftDiscount, draftPoints }: {
   order?: OrderResponse; draftSubtotal: number; draftDiscount: number; draftPoints: number
 }) {
@@ -723,7 +886,129 @@ function PayPanel({ total, busy, onPay, onCancel }: { total: number; busy: boole
   )
 }
 
-// ---------------------------------------------------------------- ready-made dishes: sold out by the floor, not the kitchen
+// ---------------------------------------------------------------- split modal
+
+type SplitMode = 'even' | 'items'
+
+function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => void }) {
+  const activeItems = (order.items ?? []).filter((i) => i.status !== 'CANCELLED')
+  const [mode, setMode] = useState<SplitMode>('even')
+  const [people, setPeople] = useState(2)
+  const [assignments, setAssignments] = useState<Record<number, Set<number>>>(() => {
+    const map: Record<number, Set<number>> = {}
+    for (let i = 1; i <= 8; i++) map[i] = new Set()
+    return map
+  })
+
+  const evenAmount = Math.ceil((order.totalAmount ?? 0) / people)
+
+  function assignItem(itemId: number, personIdx: number) {
+    setAssignments((prev) => {
+      const next: Record<number, Set<number>> = {}
+      for (const k in prev) next[k] = new Set(prev[k])
+      if (next[personIdx].has(itemId)) next[personIdx].delete(itemId)
+      else { for (const k in next) next[k].delete(itemId); next[personIdx].add(itemId) }
+      return next
+    })
+  }
+
+  function personTotal(idx: number): number {
+    return activeItems
+      .filter((it) => assignments[idx]?.has(it.id!))
+      .reduce((s, it) => s + (it.amount ?? 0), 0)
+  }
+
+  const unassigned = activeItems.filter((it) => !Object.values(assignments).some((s) => s.has(it.id!)))
+
+  return (
+    <div className="split-overlay" role="dialog" aria-modal="true" aria-label="Chia hóa đơn">
+      <div className="split-card">
+        <div className="split-head">
+          <div>
+            <strong>Chia hóa đơn</strong>
+            <div className="split-code">{order.code} · {money(order.totalAmount)}</div>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
+        </div>
+
+        <div className="seg" role="group" aria-label="Kiểu chia" style={{ margin: '12px 16px 0' }}>
+          <button aria-pressed={mode === 'even'} onClick={() => setMode('even')}>Chia đều</button>
+          <button aria-pressed={mode === 'items'} onClick={() => setMode('items')}>Chia theo món</button>
+        </div>
+
+        {mode === 'even' ? (
+          <div className="split-body">
+            <label className="split-people-row">
+              <span>Số người</span>
+              <div className="bk-stepper">
+                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.max(2, p - 1))}>−</button>
+                <span className="bk-step-val">{people}</span>
+                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.min(10, p + 1))}>+</button>
+              </div>
+            </label>
+            <div className="split-result-list">
+              {Array.from({ length: people }, (_, i) => (
+                <div key={i} className="split-person-row">
+                  <span>Người {i + 1}</span>
+                  <strong className="num">{money(evenAmount)}</strong>
+                </div>
+              ))}
+            </div>
+            {(order.totalAmount ?? 0) % people !== 0 && (
+              <div className="split-rounding">Làm tròn lên — người cuối trả {money(order.totalAmount ?? 0 - evenAmount * (people - 1))}</div>
+            )}
+          </div>
+        ) : (
+          <div className="split-body">
+            <label className="split-people-row">
+              <span>Số người</span>
+              <div className="bk-stepper">
+                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.max(2, p - 1))}>−</button>
+                <span className="bk-step-val">{people}</span>
+                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.min(8, p + 1))}>+</button>
+              </div>
+            </label>
+            <div className="split-item-list">
+              {activeItems.map((it) => {
+                const owner = Object.entries(assignments).find(([, s]) => s.has(it.id!))?.[0]
+                return (
+                  <div key={it.id} className="split-item-row">
+                    <span className="split-item-name">{it.quantity}× {it.itemName}</span>
+                    <span className="split-item-price">{money(it.amount)}</span>
+                    <div className="split-item-btns">
+                      {Array.from({ length: people }, (_, i) => (
+                        <button key={i}
+                          className={`split-person-btn${owner === String(i + 1) ? ' on' : ''}`}
+                          onClick={() => assignItem(it.id!, i + 1)}
+                          aria-pressed={owner === String(i + 1)}
+                        >{i + 1}</button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {unassigned.length > 0 && (
+              <div className="split-warn">⚠ {unassigned.length} món chưa gán cho ai</div>
+            )}
+            <div className="split-result-list" style={{ marginTop: 8 }}>
+              {Array.from({ length: people }, (_, i) => (
+                <div key={i} className="split-person-row">
+                  <span>Người {i + 1}</span>
+                  <strong className="num">{money(personTotal(i + 1))}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--rule)' }}>
+          <button className="btn btn-primary btn-block" onClick={onClose}>Đóng — thu tiền bình thường</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function ReadyMadeStock({ items, branchId, onChanged }: { items: BranchMenuItemResponse[]; branchId: number; onChanged: () => Promise<void> }) {
   const toast = useToast()
@@ -746,7 +1031,7 @@ function ReadyMadeStock({ items, branchId, onChanged }: { items: BranchMenuItemR
         <strong>Đồ uống & món có sẵn</strong>
         <span className="muted" style={{ fontSize: 13 }}>Bấm để báo hết / bán lại. Món gắn kho tự hết khi kho hết.</span>
       </div>
-      {items.length === 0 ? <span className="muted">Chưa có món nào được đặt là “Có sẵn” trong Menu chung.</span> : (
+      {items.length === 0 ? <span className="muted">Chưa có món nào được đặt là "Có sẵn" trong Menu chung.</span> : (
         <div className="row">
           {items.map((m) => (
             <button key={m.menuItemId} className="chip-toggle on-light" aria-pressed={!m.available} disabled={busy === m.menuItemId || m.outOfStock}

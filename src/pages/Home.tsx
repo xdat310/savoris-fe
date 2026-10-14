@@ -16,6 +16,7 @@ import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteHero } from '../components/site/SiteHero'
 import { SiteManifesto } from '../components/site/SiteManifesto'
 import { SiteOrderModal } from '../components/site/SiteOrderModal'
+import { SiteBookingModal } from '../components/site/SiteBookingModal'
 import { SiteStory } from '../components/site/SiteStory'
 import { SiteTimeline } from '../components/site/SiteTimeline'
 
@@ -29,6 +30,7 @@ export function Home() {
   const [founder, setFounder] = useState<FounderData | null>(null)
   const [footer, setFooter] = useState<FooterData | null>(null)
   const [orderOpen, setOrderOpen] = useState(false)
+  const [bookingOpen, setBookingOpen] = useState(false)
 
   useEffect(() => {
     getNav().then(setNav).catch(() => {})
@@ -55,6 +57,7 @@ export function Home() {
       <SiteHero
         config={hero}
         onCtaClick={() => setOrderOpen(true)}
+        onBookClick={() => setBookingOpen(true)}
       />
       <SiteManifesto />
       <SiteStory sections={sections} />
@@ -68,6 +71,7 @@ export function Home() {
         onScrollTo={scrollTo}
       />
       <SiteOrderModal open={orderOpen} onClose={() => setOrderOpen(false)} />
+      <SiteBookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} branches={branches} />
     </div>
   )
 }

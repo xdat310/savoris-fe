@@ -1,30 +1,30 @@
 import { ArrowRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import bunCha from '../../assets/photos/bun-cha.webp'
-import mamCom from '../../assets/photos/mam-com.webp'
-import phoTop from '../../assets/photos/pho-top.webp'
+import beefWine from '../../assets/photos/beef-steak-wine.webp'
+import restaurantInt from '../../assets/photos/restaurant-interior.webp'
+import steakCloseup from '../../assets/photos/steak-closeup.webp'
 import type { SiteSection } from '../../api/site'
 
 const SEED: SiteSection[] = [
   {
     id: 1, order: 1, visible: true, image_side: 'right',
-    image_url: mamCom, public_id: '',
+    image_url: beefWine, public_id: '',
     title: 'Ẩm thực\ntinh hoa',
-    body: 'Chúng tôi tin rằng mỗi bữa ăn là một câu chuyện. Từ nguyên liệu được tuyển chọn kỹ lưỡng từ những vùng đất tốt nhất Việt Nam, đến bàn tay điêu luyện của đội ngũ đầu bếp đã qua đào tạo quốc tế — Savoris mang đến trải nghiệm ẩm thực vượt ra ngoài khái niệm bữa ăn thông thường.',
+    body: 'Chúng tôi tin rằng mỗi bữa ăn là một câu chuyện. Từ những thớ thịt bò Wagyu A5 chọn lọc, hải sản tươi nguyên con đến sốt truffle đen nhập từ Périgord — mỗi đĩa ăn là tác phẩm của đầu bếp đã qua đào tạo tại Âu châu. Savoris mang đến trải nghiệm ẩm thực vượt ra ngoài khái niệm bữa ăn thông thường.',
     link_text: 'Tìm hiểu thêm', link_url: '#ve-chung-toi',
   },
   {
     id: 2, order: 2, visible: true, image_side: 'left',
-    image_url: phoTop, public_id: '',
-    title: 'Tinh tế.\nNăng lượng.\nSáng tạo.',
-    body: 'Không gian Savoris được thiết kế để nuôi dưỡng cả thể xác lẫn tâm hồn. Ánh sáng ấm, âm nhạc tinh tế, và sự phục vụ tận tâm tạo nên một bầu không khí khó quên. Dù là buổi tối hẹn hò hay bữa trưa đối tác, mỗi chi tiết đều được chắt lọc.',
+    image_url: restaurantInt, public_id: '',
+    title: 'Tinh tế.\nSang trọng.\nĐáng nhớ.',
+    body: 'Không gian Savoris được thiết kế bởi NTK nội thất từng giành giải Hospitality Design Award. Ánh nến lung linh, đá cẩm thạch Carrara, và âm nhạc jazz độc quyền tạo nên bầu không khí chỉ những nhà hàng đẳng cấp nhất thế giới mới có. Mỗi chi tiết đều được chắt lọc.',
     link_text: 'Xem không gian', link_url: '#thu-vien',
   },
   {
     id: 3, order: 3, visible: true, image_side: 'right',
-    image_url: bunCha, public_id: '',
+    image_url: steakCloseup, public_id: '',
     title: 'Không gian\nriêng tư',
-    body: 'Phòng riêng dành cho tiệc công ty, kỷ niệm đặc biệt hay buổi họp mặt gia đình. Đội ngũ sự kiện của chúng tôi sẽ thiết kế thực đơn và trang trí riêng theo yêu cầu của bạn, đảm bảo một buổi tối đáng nhớ cho mọi dịp.',
+    body: 'Phòng riêng Private Dining dành cho tiệc doanh nghiệp, kỷ niệm đặc biệt hay buổi họp mặt VIP. Đội ngũ sự kiện của chúng tôi sẽ thiết kế thực đơn degustación và trang trí riêng theo yêu cầu, đảm bảo một buổi tối đáng nhớ cho mọi dịp.',
     link_text: 'Liên hệ đặt phòng', link_url: '#lien-he',
   },
 ]

@@ -1,11 +1,11 @@
-# DineChain — giao diện nhân viên
+# Savoris — giao diện nhân viên
 
 React + Vite + TypeScript. Gọi backend Spring Boot qua `/api/v1` (Vite tự chuyển tiếp sang `http://localhost:8080`, nên không vướng CORS khi chạy dev).
 
 ## Chạy
 
 ```bash
-# 1. Backend (repo DineChain, thư mục bên cạnh), cần PostgreSQL đang chạy
+# 1. Backend (thư mục cạnh repo này), cần PostgreSQL đang chạy
 cd ../DineChain && ./mvnw spring-boot:run
 
 # 2. Frontend (repo này)

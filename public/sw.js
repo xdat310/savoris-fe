@@ -4,13 +4,13 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {}
   } catch {
-    data = { title: 'DineChain', body: event.data ? event.data.text() : '' }
+    data = { title: 'Savoris', body: event.data ? event.data.text() : '' }
   }
-  event.waitUntil(self.registration.showNotification(data.title || 'DineChain', {
+  event.waitUntil(self.registration.showNotification(data.title || 'Savoris', {
     body: data.body || '',
     icon: '/favicon.svg',
     badge: '/favicon.svg',
-    tag: data.url || 'dinechain',
+    tag: data.url || 'savoris',
     renotify: true,
     vibrate: [200, 100, 200, 100, 300],
     data: { url: data.url || '/' },
