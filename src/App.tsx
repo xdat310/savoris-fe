@@ -16,6 +16,15 @@ import { Pos } from './pages/Pos'
 import { QrCodes } from './pages/QrCodes'
 import { Stock } from './pages/Stock'
 
+function CmsStub({ title }: { title: string }) {
+  return (
+    <div className="page">
+      <div className="page-head"><h1>{title}</h1></div>
+      <p style={{ color: 'var(--ink-soft)' }}>Tính năng đang được xây dựng.</p>
+    </div>
+  )
+}
+
 function Guard({ allow, children }: { allow: (role?: string) => boolean; children: ReactNode }) {
   const { role } = useAuth()
   return allow(role) ? <>{children}</> : <Navigate to={homeFor(role)} replace />
@@ -47,6 +56,11 @@ function AppRoutes() {
         <Route path="ma-qr" element={<Guard allow={can.manage}><QrCodes /></Guard>} />
         <Route path="kho" element={<Guard allow={can.stock}>{branchId ? <Stock key={branchId} /> : null}</Guard>} />
         <Route path="ca-cua-toi" element={<Guard allow={can.shifts}><MyShifts /></Guard>} />
+        {/* CMS stubs — replaced when the website CMS is built */}
+        <Route path="website/trang-chu" element={<Guard allow={can.manage}><CmsStub title="Trang chủ website" /></Guard>} />
+        <Route path="website/thuc-don"  element={<Guard allow={can.manage}><CmsStub title="Thực đơn website" /></Guard>} />
+        <Route path="website/thu-vien"  element={<Guard allow={can.manage}><CmsStub title="Thư viện ảnh" /></Guard>} />
+        <Route path="website/cai-dat"   element={<Guard allow={can.manage}><CmsStub title="Cài đặt website" /></Guard>} />
         <Route path="*" element={<Navigate to={homeFor(role)} replace />} />
       </Route>
       <Route path="*" element={<Navigate to={homeFor(role)} replace />} />
