@@ -54,9 +54,8 @@ export function SiteGallery({ items }: Props) {
               alt=""
               loading={i < 3 ? 'eager' : 'lazy'}
             />
-            {item.caption && (
-              <span className="gal-cell-cap" aria-hidden="true">{item.caption}</span>
-            )}
+            <div className="gal-cell-overlay" aria-hidden="true" />
+            <span className="gal-cell-cap">{item.caption ?? `Ảnh ${i + 1}`}</span>
           </button>
         ))}
       </div>
