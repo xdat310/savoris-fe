@@ -53,6 +53,7 @@ export function Home() {
         nav={nav}
         branches={branches}
         onOrderClick={() => setOrderOpen(true)}
+        onBookClick={() => setBookingOpen(true)}
       />
       <SiteHero
         config={hero}
@@ -67,10 +68,10 @@ export function Home() {
       <SiteContact branches={branches} />
       <SiteFooter
         config={footer}
-        onReserveClick={() => setOrderOpen(true)}
+        onReserveClick={() => setBookingOpen(true)}
         onScrollTo={scrollTo}
       />
-      <SiteOrderModal open={orderOpen} onClose={() => setOrderOpen(false)} />
+      <SiteOrderModal open={orderOpen} onClose={() => setOrderOpen(false)} onBookClick={() => { setOrderOpen(false); setBookingOpen(true) }} />
       <SiteBookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} branches={branches} />
     </div>
   )

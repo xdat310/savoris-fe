@@ -23,9 +23,10 @@ interface Props {
   nav?: SiteNavItem[]
   branches?: PublicBranch[]
   onOrderClick?: () => void
+  onBookClick?: () => void
 }
 
-export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick }: Props) {
+export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick, onBookClick }: Props) {
   const navigate = useNavigate()
   const [scrolled, setScrolled]     = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -70,7 +71,7 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick }: 
 
   function handleReserve() {
     setMobileOpen(false)
-    onOrderClick?.()
+    onBookClick ? onBookClick() : onOrderClick?.()
   }
 
   return (
