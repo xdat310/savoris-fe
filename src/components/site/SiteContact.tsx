@@ -5,8 +5,8 @@ import type { PublicBranch } from '../../api/site'
 const SEED: PublicBranch[] = [
   {
     id: 1, code: 'HK', name: 'Savoris Hoàn Kiếm', slug: 'hoan-kiem',
-    address: '12 Lý Thái Tổ, Hoàn Kiếm', city: 'Hà Nội',
-    phone: '024 3825 0000', email: 'hoankiem@dinechain.vn',
+    address: 'Tầng 5, 76 Đinh Tiên Hoàng, Hoàn Kiếm', city: 'Hà Nội',
+    phone: '024 3825 7600', email: 'hoankiem@savoris.vn',
     google_maps_embed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.0966938066247!2d105.84896731490147!3d21.02784768599617!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab9bd9861ca1%3A0xe7887f7b72ca17a9!2zTMO9IFThu6duZyBU4buVLCBIb8OgbiBLaeG6v20sIEjDoCBO4buZaSwgVmnhu4d0IE5hbQ!5e0!3m2!1svi!2s!4v1621234567890!5m2!1svi!2s',
     hours: [
       { days: 'Thứ 2 – Thứ 6', time: '11:00 – 22:00' },
@@ -15,8 +15,8 @@ const SEED: PublicBranch[] = [
   },
   {
     id: 2, code: 'TH', name: 'Savoris Tây Hồ', slug: 'tay-ho',
-    address: '68 Xuân Diệu, Tây Hồ', city: 'Hà Nội',
-    phone: '024 3718 0000', email: 'tayho@dinechain.vn',
+    address: '38 Đặng Thai Mai, Quảng An, Tây Hồ', city: 'Hà Nội',
+    phone: '024 3718 4400', email: 'tayho@savoris.vn',
     hours: [
       { days: 'Thứ 2 – Thứ 6', time: '11:00 – 22:00' },
       { days: 'Thứ 7 – Chủ nhật', time: '09:30 – 23:00' },
@@ -24,18 +24,19 @@ const SEED: PublicBranch[] = [
   },
   {
     id: 3, code: 'Q1', name: 'Savoris Quận 1', slug: 'quan-1',
-    address: '95 Nguyễn Huệ, Quận 1', city: 'TP.HCM',
-    phone: '028 3825 0000', email: 'quan1@dinechain.vn',
+    address: 'Tầng 3, 29 Lê Duẩn, Bến Nghé, Quận 1', city: 'TP. Hồ Chí Minh',
+    phone: '028 3822 9900', email: 'quan1@savoris.vn',
     hours: [
-      { days: 'Hàng ngày', time: '10:00 – 23:00' },
+      { days: 'Hàng ngày', time: '10:30 – 23:00' },
     ],
   },
   {
     id: 4, code: 'DN', name: 'Savoris Sơn Trà', slug: 'son-tra',
-    address: '24 Võ Nguyên Giáp, Sơn Trà', city: 'Đà Nẵng',
-    phone: '0236 3825 000', email: 'sontra@dinechain.vn',
+    address: '112 Võ Nguyên Giáp, Mân Thái, Sơn Trà', city: 'Đà Nẵng',
+    phone: '0236 3655 800', email: 'sontra@savoris.vn',
     hours: [
-      { days: 'Hàng ngày', time: '11:00 – 23:00' },
+      { days: 'Thứ 2 – Thứ 6', time: '11:00 – 22:30' },
+      { days: 'Thứ 7 – Chủ nhật', time: '10:00 – 23:00' },
     ],
   },
 ]

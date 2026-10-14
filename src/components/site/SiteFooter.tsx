@@ -64,8 +64,8 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
         <nav className="ftr-col" aria-label="Dịch vụ">
           <h4>DỊCH VỤ</h4>
           <button onClick={() => onScrollTo?.('su-kien')}>Sự kiện riêng</button>
-          <a href="mailto:careers@dinechain.vn">Tuyển dụng</a>
-          <a href="mailto:info@dinechain.vn">Liên hệ hợp tác</a>
+          <a href="mailto:careers@savoris.vn">Tuyển dụng</a>
+          <a href="mailto:info@savoris.vn">Liên hệ hợp tác</a>
         </nav>
 
         {/* Social */}
