@@ -1,7 +1,7 @@
 import {
   Bell, BookOpen, ChefHat, ChevronDown,
   ExternalLink, Globe, LayoutDashboard, LogOut,
-  Package, QrCode, ReceiptText, Settings, Users,
+  Package, QrCode, ReceiptText, Users,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -53,19 +53,22 @@ export function Shell() {
   const opsLinks = [
     can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Icon: LayoutDashboard },
     can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Icon: Users },
-    (role === 'BRANCH_MANAGER' || can.owner(role)) && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Icon: ReceiptText },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,      label: 'Bếp',               Icon: ChefHat },
-    can.owner(role)           && { to: `${STAFF}/cai-dat`,  label: 'Cài đặt',            Icon: Settings },
     role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
   ].filter(Boolean) as { to: string; label: string; Icon: typeof Users }[]
 
-  // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages the full CMS
-  const cmsLinks = (role === 'BRANCH_MANAGER' || can.owner(role)) ? [
-    { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Icon: BookOpen },
-    { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Icon: Globe },
-  ] : []
+  // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages CMS only
+  const cmsLinks = can.owner(role)
+    ? [{ to: `${STAFF}/website/trang-chu`, label: 'Website CMS', Icon: Globe }]
+    : role === 'BRANCH_MANAGER'
+    ? [
+        { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Icon: BookOpen },
+        { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Icon: Globe },
+      ]
+    : []
 
   // ── Shared top bar ───────────────────────────────────────────────────
   const TopBar = (
