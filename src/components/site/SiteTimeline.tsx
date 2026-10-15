@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { SiteMilestone } from '../../api/site'
+import { Md } from '../../lib/md'
 
 const SEED: SiteMilestone[] = [
   { id: 1, year: '2016', title: 'Khai trương', description: 'Chi nhánh đầu tiên ra đời tại Hoàn Kiếm, Hà Nội — phục vụ hơn 300 lượt khách mỗi ngày chỉ sau hai tuần mở cửa.', order: 1 },
@@ -94,7 +95,7 @@ export function SiteTimeline({ milestones }: Props) {
               <p className="tl-year">{m.year}</p>
               <div className="tl-dot" aria-hidden="true" />
               <strong className="tl-item-title">{m.title}</strong>
-              <p className="tl-desc">{m.description}</p>
+              <Md className="tl-desc">{m.description}</Md>
             </div>
           ))}
         </div>

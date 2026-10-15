@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { SiteFounder as FounderData } from '../../api/site'
+import { Md } from '../../lib/md'
 
 const SEED: FounderData = {
   portrait_url: '',
@@ -56,7 +57,7 @@ export function SiteFounder({ founder }: Props) {
           <span className="fdr-quote-mark fdr-quote-mark--close" aria-hidden="true">"</span>
         </blockquote>
 
-        <p className="fdr-bio">{d.bio}</p>
+        <Md className="fdr-bio">{d.bio}</Md>
 
         {d.signature_url && (
           <img className="fdr-sig" src={d.signature_url} alt={`Chữ ký ${d.name}`} loading="lazy" />

@@ -43,26 +43,88 @@ export function Owner() {
 
 // ---------------------------------------------------------------- dashboard
 
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg - 90) * (Math.PI / 180)
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+function donutArc(cx: number, cy: number, ro: number, ri: number, a0: number, a1: number) {
+  const s = polar(cx, cy, ro, a0), e = polar(cx, cy, ro, a1)
+  const si = polar(cx, cy, ri, a1), ei = polar(cx, cy, ri, a0)
+  const lg = a1 - a0 > 180 ? 1 : 0
+  return `M${s.x} ${s.y} A${ro} ${ro} 0 ${lg} 1 ${e.x} ${e.y} L${si.x} ${si.y} A${ri} ${ri} 0 ${lg} 0 ${ei.x} ${ei.y}Z`
+}
+
+function DonutChart({ slices }: { slices: { value: number; color: string; label: string }[] }) {
+  const total = slices.reduce((s, x) => s + x.value, 0)
+  const CX = 70, CY = 70, RO = 62, RI = 44
+  if (total === 0) return (
+    <svg viewBox="0 0 140 140" style={{ width: 140, height: 140 }}>
+      <circle cx={CX} cy={CY} r={(RO + RI) / 2} fill="none" stroke="var(--rule)" strokeWidth={RO - RI} />
+    </svg>
+  )
+  let angle = -90
+  return (
+    <svg viewBox="0 0 140 140" style={{ width: 140, height: 140 }}>
+      {slices.map((s, i) => {
+        const sweep = (s.value / total) * 360
+        const start = angle
+        angle += sweep
+        const end = sweep >= 359.99 ? start + 359.98 : angle
+        return <path key={i} d={donutArc(CX, CY, RO, RI, start, end)} fill={s.color} />
+      })}
+    </svg>
+  )
+}
+
 function Dashboard() {
   const dash = useData(() => get<ChainDashboardResponse>('/dashboard/chain'), [], 15000)
   if (dash.error) return <ErrorNotice message={dash.error} onRetry={dash.reload} />
   if (!dash.data) return <Loading />
   const d = dash.data
-  const totalOrders = (d.completedOrdersToday ?? 0) + (d.openOrders ?? 0)
+  const completed = d.completedOrdersToday ?? 0
+  const open = d.openOrders ?? 0
+  const total = completed + open
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-        <div className="panel" style={{ padding: '22px 26px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+
+        {/* Revenue */}
+        <div className="panel" style={{ padding: '24px 28px' }}>
           <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Doanh thu hôm nay</div>
-          <div className="num" style={{ fontSize: 30, fontWeight: 700, color: 'var(--accent)' }}>{money(d.revenueToday)}</div>
+          <div className="num" style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{money(d.revenueToday)}</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>đã trừ hoàn tiền</div>
         </div>
-        <div className="panel" style={{ padding: '22px 26px' }}>
-          <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Lượt đặt đồ hôm nay</div>
-          <div className="num" style={{ fontSize: 36, fontWeight: 700 }}>{totalOrders}</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{d.completedOrdersToday} hoàn tất · {d.openOrders} đang phục vụ</div>
+
+        {/* Orders donut */}
+        <div className="panel" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <DonutChart slices={[
+              { value: completed, color: '#2EC4BE', label: 'Hoàn tất' },
+              { value: open,      color: '#e8a030', label: 'Đang mở' },
+            ]} />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <span className="num" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{total}</span>
+              <span className="muted" style={{ fontSize: 10, marginTop: 2 }}>lượt</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              { color: '#2EC4BE', label: 'Hoàn tất', value: completed },
+              { color: '#e8a030', label: 'Đang phục vụ', value: open },
+            ].map(({ color, label, value }) => (
+              <div key={label}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <div style={{ width: 9, height: 9, borderRadius: 2, background: color, flexShrink: 0 }} />
+                  <span className="muted" style={{ fontSize: 11 }}>{label}</span>
+                </div>
+                <span className="num" style={{ fontSize: 22, fontWeight: 700, paddingLeft: 15 }}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
       <p className="muted" style={{ fontSize: 12, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
         <RefreshCw size={11} aria-hidden="true" />

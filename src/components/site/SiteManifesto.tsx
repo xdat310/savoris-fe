@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Md } from '../../lib/md'
 
 interface Props {
   quote?: string
@@ -33,11 +34,7 @@ export function SiteManifesto({ quote, author, authorTitle }: Props) {
     <section ref={ref} className="mfst-wrap sc-fade" aria-label="Triết lý">
       <div className="mfst-inner">
         <span className="mfst-open-mark" aria-hidden="true">"</span>
-        <blockquote className="mfst-quote">
-          {q.split('\n').map((line, i) => (
-            <span key={i}>{line}<br /></span>
-          ))}
-        </blockquote>
+        <Md className="mfst-quote">{q}</Md>
         <footer className="mfst-attr">
           <div className="mfst-rule" aria-hidden="true" />
           <div className="mfst-attr-text">

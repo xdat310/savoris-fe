@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { HeroConfig } from '../../api/site'
+import { Md } from '../../lib/md'
 
 const FALLBACK: HeroConfig = {
   type: 'image',
@@ -122,7 +123,7 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
           </div>
         )}
 
-<p className="sh-hero-desc">{c.description}</p>
+<Md className="sh-hero-desc">{c.description}</Md>
 
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />

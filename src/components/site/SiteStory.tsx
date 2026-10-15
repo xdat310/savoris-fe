@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import { Md } from '../../lib/md'
 import beefWine from '../../assets/photos/beef-steak-wine.webp'
 import restaurantInt from '../../assets/photos/restaurant-interior.webp'
 import steakCloseup from '../../assets/photos/steak-closeup.webp'
@@ -74,7 +75,7 @@ function StoryBlock({ s, index }: { s: SiteSection; index: number }) {
             <span key={i}>{line}<br /></span>
           ))}
         </h2>
-        <p className="story-body">{s.body}</p>
+        <Md className="story-body">{s.body}</Md>
         {s.link_text && (
           <a className="story-link" href={s.link_url ?? '#'}>
             {s.link_text} <ArrowRight size={14} aria-hidden="true" />
