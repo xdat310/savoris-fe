@@ -51,14 +51,12 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
         <nav className="ftr-col" aria-label="Khám phá">
           <h4>KHÁM PHÁ</h4>
           <button onClick={() => onScrollTo?.('ve-chung-toi')}>Về chúng tôi</button>
-          <button onClick={() => onScrollTo?.('thu-vien')}>Thư viện ảnh</button>
-          <button onClick={() => onScrollTo?.('lien-he')}>Chi nhánh</button>
+<button onClick={() => onScrollTo?.('lien-he')}>Chi nhánh</button>
         </nav>
 
         <nav className="ftr-col" aria-label="Dịch vụ">
           <h4>DỊCH VỤ</h4>
-          <button onClick={() => onScrollTo?.('su-kien')}>Sự kiện riêng</button>
-          <a href="mailto:careers@savoris.vn">Tuyển dụng</a>
+<a href="mailto:careers@savoris.vn">Tuyển dụng</a>
           <a href="mailto:info@savoris.vn">Liên hệ hợp tác</a>
         </nav>
 

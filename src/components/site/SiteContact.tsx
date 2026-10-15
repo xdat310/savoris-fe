@@ -17,6 +17,7 @@ const SEED: PublicBranch[] = [
     id: 2, code: 'TH', name: 'Savoris Tây Hồ', slug: 'tay-ho',
     address: '38 Đặng Thai Mai, Quảng An, Tây Hồ', city: 'Hà Nội',
     phone: '024 3718 4400', email: 'tayho@savoris.vn',
+    google_maps_embed: 'https://maps.google.com/maps?q=38+Dang+Thai+Mai+Quang+An+Tay+Ho+Ha+Noi&output=embed&hl=vi',
     hours: [
       { days: 'Thứ 2 – Thứ 6', time: '11:00 – 22:00' },
       { days: 'Thứ 7 – Chủ nhật', time: '09:30 – 23:00' },
@@ -26,6 +27,7 @@ const SEED: PublicBranch[] = [
     id: 3, code: 'Q1', name: 'Savoris Quận 1', slug: 'quan-1',
     address: 'Tầng 3, 29 Lê Duẩn, Bến Nghé, Quận 1', city: 'TP. Hồ Chí Minh',
     phone: '028 3822 9900', email: 'quan1@savoris.vn',
+    google_maps_embed: 'https://maps.google.com/maps?q=29+Le+Duan+Ben+Nghe+Quan+1+Ho+Chi+Minh&output=embed&hl=vi',
     hours: [
       { days: 'Hàng ngày', time: '10:30 – 23:00' },
     ],
@@ -34,6 +36,7 @@ const SEED: PublicBranch[] = [
     id: 4, code: 'DN', name: 'Savoris Sơn Trà', slug: 'son-tra',
     address: '112 Võ Nguyên Giáp, Mân Thái, Sơn Trà', city: 'Đà Nẵng',
     phone: '0236 3655 800', email: 'sontra@savoris.vn',
+    google_maps_embed: 'https://maps.google.com/maps?q=112+Vo+Nguyen+Giap+Man+Thai+Son+Tra+Da+Nang&output=embed&hl=vi',
     hours: [
       { days: 'Thứ 2 – Thứ 6', time: '11:00 – 22:30' },
       { days: 'Thứ 7 – Chủ nhật', time: '10:00 – 23:00' },

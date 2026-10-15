@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import type {
   HeroConfig, PublicBranch, SiteFooter as FooterData,
-  SiteFounder as FounderData, SiteGalleryItem, SiteMilestone,
+  SiteFounder as FounderData, SiteMilestone,
   SiteNavItem, SiteSection,
 } from '../api/site'
 import {
-  getBranches, getFooterConfig, getFounder, getGallery,
+  getBranches, getFooterConfig, getFounder,
   getHero, getMilestones, getNav, getSections,
 } from '../api/site'
 import { SiteContact } from '../components/site/SiteContact'
 import { SiteFooter } from '../components/site/SiteFooter'
 import { SiteFounder } from '../components/site/SiteFounder'
-import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteHero } from '../components/site/SiteHero'
 import { SiteManifesto } from '../components/site/SiteManifesto'
@@ -26,7 +25,6 @@ export function Home() {
   const [branches, setBranches] = useState<PublicBranch[]>([])
   const [sections, setSections] = useState<SiteSection[]>([])
   const [milestones, setMilestones] = useState<SiteMilestone[]>([])
-  const [gallery, setGallery] = useState<SiteGalleryItem[]>([])
   const [founder, setFounder] = useState<FounderData | null>(null)
   const [footer, setFooter] = useState<FooterData | null>(null)
   const [orderOpen, setOrderOpen] = useState(false)
@@ -38,7 +36,6 @@ export function Home() {
     getBranches().then(setBranches).catch(() => {})
     getSections().then(setSections).catch(() => {})
     getMilestones().then(setMilestones).catch(() => {})
-    getGallery().then(setGallery).catch(() => {})
     getFounder().then(setFounder).catch(() => {})
     getFooterConfig().then(setFooter).catch(() => {})
   }, [])
@@ -63,8 +60,7 @@ export function Home() {
       <SiteManifesto />
       <SiteStory sections={sections} />
       <SiteTimeline milestones={milestones} />
-      <SiteGallery items={gallery} />
-      <SiteFounder founder={founder} />
+<SiteFounder founder={founder} />
       <SiteContact branches={branches} />
       <SiteFooter
         config={footer}

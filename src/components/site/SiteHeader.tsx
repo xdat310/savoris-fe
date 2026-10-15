@@ -4,11 +4,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { PublicBranch, SiteNavItem } from '../../api/site'
 
 const FALLBACK_NAV: SiteNavItem[] = [
-  { id: 1, label: 'THỰC ĐƠN',      link: '#thuc-don',    order: 1, visible: true },
-  { id: 2, label: 'THƯ VIỆN',       link: '#thu-vien',    order: 2, visible: true },
-  { id: 3, label: 'SỰ KIỆN',        link: '#su-kien',     order: 3, visible: true },
-  { id: 4, label: 'VỀ CHÚNG TÔI',   link: '#ve-chung-toi',order: 4, visible: true },
-  { id: 5, label: 'LIÊN HỆ',        link: '#lien-he',     order: 5, visible: true },
+  { id: 1, label: 'THỰC ĐƠN',      link: '#thuc-don',     order: 1, visible: true },
+  { id: 4, label: 'VỀ CHÚNG TÔI',  link: '#ve-chung-toi', order: 2, visible: true },
+  { id: 5, label: 'LIÊN HỆ',       link: '#lien-he',      order: 3, visible: true },
 ]
 
 const FALLBACK_BRANCHES: PublicBranch[] = [
@@ -30,7 +28,6 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick, on
   const [scrolled, setScrolled]     = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [branchOpen, setBranchOpen] = useState(false)
-  const [lang, setLang]             = useState<'VI' | 'EN'>('VI')
   const branchRef = useRef<HTMLDivElement>(null)
 
   const branchList = branches.length > 0 ? branches : FALLBACK_BRANCHES
@@ -117,18 +114,7 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick, on
               )}
             </div>
 
-            {/* Language toggle */}
-            <button
-              className="sh-lang"
-              onClick={() => setLang((l) => l === 'VI' ? 'EN' : 'VI')}
-              aria-label={`Chuyển ngôn ngữ — đang dùng ${lang}`}
-            >
-              <span className={lang === 'VI' ? 'sh-lang--active' : ''}>VI</span>
-              <span className="sh-lang-sep" aria-hidden="true">|</span>
-              <span className={lang === 'EN' ? 'sh-lang--active' : ''}>EN</span>
-            </button>
-
-            <button className="sh-cta" onClick={handleReserve} aria-label="Đặt bàn">ĐẶT BÀN</button>
+<button className="sh-cta" onClick={handleReserve} aria-label="Đặt bàn">ĐẶT BÀN</button>
           </nav>
 
           {/* Mobile hamburger */}
@@ -163,12 +149,7 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick, on
               {b.name} · {b.city}
             </button>
           ))}
-          <div className="sh-overlay-lang">
-            <button className={`sh-overlay-lang-btn${lang === 'VI' ? ' sh-overlay-lang-btn--on' : ''}`} onClick={() => setLang('VI')}>VI</button>
-            <span aria-hidden="true">|</span>
-            <button className={`sh-overlay-lang-btn${lang === 'EN' ? ' sh-overlay-lang-btn--on' : ''}`} onClick={() => setLang('EN')}>EN</button>
-          </div>
-          <button className="sh-overlay-cta" onClick={handleReserve} tabIndex={mobileOpen ? 0 : -1}>ĐẶT BÀN</button>
+<button className="sh-overlay-cta" onClick={handleReserve} tabIndex={mobileOpen ? 0 : -1}>ĐẶT BÀN</button>
         </nav>
       </div>
     </>
