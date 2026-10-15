@@ -41,66 +41,6 @@ export function Owner() {
   )
 }
 
-// ---------------------------------------------------------------- dashboard helpers
-
-function cmpMoney(v: number) {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000) return `${Math.round(v / 1_000)}k`
-  return String(v)
-}
-
-function MetricCard({ label, value, sub, accent, warn }: {
-  label: string; value: string; sub?: string; accent?: boolean; warn?: boolean
-}) {
-  return (
-    <div className="panel" style={{ padding: '18px 22px' }}>
-      <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
-      <div className="num" style={{
-        fontSize: accent ? 28 : 34, fontWeight: 700,
-        color: accent ? 'var(--accent)' : warn ? 'var(--red-ink)' : 'var(--ink)',
-      }}>{value}</div>
-      {sub && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{sub}</div>}
-    </div>
-  )
-}
-
-function BarChart({ bars, formatVal }: {
-  bars: { label: string; value: number; color: string }[];
-  formatVal: (v: number) => string;
-}) {
-  if (bars.length === 0) return <span className="muted" style={{ fontSize: 13 }}>Chưa có dữ liệu</span>
-  const max = Math.max(...bars.map(b => b.value), 1)
-  const H = 100
-  const BW = 44
-  const GAP = 18
-  const W = bars.length * (BW + GAP) - GAP
-  return (
-    <svg viewBox={`-1 -16 ${W + 2} ${H + 36}`} style={{ width: '100%', overflow: 'visible' }}>
-      {bars.map((b, i) => {
-        const bh = Math.max(3, (b.value / max) * H)
-        const x = i * (BW + GAP)
-        const y = H - bh
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={BW} height={bh} rx={3} fill={b.color} opacity={0.82} />
-            <text x={x + BW / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="#A8A4A0">{formatVal(b.value)}</text>
-            <text x={x + BW / 2} y={H + 14} textAnchor="middle" fontSize="10" fill="#686460">{b.label}</text>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-function ChartPanel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="panel panel-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)' }}>{title}</div>
-      {children}
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------- dashboard
 
 function Dashboard() {
@@ -108,39 +48,22 @@ function Dashboard() {
   if (dash.error) return <ErrorNotice message={dash.error} onRetry={dash.reload} />
   if (!dash.data) return <Loading />
   const d = dash.data
-  const branches = d.branches ?? []
-  const overloaded = d.overloadedBranches ?? 0
-
-  const revBars  = branches.map(b => ({ label: b.code ?? '?', value: b.revenueToday       ?? 0, color: '#2EC4BE' }))
-  const doneBars = branches.map(b => ({ label: b.code ?? '?', value: b.completedOrdersToday ?? 0, color: '#6a9de8' }))
-  const openBars = branches.map(b => ({ label: b.code ?? '?', value: b.openOrders           ?? 0, color: '#e8a030' }))
+  const totalOrders = (d.completedOrdersToday ?? 0) + (d.openOrders ?? 0)
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
-        <MetricCard label="Doanh thu hôm nay" value={money(d.revenueToday)} sub="(đã trừ hoàn tiền)" accent />
-        <MetricCard label="Đơn hoàn tất" value={String(d.completedOrdersToday)} />
-        <MetricCard label="Đơn đang mở" value={String(d.openOrders)} />
-        <MetricCard
-          label="Bếp quá tải"
-          value={String(overloaded)}
-          sub={overloaded === 0 ? 'Tất cả bình thường' : `${overloaded} chi nhánh`}
-          warn={overloaded > 0}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+        <div className="panel" style={{ padding: '22px 26px' }}>
+          <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Doanh thu hôm nay</div>
+          <div className="num" style={{ fontSize: 30, fontWeight: 700, color: 'var(--accent)' }}>{money(d.revenueToday)}</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>đã trừ hoàn tiền</div>
+        </div>
+        <div className="panel" style={{ padding: '22px 26px' }}>
+          <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Lượt đặt đồ hôm nay</div>
+          <div className="num" style={{ fontSize: 36, fontWeight: 700 }}>{totalOrders}</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{d.completedOrdersToday} hoàn tất · {d.openOrders} đang phục vụ</div>
+        </div>
       </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-        <ChartPanel title="Doanh thu (hôm nay)">
-          <BarChart bars={revBars} formatVal={cmpMoney} />
-        </ChartPanel>
-        <ChartPanel title="Đơn hoàn tất (hôm nay)">
-          <BarChart bars={doneBars} formatVal={String} />
-        </ChartPanel>
-        <ChartPanel title="Đơn đang mở">
-          <BarChart bars={openBars} formatVal={String} />
-        </ChartPanel>
-      </div>
-
       <p className="muted" style={{ fontSize: 12, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
         <RefreshCw size={11} aria-hidden="true" />
         Cập nhật lúc {time(d.generatedAt)} · tự làm mới mỗi 15 giây
