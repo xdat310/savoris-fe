@@ -115,13 +115,6 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
 
       {/* ── Content ── */}
       <div className="sh-hero-content">
-        {/* Optional wine-red badge */}
-        {c.badge_enabled && (
-          <div className="sh-hero-badge" aria-label={`${c.badge_line1} ${c.badge_line2}`}>
-            <span>{c.badge_line1}</span>
-            <span>{c.badge_line2}</span>
-          </div>
-        )}
 
 <Md className="sh-hero-desc">{c.description}</Md>
 

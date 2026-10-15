@@ -9,7 +9,7 @@ interface AuthState {
   // The branch this screen works on: the staff member's own, or the one the owner picked
   branchId?: number
   branches: BranchResponse[]
-  setBranchId: (id: number) => void
+  setBranchId: (id: number | null) => void
   // After a branch is added, renamed or closed
   reloadBranches: () => Promise<void>
   login: (username: string, password: string) => Promise<void>
@@ -23,9 +23,10 @@ const LEGACY_BRANCH_KEY = 'dinechain.branch'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(getSession())
   const [branches, setBranches] = useState<BranchResponse[]>([])
-  const [pickedBranch, setPickedBranch] = useState<number | undefined>(() => {
+  const [pickedBranch, setPickedBranch] = useState<number | null | undefined>(() => {
     try {
       const v = readMigratedStorage(localStorage, BRANCH_KEY, LEGACY_BRANCH_KEY)
+      if (v === '') return null   // explicitly cleared to Toàn chuỗi
       return v ? Number(v) : undefined
     } catch {
       return undefined
@@ -43,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role = session?.staff.role
   const ownBranch = session?.staff.branchId
-  const branchId = ownBranch ?? pickedBranch ?? branches[0]?.id
+  // null = ADMIN explicitly chose "Toàn chuỗi"; undefined = never picked, fall back to first branch
+  const branchId = ownBranch ?? (pickedBranch === null ? undefined : (pickedBranch ?? branches[0]?.id))
 
   const value: AuthState = {
     session,
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBranchId: (id) => {
       setPickedBranch(id)
       try {
-        localStorage.setItem(BRANCH_KEY, String(id))
+        localStorage.setItem(BRANCH_KEY, id === null ? '' : String(id))
       } catch {
         // remembered for this tab only
       }

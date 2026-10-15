@@ -50,13 +50,15 @@ export function Shell() {
   // ── RBAC nav links per spec ──────────────────────────────────────────
   // ADMIN: dashboard (with transfer QR built-in) + branch mgmt + settings
   // BRANCH_MANAGER: branch ops + website menu editor
+  // ADMIN with a specific branch selected gets the same ops links as BRANCH_MANAGER for that branch
+  const isBranchView = role === 'BRANCH_MANAGER' || (can.owner(role) && !!branchId)
   const opsLinks = [
-    can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Icon: LayoutDashboard },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Icon: QrCode },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Icon: ReceiptText },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,      label: 'Bếp',               Icon: ChefHat },
-    role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Icon: Package },
+    can.owner(role)  && { to: `${STAFF}/chuoi`,     label: 'Dashboard',        Icon: LayoutDashboard },
+    isBranchView     && { to: `${STAFF}/ban-hang`,  label: 'Bán hàng',         Icon: ReceiptText },
+    isBranchView     && { to: `${STAFF}/bep`,       label: 'Bếp',              Icon: ChefHat },
+    isBranchView     && { to: `${STAFF}/kho`,       label: 'Kho & nhập hàng',  Icon: Package },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`, label: 'Mã QR bàn',  Icon: QrCode },
+    role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,   label: 'Kho & nhập hàng', Icon: Package },
   ].filter(Boolean) as { to: string; label: string; Icon: typeof Users }[]
 
   // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages CMS only
@@ -129,6 +131,13 @@ export function Shell() {
             </button>
             {branchOpen && (
               <div className="ad-branch-drop">
+                <button
+                  className={`ad-branch-opt${!branchId ? ' ad-branch-opt--on' : ''}`}
+                  onClick={() => { setBranchId(null); setBranchOpen(false) }}
+                >
+                  <span className="ad-branch-opt-code">—</span>
+                  <span className="ad-branch-opt-name">Toàn chuỗi</span>
+                </button>
                 {branches.map((b) => (
                   <button
                     key={b.id}
