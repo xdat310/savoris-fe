@@ -1,7 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { HeroConfig } from '../../api/site'
-import logoSrc from '../../assets/savoris-logo.webp'
 
 const FALLBACK: HeroConfig = {
   type: 'image',
@@ -123,9 +122,7 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
           </div>
         )}
 
-        <img src={logoSrc} alt="Savoris Fine Dining" className="sh-hero-logo" />
-
-        <p className="sh-hero-desc">{c.description}</p>
+<p className="sh-hero-desc">{c.description}</p>
 
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
