@@ -1,5 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Plus, Save, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Md } from '../lib/md'
 import {
   getAllSiteConfig, updateFounder, updateGallery,
   updateHero, updateManifesto, updateMilestones, updateSections, uploadSiteImage,
@@ -129,7 +130,7 @@ function HeroTab({ initial }: { initial?: HeroConfig }) {
           <div className="cms-prev-hero-overlay" />
           <div className="cms-prev-hero-text">
             <div className="cms-prev-eyebrow">SAVORIS</div>
-            {cfg.description && <p className="cms-prev-desc">{cfg.description}</p>}
+            {cfg.description && <Md className="cms-prev-desc">{cfg.description}</Md>}
             {cfg.cta_text && <div className="cms-prev-cta">{cfg.cta_text}</div>}
           </div>
         </div>
@@ -189,7 +190,7 @@ function StoryTab({ initial }: { initial?: SiteSection[] }) {
             {s.image_url && <img className="cms-prev-story-img" src={s.image_url} alt="" />}
             <div className="cms-prev-story-text">
               {s.title && <div className="cms-prev-story-title">{s.title}</div>}
-              {s.body && <p className="cms-prev-story-body">{s.body}</p>}
+              {s.body && <Md className="cms-prev-story-body">{s.body}</Md>}
             </div>
           </div>
         ))}
@@ -280,7 +281,7 @@ function ManifestoTab({ initial }: { initial?: { quote: string; author: string; 
       <Preview>
         <div className="cms-prev-manifesto">
           {cfg.quote
-            ? <blockquote className="cms-prev-quote">"{cfg.quote}"</blockquote>
+            ? <blockquote className="cms-prev-quote"><Md>{cfg.quote}</Md></blockquote>
             : <span className="cms-prev-empty">Chưa có trích dẫn</span>}
           {(cfg.author || cfg.authorTitle) && (
             <div className="cms-prev-author">
@@ -331,8 +332,8 @@ function FounderTab({ initial }: { initial?: SiteFounder }) {
           <div className="cms-prev-founder-info">
             {cfg.name && <div className="cms-prev-founder-name">{cfg.name}</div>}
             {cfg.title && <div className="cms-prev-founder-title">{cfg.title}</div>}
-            {cfg.quote && <blockquote className="cms-prev-founder-quote">"{cfg.quote}"</blockquote>}
-            {cfg.bio && <p className="cms-prev-founder-bio">{cfg.bio}</p>}
+            {cfg.quote && <blockquote className="cms-prev-founder-quote"><Md>{cfg.quote}</Md></blockquote>}
+            {cfg.bio && <Md className="cms-prev-founder-bio">{cfg.bio}</Md>}
           </div>
         </div>
       </Preview>
@@ -395,7 +396,7 @@ function MilestonesTab({ initial }: { initial?: SiteMilestone[] }) {
               <div className="cms-prev-ms-line" />
               <div className="cms-prev-ms-content">
                 {m.title && <div className="cms-prev-ms-title">{m.title}</div>}
-                {m.description && <p className="cms-prev-ms-desc">{m.description}</p>}
+                {m.description && <Md className="cms-prev-ms-desc">{m.description}</Md>}
               </div>
             </div>
           ))}
