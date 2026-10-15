@@ -12,7 +12,8 @@ import { useToast } from '../components/Toast'
 import { dateTime, money, time } from '../lib/format'
 import { useData } from '../lib/useData'
 
-type Tab = 'overview' | 'branches' | 'accounts' | 'transfer' | 'logs'
+type Tab = 'overview' | 'manage' | 'logs'
+type ManageSub = 'accounts' | 'transfer' | 'branches'
 
 export function Owner() {
   const [tab, setTab] = useState<Tab>('overview')
@@ -20,97 +21,130 @@ export function Owner() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Toàn chuỗi</h1>
+          <h1>Dashboard</h1>
           <p>Mọi chi nhánh trên một màn hình.</p>
         </div>
       </div>
       <div className="tabs" role="tablist">
         {([
-          ['overview',  'Tổng quan'],
-          ['branches',  'Chi nhánh'],
-          ['accounts',  'Tài khoản QL'],
-          ['transfer',  'Chuyển khoản'],
-          ['logs',      'Nhật ký'],
+          ['overview', 'Tổng quan'],
+          ['manage',   'Quản lý'],
+          ['logs',     'Nhật ký'],
         ] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
-      {tab === 'overview'  && <Overview />}
-      {tab === 'branches'  && <Branches />}
-      {tab === 'accounts'  && <ManagerAccounts />}
-      {tab === 'transfer'  && <div className="transfer-tab"><BankTransfer /><TransferQr /></div>}
-      {tab === 'logs'      && <AuditLogs />}
+      {tab === 'overview' && <Dashboard />}
+      {tab === 'manage'   && <Manage />}
+      {tab === 'logs'     && <AuditLogs />}
     </div>
   )
 }
 
-// ---------------------------------------------------------------- overview
+// ---------------------------------------------------------------- dashboard helpers
 
-function Overview() {
-  const { setBranchId } = useAuth()
+function cmpMoney(v: number) {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${Math.round(v / 1_000)}k`
+  return String(v)
+}
+
+function MetricCard({ label, value, sub, accent, warn }: {
+  label: string; value: string; sub?: string; accent?: boolean; warn?: boolean
+}) {
+  return (
+    <div className="panel" style={{ padding: '18px 22px' }}>
+      <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+      <div className="num" style={{
+        fontSize: accent ? 28 : 34, fontWeight: 700,
+        color: accent ? 'var(--accent)' : warn ? 'var(--red-ink)' : 'var(--ink)',
+      }}>{value}</div>
+      {sub && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function BarChart({ bars, formatVal }: {
+  bars: { label: string; value: number; color: string }[];
+  formatVal: (v: number) => string;
+}) {
+  if (bars.length === 0) return <span className="muted" style={{ fontSize: 13 }}>Chưa có dữ liệu</span>
+  const max = Math.max(...bars.map(b => b.value), 1)
+  const H = 100
+  const BW = 44
+  const GAP = 18
+  const W = bars.length * (BW + GAP) - GAP
+  return (
+    <svg viewBox={`-1 -16 ${W + 2} ${H + 36}`} style={{ width: '100%', overflow: 'visible' }}>
+      {bars.map((b, i) => {
+        const bh = Math.max(3, (b.value / max) * H)
+        const x = i * (BW + GAP)
+        const y = H - bh
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={BW} height={bh} rx={3} fill={b.color} opacity={0.82} />
+            <text x={x + BW / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="#A8A4A0">{formatVal(b.value)}</text>
+            <text x={x + BW / 2} y={H + 14} textAnchor="middle" fontSize="10" fill="#686460">{b.label}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+function ChartPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="panel panel-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)' }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- dashboard
+
+function Dashboard() {
   const dash = useData(() => get<ChainDashboardResponse>('/dashboard/chain'), [], 15000)
   if (dash.error) return <ErrorNotice message={dash.error} onRetry={dash.reload} />
   if (!dash.data) return <Loading />
   const d = dash.data
-  // Overloaded kitchens first, then by load
-  const branches = [...(d.branches ?? [])].sort((a, b) => (b.kitchen?.loadPercent ?? 0) - (a.kitchen?.loadPercent ?? 0))
+  const branches = d.branches ?? []
+  const overloaded = d.overloadedBranches ?? 0
+
+  const revBars  = branches.map(b => ({ label: b.code ?? '?', value: b.revenueToday       ?? 0, color: '#2EC4BE' }))
+  const doneBars = branches.map(b => ({ label: b.code ?? '?', value: b.completedOrdersToday ?? 0, color: '#6a9de8' }))
+  const openBars = branches.map(b => ({ label: b.code ?? '?', value: b.openOrders           ?? 0, color: '#e8a030' }))
 
   return (
-    <div>
-      <p style={{ fontSize: 17, margin: '0 0 18px', lineHeight: 1.7 }}>
-        Tiền mặt thực thu hôm nay <strong className="chalk" style={{ fontSize: 30, color: 'var(--accent)' }}>{money(d.revenueToday)}</strong>
-        <span className="muted" style={{ fontSize: 14 }}> (đã trừ hoàn tiền)</span>.
-        {' '}<strong className="num">{d.completedOrdersToday}</strong> đơn hoàn tất, <strong className="num">{d.openOrders}</strong> đơn đang mở.
-        {' '}
-        {(d.overloadedBranches ?? 0) > 0 ? (
-          <span style={{ color: 'var(--red-ink)', fontWeight: 600 }}>{d.overloadedBranches} chi nhánh đang quá tải bếp.</span>
-        ) : (
-          <span style={{ color: 'var(--green-ink)', fontWeight: 600 }}>Không bếp nào quá tải.</span>
-        )}
-        <span className="muted" style={{ fontSize: 13, marginLeft: 10 }}>
-          <RefreshCw size={12} aria-hidden="true" style={{ display: 'inline', verticalAlign: '-1px' }} /> cập nhật {time(d.generatedAt)}
-        </span>
+    <div style={{ display: 'grid', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
+        <MetricCard label="Doanh thu hôm nay" value={money(d.revenueToday)} sub="(đã trừ hoàn tiền)" accent />
+        <MetricCard label="Đơn hoàn tất" value={String(d.completedOrdersToday)} />
+        <MetricCard label="Đơn đang mở" value={String(d.openOrders)} />
+        <MetricCard
+          label="Bếp quá tải"
+          value={String(overloaded)}
+          sub={overloaded === 0 ? 'Tất cả bình thường' : `${overloaded} chi nhánh`}
+          warn={overloaded > 0}
+        />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+        <ChartPanel title="Doanh thu (hôm nay)">
+          <BarChart bars={revBars} formatVal={cmpMoney} />
+        </ChartPanel>
+        <ChartPanel title="Đơn hoàn tất (hôm nay)">
+          <BarChart bars={doneBars} formatVal={String} />
+        </ChartPanel>
+        <ChartPanel title="Đơn đang mở">
+          <BarChart bars={openBars} formatVal={String} />
+        </ChartPanel>
+      </div>
+
+      <p className="muted" style={{ fontSize: 12, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <RefreshCw size={11} aria-hidden="true" />
+        Cập nhật lúc {time(d.generatedAt)} · tự làm mới mỗi 15 giây
       </p>
-      <table className="branch-board">
-        <thead>
-          <tr>
-            <th>Chi nhánh</th>
-            <th>Bếp</th>
-            <th>Tải bếp</th>
-            <th>Chờ ước tính</th>
-            <th className="right">Đơn mở</th>
-            <th className="right">Hoàn tất</th>
-            <th className="right">Doanh thu</th>
-          </tr>
-        </thead>
-        <tbody>
-          {branches.map((b) => (
-            <tr key={b.branchId} className={b.kitchen?.status === 'OVERLOADED' ? 'overloaded' : ''}>
-              <td>
-                <span className="bcode">{b.code}</span>
-                <button className="btn-ghost" style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
-                  onClick={() => setBranchId(b.branchId!)} title="Chọn làm chi nhánh đang xem">
-                  <span className="bname">{b.name}</span>
-                </button>
-              </td>
-              <td data-label="Bếp"><LoadState status={b.kitchen?.status} /></td>
-              <td data-label="Tải bếp">
-                <div className="loadbar">
-                  <div className="track"><div className="fill" style={{ transform: `scaleX(${Math.min(100, b.kitchen?.loadPercent ?? 0) / 100})`, background: loadColor(b.kitchen?.status) }} /></div>
-                  <span className="pct">{b.kitchen?.loadPercent}%</span>
-                </div>
-                <div className="muted num" style={{ fontSize: 12, marginTop: 2 }}>
-                  {(b.kitchen?.pendingPortions ?? 0) + (b.kitchen?.cookingPortions ?? 0)}/{b.kitchen?.kitchenCapacity} phần
-                </div>
-              </td>
-              <td data-label="Chờ ước tính" className="num">{b.kitchen?.estimatedWaitMinutes != null ? `${b.kitchen.estimatedWaitMinutes} phút` : <span className="muted">chưa đủ dữ liệu</span>}</td>
-              <td data-label="Đơn mở" className="num right">{b.openOrders}</td>
-              <td data-label="Hoàn tất" className="num right">{b.completedOrdersToday}</td>
-              <td data-label="Doanh thu" className="num right" style={{ fontWeight: 700 }}>{money(b.revenueToday)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }
@@ -463,6 +497,28 @@ function Branches() {
           <button className="btn btn-primary"><Plus size={16} aria-hidden="true" /> Tạo chi nhánh</button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- manage (sub-tabs wrapper)
+
+function Manage() {
+  const [sub, setSub] = useState<ManageSub>('accounts')
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      <div className="tabs" role="tablist" style={{ marginBottom: 0 }}>
+        {([
+          ['accounts', 'Tài khoản QL'],
+          ['transfer', 'Chuyển khoản'],
+          ['branches', 'Chi nhánh'],
+        ] as const).map(([id, label]) => (
+          <button key={id} role="tab" className="tab" aria-selected={sub === id} onClick={() => setSub(id)}>{label}</button>
+        ))}
+      </div>
+      {sub === 'accounts' && <ManagerAccounts />}
+      {sub === 'transfer' && <div className="transfer-tab"><BankTransfer /><TransferQr /></div>}
+      {sub === 'branches' && <Branches />}
     </div>
   )
 }
