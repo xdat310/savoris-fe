@@ -6,6 +6,7 @@ import type { AreaResponse, TableResponse } from '../api/types'
 import { useAuth } from '../auth'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { useToast } from '../components/Toast'
+import { confirmDialog } from '../components/ui/Dialog'
 import { useData } from '../lib/useData'
 
 const BASE_KEY = 'savoris.qrBase'
@@ -67,7 +68,7 @@ export function TableQr({ branchId }: { branchId: number }) {
 
       <div className="panel panel-pad no-print" style={{ display: 'grid', gap: 12 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <h2 style={{ margin: 0, fontSize: 17 }}>Mã QR gọi món tại bàn</h2>
+          <h2 style={{ margin: 0, fontSize: 'var(--fs-16)' }}>Mã QR gọi món tại bàn</h2>
           <button className="btn btn-primary" disabled={!tables.data?.length} onClick={() => window.print()}>
             <Printer size={16} aria-hidden="true" /> In tất cả mã QR
           </button>
@@ -131,8 +132,8 @@ export function TableQr({ branchId }: { branchId: number }) {
                       <a className="btn btn-sm btn-ghost" href={guestUrl(window.location.origin, t.qrToken)} target="_blank" rel="noreferrer">
                         <ExternalLink size={14} aria-hidden="true" /> Mở thử
                       </a>
-                      <button className="btn btn-sm btn-ghost" aria-label={`Xoá bàn ${t.name}`} onClick={() => {
-                        if (!window.confirm(`Xoá bàn ${t.name}?`)) return
+                      <button className="btn btn-sm btn-ghost btn-icon" aria-label={`Xoá bàn ${t.name}`} data-tip="Xoá bàn" onClick={async () => {
+                        if (!(await confirmDialog({ title: `Xoá bàn ${t.name}?`, message: 'Mã QR của bàn này sẽ không dùng được nữa.', confirmLabel: 'Xoá bàn', danger: true }))) return
                         run(async () => {
                           await del(`/tables/${t.id}`)
                           await tables.reload()

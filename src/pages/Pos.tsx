@@ -1,4 +1,4 @@
-import { Ban, Bell, Check, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Scissors, Search, Send, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Ban, Bell, Check, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Scissors, Search, Send, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, Wallet, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type {
@@ -17,6 +17,7 @@ import { useToast } from '../components/Toast'
 import { ITEM_STATUS_LABEL, ORDER_TYPE_LABEL, money, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { Counter } from '../components/Counter'
+import { confirmDialog } from '../components/ui/Dialog'
 
 type Selection =
   | { kind: 'table'; tableId: number }
@@ -55,7 +56,7 @@ export function Pos() {
   const [settling, setSettling] = useState<number | null>(null)
 
   async function refunded(orderId: number) {
-    if (!window.confirm('Đã chuyển trả tiền cho khách, hoặc đã kiểm tra là tiền chưa hề về?')) return
+    if (!(await confirmDialog({ title: 'Ghi nhận đã hoàn tiền?', message: 'Đã chuyển trả tiền cho khách, hoặc đã kiểm tra là tiền chưa hề về?', confirmLabel: 'Đã hoàn tiền' }))) return
     setSettling(orderId)
     try {
       await put(`/orders/${orderId}/refund-settled`)
@@ -86,7 +87,7 @@ export function Pos() {
         chime(2)
         const { itemName, orderType, tableName: tName, orderCode, tableId } = ev.data
         const where = orderType === 'DINE_IN' ? `Bàn ${tName}` : `Mang về #${orderCode?.split('-').pop()}`
-        toast(`🍽️ ${itemName} — ${where} sẵn sàng bưng`)
+        toast(`${itemName} · ${where} sẵn sàng bưng`)
         if (tableId) setFlashReadyTables((prev) => new Set([...prev, tableId]))
       }
     } catch { /* BroadcastChannel not supported */ }
@@ -155,7 +156,7 @@ export function Pos() {
             {readyMadeOut > 0 && <span className="seg-badge" style={{ background: 'var(--red)' }}>{readyMadeOut}</span>}
           </button>
           {load.data && (
-            <div className="row" style={{ fontSize: 14, color: 'var(--ink-soft)' }}>
+            <div className="row" style={{ fontSize: 'var(--fs-14)', color: 'var(--ink-soft)' }}>
               Bếp: <LoadState status={load.data.status} />
               <span className="num">{load.data.loadPercent}%</span>
               {load.data.estimatedWaitMinutes != null && load.data.estimatedWaitMinutes > 0 && (
@@ -268,6 +269,13 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTab
 
   return (
     <div className="floor-areas">
+      <div className="floor-legend" aria-hidden="true">
+        <span style={{ '--tone': 'var(--success)' } as React.CSSProperties}><i /> Trống</span>
+        <span style={{ '--tone': 'var(--info)' } as React.CSSProperties}><i /> Đang phục vụ</span>
+        <span style={{ '--tone': 'var(--violet)' } as React.CSSProperties}><i /> Đã lên đủ món</span>
+        <span style={{ '--tone': 'var(--warning)' } as React.CSSProperties}><i /> Chờ thanh toán</span>
+        <span style={{ '--tone': 'var(--accent)' } as React.CSSProperties}><i /> Có món ra</span>
+      </div>
       {[...areas.entries()].map(([areaId, list], i) => (
         <section key={areaId}>
           <h2 className="area-title">Khu {i + 1}</h2>
@@ -280,28 +288,37 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTab
               const occupied = open.length > 0 || t.status === 'OCCUPIED'
               const total    = open.reduce((s, o) => s + (o.totalAmount ?? 0), 0)
               const hasReady = open.some((o) => o.items?.some((it) => it.status === 'READY')) || flashReadyTables.has(t.id!)
+              // Display-only state, read from data already on screen: the order list does not say whether a bill
+              // is paid, so a table whose dishes are all out is labelled as such rather than "waiting to pay"
+              const live = (o: OrderResponse) => (o.items ?? []).filter((it) => it.status !== 'CANCELLED')
+              const awaiting = open.some((o) => o.status === 'AWAITING_PAYMENT')
+              const allServed = !awaiting && open.length > 0 && open.every((o) => live(o).length > 0 && live(o).every((it) => it.status === 'SERVED'))
+              const tileState = !occupied ? 'free' : awaiting ? 'awaiting' : allServed ? 'served' : 'occupied'
+              const stateLabel = { free: 'Trống', occupied: 'Đang phục vụ', served: 'Đã lên đủ món', awaiting: 'Chờ thanh toán' }[tileState]
               return (
                 <button
                   key={t.id}
                   className={[
                     'table-tile',
-                    occupied ? 'occupied' : '',
+                    tileState,
                     hasReady ? 'has-ready' : '',
                     selectedTable === t.id ? 'selected' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => onSelect(t.id!)}
                   aria-pressed={selectedTable === t.id}
-                  aria-label={`Bàn ${t.name}${occupied ? ', có khách' : ', trống'}${hasReady ? ', có món sẵn sàng' : ''}`}
+                  aria-label={`Bàn ${t.name}, ${stateLabel.toLowerCase()}${hasReady ? ', có món sẵn sàng' : ''}`}
                 >
                   <span className="tno">{t.name}</span>
+                  <span className="tstate">{stateLabel}</span>
                   <span className="tmeta">
-                    <span>{occupied ? money(total) : `${t.capacity} chỗ`}</span>
-                    {hasReady && (
-                      <span className="tile-ready-badge">
-                        <Bell size={11} aria-hidden="true" /> Có món ra
-                      </span>
-                    )}
+                    <span>{t.capacity} chỗ</span>
+                    {occupied && <span className="tamt">{money(total)}</span>}
                   </span>
+                  {hasReady && (
+                    <span className="tile-ready-badge">
+                      <Bell size={12} aria-hidden="true" /><span className="tile-ready-text">Có món ra</span>
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -345,9 +362,9 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
                   <span className="code">{o.code}</span>
                   <Chip tone={o.transferClaimedAt ? 'info' : 'warn'}>{o.transferClaimedAt ? 'Khách báo đã chuyển' : o.payMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : 'Tiền mặt'}</Chip>
                 </span>
-                <span style={{ fontWeight: 600 }}>{o.guestName} · <span className="num">{o.guestPhone}</span></span>
-                <span className="muted" style={{ fontSize: 13 }}>{o.items?.filter((i) => i.status !== 'CANCELLED').length} món · đặt lúc {time(o.createdAt)}</span>
-                <span className="num" style={{ fontWeight: 700 }}>{money(o.totalAmount)}</span>
+                <span style={{ fontWeight: 'var(--fw-semibold)' }}>{o.guestName} · <span className="num">{o.guestPhone}</span></span>
+                <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>{o.items?.filter((i) => i.status !== 'CANCELLED').length} món · đặt lúc {time(o.createdAt)}</span>
+                <span className="num" style={{ fontWeight: 'var(--fw-semibold)' }}>{money(o.totalAmount)}</span>
               </button>
             ))}
           </div>
@@ -363,8 +380,8 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
                 <span className="code">{o.code}</span>
                 <Chip tone="neutral">{ORDER_TYPE_LABEL[o.orderType!]}</Chip>
               </span>
-              <span className="muted" style={{ fontSize: 13 }}>{o.items?.filter((i) => i.status !== 'CANCELLED').length} món · {time(o.createdAt)}</span>
-              <span className="num" style={{ fontWeight: 700 }}>{money(o.totalAmount)}</span>
+              <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>{o.items?.filter((i) => i.status !== 'CANCELLED').length} món · {time(o.createdAt)}</span>
+              <span className="num" style={{ fontWeight: 'var(--fw-semibold)' }}>{money(o.totalAmount)}</span>
             </button>
           ))}
         </div>
@@ -389,7 +406,7 @@ function MenuBoard({ items, categories, error, onAdd, disabled }: {
     <section className="menu-board" id="menu-board" aria-label="Menu chi nhánh">
       <h3>
         <span className="chalk board-title">Hôm nay có</span>
-        {disabled && <span style={{ fontSize: 13, fontWeight: 500 }}>Chọn bàn để gọi món</span>}
+        {disabled && <span style={{ fontSize: 'var(--fs-13)', fontWeight: 'var(--fw-medium)' }}>Chọn bàn để gọi món</span>}
       </h3>
       {[...groups.entries()].map(([catId, list]) => (
         <div key={catId}>
@@ -524,16 +541,16 @@ function OrderColumn(props: {
     props.onClosed()
   }, 'Đã hoàn tất đơn')
 
-  const cancelOrder = () => {
-    if (!window.confirm(`Huỷ cả đơn ${order!.code}? Các món chưa phục vụ sẽ bị gỡ khỏi bếp.`)) return
+  const cancelOrder = async () => {
+    if (!(await confirmDialog({ title: `Huỷ cả đơn ${order!.code}?`, message: 'Các món chưa phục vụ sẽ bị gỡ khỏi bếp.', confirmLabel: 'Huỷ đơn', cancelLabel: 'Giữ đơn', danger: true }))) return
     run(async () => {
       await put(`/orders/${order!.id}/cancel`)
       props.onClosed()
     }, 'Đã huỷ đơn')
   }
 
-  const confirmTransfer = () => {
-    if (!window.confirm(`Đã thấy ${money(order!.totalAmount)} với nội dung ${order!.code} về tài khoản?`)) return
+  const confirmTransfer = async () => {
+    if (!(await confirmDialog({ title: 'Xác nhận đã nhận chuyển khoản?', message: `Đã thấy ${money(order!.totalAmount)} với nội dung ${order!.code} về tài khoản.`, confirmLabel: 'Đã nhận tiền' }))) return
     run(async () => {
       await post<PaymentResponse>('/payments', { orderId: order!.id, paymentMethod: 'BANK_TRANSFER' })
       await payment.reload()
@@ -581,7 +598,7 @@ function OrderColumn(props: {
         <div>
           {selection.kind === 'table'
             ? <div className="big"><UtensilsCrossed size={16} style={{ verticalAlign: '-2px', marginRight: 6 }} />Bàn {title}</div>
-            : <div style={{ fontWeight: 700, fontSize: 20 }}>{title}</div>}
+            : <div style={{ fontWeight: 'var(--fw-semibold)', fontSize: 'var(--fs-20)' }}>{title}</div>}
           <div className="code">
             {order ? `${order.code} · ${ORDER_TYPE_LABEL[order.orderType!]} · mở lúc ${time(order.createdAt)}` : 'Đơn mới'}
           </div>
@@ -602,7 +619,7 @@ function OrderColumn(props: {
       )}
 
       {props.siblingOrders.length > 1 && (
-        <div className="row" style={{ padding: '8px 20px', borderBottom: '1px solid var(--rule)', fontSize: 13 }}>
+        <div className="row" style={{ padding: '8px 20px', borderBottom: '1px solid var(--rule)', fontSize: 'var(--fs-13)' }}>
           Bàn có {props.siblingOrders.length} đơn:
           {props.siblingOrders.map((o) => (
             <button key={o.id} className="btn btn-sm" onClick={() => props.onPickSibling(o.id!)} aria-pressed={o.id === order?.id}>{o.code?.split('-').pop()}</button>
@@ -651,7 +668,7 @@ function OrderColumn(props: {
                   {!paid && !awaiting && !can.cancelCooking(props.role) && (it.status === 'COOKING' || it.status === 'READY') && (
                     <button className="btn btn-sm btn-ghost void-req-btn" title="Yêu cầu bếp xem xét hủy"
                       onClick={() => { setVoidItemId(it.id ?? null); setVoidReason('') }} disabled={busy || voidPending}>
-                      {voidPending ? 'Đã gửi bếp' : '⚠ Báo bếp hủy'}
+                      {voidPending ? 'Đã gửi bếp' : <><AlertTriangle size={14} aria-hidden="true" /> Báo bếp hủy</>}
                     </button>
                   )}
                 </span>
@@ -701,7 +718,7 @@ function OrderColumn(props: {
                         onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))}>
                         <Minus size={16} />
                       </button>
-                      <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 700, color: 'var(--ink)' }}>{l.quantity}</span>
+                      <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 'var(--fw-semibold)', color: 'var(--ink)' }}>{l.quantity}</span>
                       <button className="icon-btn" aria-label="Thêm"
                         onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: x.quantity + 1 } : x))}>
                         <Plus size={16} />
@@ -741,7 +758,7 @@ function OrderColumn(props: {
             </div>
           )}
           {customer && (customer.points ?? 0) > 0 && (
-            <label className="row" style={{ fontSize: 14 }}>
+            <label className="row" style={{ fontSize: 'var(--fs-14)' }}>
               Dùng điểm
               <input className="input num" type="number" min={0} max={customer.points} value={points}
                 onChange={(e) => setPoints(Math.max(0, Math.min(customer.points ?? 0, Number(e.target.value))))}
@@ -759,6 +776,7 @@ function OrderColumn(props: {
         </div>
       )}
 
+      <div className="pos-paybar">
       <MoneyProof order={order} draftSubtotal={draftSubtotal} draftDiscount={promoCheck?.discount ?? 0} draftPoints={points} />
 
       {paying && order && !paid ? (
@@ -816,7 +834,7 @@ function OrderColumn(props: {
             <button className="btn btn-danger btn-block" onClick={cancelOrder} disabled={busy}>Huỷ đơn</button>
           )}
           {payment.data && paid && (
-            <div className="muted num" style={{ fontSize: 13, textAlign: 'center' }}>
+            <div className="muted num" style={{ fontSize: 'var(--fs-13)', textAlign: 'center' }}>
               {payment.data.method === 'BANK_TRANSFER'
                 ? `Đã nhận chuyển khoản ${money(payment.data.amount)}`
                 : `Khách đưa ${money(payment.data.cashReceived)} · thối ${money(payment.data.changeAmount)}`}
@@ -825,6 +843,7 @@ function OrderColumn(props: {
         </div>
         </>
       )}
+      </div>
     </aside>
   )
 }
@@ -864,10 +883,10 @@ function PayPanel({ total, busy, onPay, onCancel }: { total: number; busy: boole
   const change = cash - total
   const suggestions = [total, ...QUICK_CASH.filter((v) => v > total)].slice(0, 6)
   return (
-    <div className="pay" style={{ borderTop: '1px solid var(--rule)' }}>
+    <div className="pay">
       <label className="field">
         Khách đưa (tiền mặt)
-        <input className="input num" type="number" min={0} step={1000} autoFocus value={cash || ''} onChange={(e) => setCash(Number(e.target.value))} style={{ fontSize: 22, minHeight: 52 }} />
+        <input className="input num" type="number" min={0} step={1000} autoFocus value={cash || ''} onChange={(e) => setCash(Number(e.target.value))} />
       </label>
       <div className="quick-cash">
         {suggestions.map((v, i) => (
@@ -989,7 +1008,7 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
               })}
             </div>
             {unassigned.length > 0 && (
-              <div className="split-warn">⚠ {unassigned.length} món chưa gán cho ai</div>
+              <div className="split-warn"><AlertTriangle size={14} aria-hidden="true" /> {unassigned.length} món chưa gán cho ai</div>
             )}
             <div className="split-result-list" style={{ marginTop: 8 }}>
               {Array.from({ length: people }, (_, i) => (
@@ -1029,7 +1048,7 @@ function ReadyMadeStock({ items, branchId, onChanged }: { items: BranchMenuItemR
     <section className="ready-made panel panel-pad" aria-label="Món có sẵn">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <strong>Đồ uống & món có sẵn</strong>
-        <span className="muted" style={{ fontSize: 13 }}>Bấm để báo hết / bán lại. Món gắn kho tự hết khi kho hết.</span>
+        <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Bấm để báo hết / bán lại. Món gắn kho tự hết khi kho hết.</span>
       </div>
       {items.length === 0 ? <span className="muted">Chưa có món nào được đặt là "Có sẵn" trong Menu chung.</span> : (
         <div className="row">

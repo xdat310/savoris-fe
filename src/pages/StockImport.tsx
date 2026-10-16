@@ -152,7 +152,7 @@ export function StockImport({ branchId, onImported }: { branchId: number; onImpo
     <div className="panel stock-import">
       <div className="panel-head">
         <h2>Nhập kho</h2>
-        <span className="muted" style={{ fontSize: 13 }}>Ghi số tồn thực tế đang có. Nguyên liệu chưa có sẽ tự được tạo.</span>
+        <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Ghi số tồn thực tế đang có. Nguyên liệu chưa có sẽ tự được tạo.</span>
       </div>
       <div className="panel-pad stock-import-body">
         {error && <ErrorNotice message={error} />}
@@ -171,7 +171,7 @@ export function StockImport({ branchId, onImported }: { branchId: number; onImpo
             <input type="file" accept=".xlsx,.csv" className="sr-only" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
           </label>
           <button type="button" className="btn btn-ghost" onClick={downloadTemplate}><Download size={16} aria-hidden="true" /> Tải file mẫu</button>
-          <span className="muted" style={{ fontSize: 13 }}>Cột: Tên nguyên liệu · Đơn vị · Tồn kho · Tồn tối thiểu</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Cột: Tên nguyên liệu · Đơn vị · Tồn kho · Tồn tối thiểu</span>
         </div>
 
         {file && (
@@ -190,7 +190,7 @@ export function StockImport({ branchId, onImported }: { branchId: number; onImpo
               <tbody>
                 {file.rows.map((r, i) => (
                   <tr key={i} style={r.problem ? { background: 'var(--red-wash)' } : undefined}>
-                    <td style={{ fontWeight: 600 }}>{r.name || '—'}</td>
+                    <td style={{ fontWeight: 'var(--fw-semibold)' }}>{r.name || '—'}</td>
                     <td>{r.unit || <span className="muted">giữ như cũ</span>}</td>
                     <td className="num right">{r.quantity == null || Number.isNaN(r.quantity) ? '—' : number(r.quantity, 3)}</td>
                     <td className="num right muted">{r.minStock == null || Number.isNaN(r.minStock) ? '—' : number(r.minStock, 3)}</td>

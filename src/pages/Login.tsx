@@ -1,99 +1,79 @@
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, LogIn, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth'
 import { ErrorNotice } from '../components/Feedback'
-import logoBg from '../assets/savoris-logo.webp'
-
-const DEMO = [
-  { username: 'admin',   password: 'savoris123', label: 'Quản trị viên' },
-  { username: 'quanly',  password: 'savoris123', label: 'Quản lý' },
-  { username: 'phucvu',  password: 'savoris123', label: 'Phục vụ' },
-  { username: 'daubep',  password: 'savoris123', label: 'Đầu bếp' },
-  { username: 'kho',     password: 'savoris123', label: 'Kho' },
-]
-
-const DEV = import.meta.env.DEV
+import { Icon } from '../components/ui/Icon'
 
 export function Login() {
   const { login } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]   = useState<string | null>(null)
-  const [busy, setBusy]     = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
 
-  async function signIn(user: string, pass: string, who: string) {
-    setBusy(who); setError(null)
-    try { await login(user.trim(), pass) }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Không đăng nhập được'); setBusy(null) }
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!username.trim() || !password) { setError('Nhập tên đăng nhập và mật khẩu'); return }
+    setBusy(true); setError(null)
+    try { await login(username.trim(), password) }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Không đăng nhập được'); setBusy(false) }
   }
 
-  function submit(e: FormEvent) { e.preventDefault(); signIn(username, password, 'form') }
-
   return (
-    <div className="al" style={{ backgroundImage: `url(${logoBg})` }}>
-      <div className="al-overlay" />
-      <div className="al-center">
+    <div className="al">
+      <div className="al-overlay" aria-hidden="true" />
+      <main className="al-center">
         <div className="al-form-wrap">
           <div className="al-brand">
             <span className="al-brand-name">SAVORIS</span>
-            <span className="al-brand-rule" />
-            <span className="al-brand-sub">STAFF PORTAL</span>
+            <span className="al-brand-sub">Khu vực nhân viên</span>
           </div>
-          <h2 className="al-form-title">Đăng nhập</h2>
-          <p className="al-form-sub">Tài khoản nhân viên do quản lý cấp.</p>
+
+          <h1 className="al-form-title">Đăng nhập</h1>
+          <p className="al-form-sub">Dùng tài khoản do quản lý cấp.</p>
 
           {error && <ErrorNotice message={error} />}
 
           <form onSubmit={submit} className="al-form" noValidate>
             <label className="al-field">
               <span>Tên đăng nhập</span>
-              <input
-                className="al-input" autoComplete="username"
-                value={username} onChange={(e) => setUsername(e.target.value)}
-                required autoFocus
-              />
+              <div className="al-input-wrap">
+                <Icon icon={UserRound} className="al-input-icon" />
+                <input
+                  className="al-input" autoComplete="username" placeholder="vd: quanly"
+                  value={username} onChange={(e) => setUsername(e.target.value)}
+                  required autoFocus spellCheck={false} autoCapitalize="none"
+                />
+              </div>
             </label>
             <label className="al-field">
               <span>Mật khẩu</span>
-              <div className="al-pw-wrap">
+              <div className="al-input-wrap">
+                <Icon icon={LockKeyhole} className="al-input-icon" />
                 <input
-                  className="al-input" type={showPw ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  className="al-input al-input--pw" type={showPw ? 'text' : 'password'}
+                  autoComplete="current-password" placeholder="••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <button type="button" className="al-pw-eye" onClick={() => setShowPw(v => !v)}
-                  aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
-                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                <button type="button" className="al-pw-eye" onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPw}>
+                  <Icon icon={showPw ? EyeOff : Eye} size={18} />
                 </button>
               </div>
             </label>
 
-            <button className="al-submit" disabled={busy !== null}>
-              {busy === 'form' ? <span className="spinner" aria-hidden="true" /> : 'ĐĂNG NHẬP'}
+            <button className="al-submit" disabled={busy} aria-busy={busy}>
+              {busy ? <span className="spinner" aria-hidden="true" /> : <Icon icon={LogIn} size={20} />}
+              {busy ? 'Đang đăng nhập…' : 'Đăng nhập'}
             </button>
           </form>
 
-          {DEV && (
-            <div className="al-quick">
-              <p className="al-quick-label">Vào nhanh</p>
-              <div className="al-quick-grid">
-                {DEMO.map((d) => (
-                  <button key={d.username} className="al-quick-card" disabled={busy !== null}
-                    onClick={() => signIn(d.username, d.password, d.username)}>
-                    <span className="al-quick-role">{d.label}</span>
-                    <span className="al-quick-user">
-                      {busy === d.username ? <span className="spinner" aria-hidden="true" /> : d.username}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <p className="al-foot">Quên mật khẩu? Liên hệ quản lý chi nhánh để đặt lại.</p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

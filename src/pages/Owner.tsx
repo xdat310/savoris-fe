@@ -1,4 +1,4 @@
-import { Copy, KeyRound, Plus, Power, RefreshCw, Upload, UserMinus } from 'lucide-react'
+import { Banknote, CheckCircle2, Copy, Flame, KeyRound, Plus, Power, ReceiptText, RefreshCw, Upload, UserMinus, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiError, del, get, post, put, upload } from '../api/client'
 import type {
@@ -9,7 +9,11 @@ import { useAuth } from '../auth'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { Chip, LoadState, loadColor } from '../components/State'
 import { useToast } from '../components/Toast'
-import { dateTime, money, time } from '../lib/format'
+import { TabList } from '../components/ui/TabList'
+import { Icon } from '../components/ui/Icon'
+import { RowMenu } from '../components/ui/RowMenu'
+import { confirmDialog, promptDialog } from '../components/ui/Dialog'
+import { EMPTY, compactMoney, dateTime, money, number, phone, time } from '../lib/format'
 import { useData } from '../lib/useData'
 
 type Tab = 'overview' | 'manage' | 'logs'
@@ -25,7 +29,7 @@ export function Owner() {
           <p>Mọi chi nhánh trên một màn hình.</p>
         </div>
       </div>
-      <div className="tabs" role="tablist">
+      <TabList label="Mục quản trị chuỗi">
         {([
           ['overview', 'Tổng quan'],
           ['manage',   'Quản lý'],
@@ -33,7 +37,7 @@ export function Owner() {
         ] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
-      </div>
+      </TabList>
       {tab === 'overview' && <Dashboard />}
       {tab === 'manage'   && <Manage />}
       {tab === 'logs'     && <AuditLogs />}
@@ -43,48 +47,49 @@ export function Owner() {
 
 // ---------------------------------------------------------------- dashboard helpers
 
-function cmpMoney(v: number) {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000) return `${Math.round(v / 1_000)}k`
-  return String(v)
-}
+type Tone = 'accent' | 'info' | 'warning' | 'success' | 'danger'
 
-function MetricCard({ label, value, sub, accent, warn }: {
-  label: string; value: string; sub?: string; accent?: boolean; warn?: boolean
+function MetricCard({ label, value, sub, icon, tone = 'accent', warn }: {
+  label: string; value: string; sub?: string; icon: LucideIcon; tone?: Tone; warn?: boolean
 }) {
   return (
-    <div className="panel" style={{ padding: '18px 22px' }}>
-      <div className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
-      <div className="num" style={{
-        fontSize: accent ? 28 : 34, fontWeight: 700,
-        color: accent ? 'var(--accent)' : warn ? 'var(--red-ink)' : 'var(--ink)',
-      }}>{value}</div>
-      {sub && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{sub}</div>}
+    <div className={`panel stat stat--${warn ? 'danger' : tone}`}>
+      <div className="stat-top">
+        <span className="stat-label">{label}</span>
+        <span className="stat-icon"><Icon icon={icon} size={18} /></span>
+      </div>
+      <div className="stat-value">{value}</div>
+      {sub && <div className="stat-sub">{sub}</div>}
     </div>
   )
 }
 
-function BarChart({ bars, formatVal }: {
-  bars: { label: string; value: number; color: string }[];
-  formatVal: (v: number) => string;
+/** Bars drawn with token colours; values on top in tabular figures, a faint grid behind. */
+function BarChart({ bars, formatVal, tone, label }: {
+  bars: { label: string; value: number }[]
+  formatVal: (v: number) => string
+  tone: Tone
+  label: string
 }) {
-  if (bars.length === 0) return <span className="muted" style={{ fontSize: 13 }}>Chưa có dữ liệu</span>
+  if (bars.length === 0) return <span className="stat-sub">Chưa có dữ liệu</span>
   const max = Math.max(...bars.map(b => b.value), 1)
-  const H = 100
-  const BW = 44
-  const GAP = 18
+  const H = 120
+  const BW = 40
+  const GAP = 16
   const W = bars.length * (BW + GAP) - GAP
   return (
-    <svg viewBox={`-1 -16 ${W + 2} ${H + 36}`} style={{ width: '100%', overflow: 'visible' }}>
+    <svg className={`chart chart--${tone}`} viewBox={`-1 -18 ${W + 2} ${H + 40}`} role="img" aria-label={label}>
+      {[0.25, 0.5, 0.75, 1].map((f) => <line key={f} className="chart-grid" x1={0} x2={W} y1={H - f * H} y2={H - f * H} />)}
       {bars.map((b, i) => {
         const bh = Math.max(3, (b.value / max) * H)
         const x = i * (BW + GAP)
         const y = H - bh
         return (
           <g key={i}>
-            <rect x={x} y={y} width={BW} height={bh} rx={3} fill={b.color} opacity={0.82} />
-            <text x={x + BW / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="#A8A4A0">{formatVal(b.value)}</text>
-            <text x={x + BW / 2} y={H + 14} textAnchor="middle" fontSize="10" fill="#686460">{b.label}</text>
+            <title>{`${b.label}: ${formatVal(b.value)}`}</title>
+            <rect className="chart-bar" x={x} y={y} width={BW} height={bh} rx={6} />
+            <text className="chart-value" x={x + BW / 2} y={y - 6} textAnchor="middle">{formatVal(b.value)}</text>
+            <text className="chart-label" x={x + BW / 2} y={H + 18} textAnchor="middle">{b.label}</text>
           </g>
         )
       })}
@@ -94,8 +99,8 @@ function BarChart({ bars, formatVal }: {
 
 function ChartPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="panel panel-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)' }}>{title}</div>
+    <div className="panel panel-pad chart-panel">
+      <div className="stat-label">{title}</div>
       {children}
     </div>
   )
@@ -111,38 +116,41 @@ function Dashboard() {
   const branches = d.branches ?? []
   const overloaded = d.overloadedBranches ?? 0
 
-  const revBars  = branches.map(b => ({ label: b.code ?? '?', value: b.revenueToday       ?? 0, color: '#2EC4BE' }))
-  const doneBars = branches.map(b => ({ label: b.code ?? '?', value: b.completedOrdersToday ?? 0, color: '#6a9de8' }))
-  const openBars = branches.map(b => ({ label: b.code ?? '?', value: b.openOrders           ?? 0, color: '#e8a030' }))
+  const revBars  = branches.map(b => ({ label: b.code ?? '?', value: b.revenueToday         ?? 0 }))
+  const doneBars = branches.map(b => ({ label: b.code ?? '?', value: b.completedOrdersToday ?? 0 }))
+  const openBars = branches.map(b => ({ label: b.code ?? '?', value: b.openOrders           ?? 0 }))
+  const count = (v?: number) => number(v)
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
-        <MetricCard label="Doanh thu hôm nay" value={money(d.revenueToday)} sub="(đã trừ hoàn tiền)" accent />
-        <MetricCard label="Đơn hoàn tất" value={String(d.completedOrdersToday)} />
-        <MetricCard label="Đơn đang mở" value={String(d.openOrders)} />
+    <div style={{ display: 'grid', gap: 'var(--space-6)' }}>
+      <div className="stat-grid">
+        <MetricCard label="Doanh thu hôm nay" icon={Banknote} value={money(d.revenueToday)} sub="Đã trừ hoàn tiền" tone="accent" />
+        <MetricCard label="Đơn hoàn tất" icon={CheckCircle2} value={count(d.completedOrdersToday)} sub="Trong ngày, toàn chuỗi" tone="success" />
+        <MetricCard label="Đơn đang mở" icon={ReceiptText} value={count(d.openOrders)} sub="Đang phục vụ hoặc chờ" tone="info" />
         <MetricCard
           label="Bếp quá tải"
-          value={String(overloaded)}
-          sub={overloaded === 0 ? 'Tất cả bình thường' : `${overloaded} chi nhánh`}
+          icon={Flame}
+          value={count(overloaded)}
+          sub={overloaded === 0 ? 'Tất cả bình thường' : `${overloaded} chi nhánh cần hỗ trợ`}
+          tone="warning"
           warn={overloaded > 0}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-        <ChartPanel title="Doanh thu (hôm nay)">
-          <BarChart bars={revBars} formatVal={cmpMoney} />
+      <div className="chart-grid-wrap">
+        <ChartPanel title="Doanh thu hôm nay theo chi nhánh">
+          <BarChart bars={revBars} formatVal={compactMoney} tone="accent" label="Doanh thu hôm nay theo chi nhánh" />
         </ChartPanel>
-        <ChartPanel title="Đơn hoàn tất (hôm nay)">
-          <BarChart bars={doneBars} formatVal={String} />
+        <ChartPanel title="Đơn hoàn tất hôm nay">
+          <BarChart bars={doneBars} formatVal={count} tone="success" label="Đơn hoàn tất hôm nay theo chi nhánh" />
         </ChartPanel>
         <ChartPanel title="Đơn đang mở">
-          <BarChart bars={openBars} formatVal={String} />
+          <BarChart bars={openBars} formatVal={count} tone="info" label="Đơn đang mở theo chi nhánh" />
         </ChartPanel>
       </div>
 
-      <p className="muted" style={{ fontSize: 12, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
-        <RefreshCw size={11} aria-hidden="true" />
+      <p className="stat-sub" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <Icon icon={RefreshCw} size="sm" />
         Cập nhật lúc {time(d.generatedAt)} · tự làm mới mỗi 15 giây
       </p>
     </div>
@@ -199,7 +207,7 @@ function BankTransfer() {
     <div className="panel panel-pad transfer-setting">
       <div>
         <h2 style={{ margin: 0 }}>Tài khoản nhận chuyển khoản</h2>
-        <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }}>
+        <p className="muted" style={{ margin: '6px 0 0', fontSize: 'var(--fs-14)' }}>
           Mỗi đơn mang về sẽ có mã QR riêng, điền sẵn số tiền và nội dung là mã đơn: khách chỉ cần quét và bấm chuyển.
         </p>
       </div>
@@ -225,7 +233,7 @@ function BankTransfer() {
           </button>
           {saved && (
             <button type="button" className="btn btn-danger" disabled={busy}
-              onClick={() => window.confirm('Bỏ tài khoản? Khách sẽ thấy ảnh QR cố định bên dưới, nếu có.') && save({ bank: '', accountNumber: '', accountName: '' }, 'Đã bỏ tài khoản')}>
+              onClick={async () => (await confirmDialog({ title: 'Bỏ tài khoản nhận tiền?', message: 'Khách sẽ thấy ảnh QR cố định bên dưới, nếu có.', confirmLabel: 'Bỏ tài khoản', danger: true })) && save({ bank: '', accountNumber: '', accountName: '' }, 'Đã bỏ tài khoản')}>
               Bỏ tài khoản
             </button>
           )}
@@ -238,7 +246,7 @@ function BankTransfer() {
             ? <span className="muted">Không tạo được mã QR: kiểm tra lại tên ngân hàng.</span>
             : <img src={`https://qr.sepay.vn/img?acc=${encodeURIComponent(s!.accountNumber!)}&bank=${encodeURIComponent(s!.bank!)}&template=compact`}
                 alt="Mã QR mẫu của tài khoản" onError={() => setPreviewBroken(true)} />}
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Mã mẫu chưa có số tiền. Quét thử bằng app ngân hàng để chắc chắn đúng tên chủ tài khoản.</p>
+          <p className="muted" style={{ margin: 0, fontSize: 'var(--fs-13)' }}>Mã mẫu chưa có số tiền. Quét thử bằng app ngân hàng để chắc chắn đúng tên chủ tài khoản.</p>
         </div>
       )}
 
@@ -316,7 +324,7 @@ function TransferQr() {
     <div className="panel panel-pad transfer-setting">
       <div>
         <h2 style={{ margin: 0 }}>Ảnh mã QR cố định</h2>
-        <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }}>
+        <p className="muted" style={{ margin: '6px 0 0', fontSize: 'var(--fs-14)' }}>
           Chỉ dùng khi chưa nhập tài khoản ở trên. Khách thấy ảnh này kèm số tiền và nội dung là mã đơn, tự gõ số tiền khi chuyển.
           Thu ngân thấy tiền về thì bấm xác nhận, bếp mới làm.
         </p>
@@ -336,10 +344,10 @@ function TransferQr() {
             <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy}
               onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
           </label>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Ảnh PNG, JPG hoặc WebP, tối đa 2MB. Ảnh chụp màn hình mã QR từ app ngân hàng là được.</p>
+          <p className="muted" style={{ margin: 0, fontSize: 'var(--fs-13)' }}>Ảnh PNG, JPG hoặc WebP, tối đa 2MB. Ảnh chụp màn hình mã QR từ app ngân hàng là được.</p>
           {current && (
             <button type="button" className="btn btn-sm btn-danger" disabled={busy}
-              onClick={() => window.confirm('Tắt chuyển khoản? Khách mang về sẽ chỉ trả được tiền mặt.') && act(() => put('/settings/transfer-qr', { url: '' }), 'Đã tắt chuyển khoản')}>
+              onClick={async () => (await confirmDialog({ title: 'Tắt chuyển khoản?', message: 'Khách mang về sẽ chỉ trả được tiền mặt.', confirmLabel: 'Tắt chuyển khoản', danger: true })) && act(() => put('/settings/transfer-qr', { url: '' }), 'Đã tắt chuyển khoản')}>
               Tắt chuyển khoản
             </button>
           )}
@@ -387,8 +395,8 @@ function Branches() {
     }, 'Đã tạo chi nhánh')
   }
 
-  function close(b: BranchResponse) {
-    if (!window.confirm(`Đóng cửa ${b.name}? Thao tác này đánh dấu chi nhánh KHÔNG hoạt động.`)) return
+  async function close(b: BranchResponse) {
+    if (!(await confirmDialog({ title: `Đóng cửa ${b.name}?`, message: 'Chi nhánh sẽ được đánh dấu không hoạt động.', confirmLabel: 'Đóng cửa', danger: true }))) return
     act(async () => {
       await del(`/branches/${b.id}`)
       await list.reload()
@@ -418,7 +426,7 @@ function Branches() {
               <div style={{ padding: '14px 18px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
                   <span className="bcode">{b.code}</span>
-                  <strong style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</strong>
+                  <strong style={{ fontSize: 'var(--fs-14)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</strong>
                   {b.status === 'ACTIVE' ? <Chip tone="ok">Hoạt động</Chip>
                     : b.status === 'CLOSED' ? <Chip tone="bad">Đóng cửa</Chip>
                     : <Chip tone="neutral">Tạm ngưng</Chip>}
@@ -438,16 +446,16 @@ function Branches() {
               {m && (
                 <div style={{ padding: '10px 18px 14px', borderTop: '1px solid var(--rule)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px 8px' }}>
                   <div>
-                    <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Doanh thu hôm nay</div>
-                    <div className="chalk num" style={{ fontSize: 18, color: 'var(--accent)', fontWeight: 700 }}>{money(m.revenueToday)}</div>
+                    <div className="muted" style={{ fontSize: 'var(--fs-12)', marginBottom: 2 }}>Doanh thu hôm nay</div>
+                    <div className="chalk num" style={{ fontSize: 'var(--fs-16)', color: 'var(--accent)', fontWeight: 'var(--fw-semibold)' }}>{money(m.revenueToday)}</div>
                   </div>
                   <div>
-                    <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Đơn đang mở</div>
-                    <div className="num" style={{ fontSize: 22, fontWeight: 700 }}>{m.openOrders}</div>
+                    <div className="muted" style={{ fontSize: 'var(--fs-12)', marginBottom: 2 }}>Đơn đang mở</div>
+                    <div className="num" style={{ fontSize: 'var(--fs-20)', fontWeight: 'var(--fw-semibold)' }}>{m.openOrders}</div>
                   </div>
                   <div>
-                    <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Hoàn tất</div>
-                    <div className="num" style={{ fontSize: 22, fontWeight: 700 }}>{m.completedOrdersToday}</div>
+                    <div className="muted" style={{ fontSize: 'var(--fs-12)', marginBottom: 2 }}>Hoàn tất</div>
+                    <div className="num" style={{ fontSize: 'var(--fs-20)', fontWeight: 'var(--fw-semibold)' }}>{m.completedOrdersToday}</div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -455,7 +463,7 @@ function Branches() {
                       <div style={{ flex: 1, height: 5, background: 'var(--rule)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ height: '100%', background: loadColor(m.kitchen?.status), transform: `scaleX(${Math.min(100, m.kitchen?.loadPercent ?? 0) / 100})`, transformOrigin: 'left' }} />
                       </div>
-                      <span className="num muted" style={{ fontSize: 12 }}>{m.kitchen?.loadPercent ?? 0}%</span>
+                      <span className="num muted" style={{ fontSize: 'var(--fs-12)' }}>{m.kitchen?.loadPercent ?? 0}%</span>
                     </div>
                   </div>
                 </div>
@@ -487,7 +495,7 @@ function Branches() {
       </div>
 
       <form className="panel panel-pad" onSubmit={create} style={{ display: 'grid', gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17 }}>Thêm chi nhánh mới</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--fs-16)' }}>Thêm chi nhánh mới</h2>
         <div className="grid-form">
           <label className="field">Mã CN (VD: HK)<input className="input" required minLength={2} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></label>
           <label className="field">Tên chi nhánh<input className="input" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
@@ -507,7 +515,7 @@ function Manage() {
   const [sub, setSub] = useState<ManageSub>('accounts')
   return (
     <div style={{ display: 'grid', gap: 18 }}>
-      <div className="tabs" role="tablist" style={{ marginBottom: 0 }}>
+      <TabList label="Mục quản lý" style={{ marginBottom: 0 }}>
         {([
           ['accounts', 'Tài khoản QL'],
           ['transfer', 'Chuyển khoản'],
@@ -515,7 +523,7 @@ function Manage() {
         ] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={sub === id} onClick={() => setSub(id)}>{label}</button>
         ))}
-      </div>
+      </TabList>
       {sub === 'accounts' && <ManagerAccounts />}
       {sub === 'transfer' && <div className="transfer-tab"><BankTransfer /><TransferQr /></div>}
       {sub === 'branches' && <Branches />}
@@ -556,14 +564,14 @@ function ManagerAccounts() {
     }, 'Đã tạo tài khoản Quản lý')
   }
 
-  function resetPw(s: StaffDetailResponse) {
-    const pw = window.prompt(`Mật khẩu mới cho ${s.fullName} (ít nhất 5 ký tự):`)
+  async function resetPw(s: StaffDetailResponse) {
+    const pw = await promptDialog({ title: `Đặt lại mật khẩu cho ${s.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, confirmLabel: 'Đặt lại' })
     if (!pw) return
     act(() => put(`/staff/${s.id}/password`, { newPassword: pw }), `Đã đặt lại mật khẩu cho ${s.fullName}`)
   }
 
-  function revoke(s: StaffDetailResponse) {
-    if (!window.confirm(`Khoá tài khoản ${s.fullName}? Họ sẽ không đăng nhập được nữa.`)) return
+  async function revoke(s: StaffDetailResponse) {
+    if (!(await confirmDialog({ title: `Khoá tài khoản ${s.fullName}?`, message: 'Họ sẽ không đăng nhập được nữa.', confirmLabel: 'Khoá tài khoản', danger: true }))) return
     act(async () => {
       await del(`/staff/${s.id}`)
       await staff.reload()
@@ -577,7 +585,7 @@ function ManagerAccounts() {
       {error && <ErrorNotice message={error} />}
       <div className="row" style={{ alignItems: 'center', gap: 12 }}>
         <label className="field" style={{ margin: 0 }}>
-          <span className="muted" style={{ fontSize: 13 }}>Chi nhánh</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Chi nhánh</span>
           <select className="select" value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value))}>
             {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -587,25 +595,23 @@ function ManagerAccounts() {
         <div className="panel-head"><h2>Quản lý chi nhánh</h2></div>
         {staff.loading ? <Loading /> : managers.length === 0 ? <Empty title="Chi nhánh chưa có Quản lý" /> : (
           <table className="data">
-            <thead><tr><th>Họ tên</th><th>Tài khoản</th><th>Điện thoại</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Họ tên</th><th>Tài khoản</th><th>Điện thoại</th><th>Trạng thái</th><th className="actions"><span className="sr-only">Thao tác</span></th></tr></thead>
             <tbody>
               {managers.map((s) => (
                 <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>{s.fullName}</td>
-                  <td className="muted">{s.username}</td>
-                  <td className="num">{s.phone}</td>
+                  <td className="cell-strong">{s.fullName}</td>
+                  <td className="cell-muted">{s.username}</td>
+                  <td className={s.phone ? undefined : 'empty-val'}>{phone(s.phone)}</td>
                   <td>
                     {s.status === 'ACTIVE' ? <Chip tone="ok">Hoạt động</Chip>
                       : s.status === 'RESIGNED' ? <Chip tone="bad">Đã khoá</Chip>
                       : <Chip tone="neutral">{s.status}</Chip>}
                   </td>
-                  <td className="right">
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      <button className="btn btn-sm" onClick={() => resetPw(s)}><KeyRound size={14} /> Đặt lại mật khẩu</button>
-                      {s.status === 'ACTIVE' && (
-                        <button className="btn btn-sm btn-danger" onClick={() => revoke(s)}><UserMinus size={14} /> Khoá tài khoản</button>
-                      )}
-                    </div>
+                  <td className="actions">
+                    <RowMenu label={`Thao tác cho ${s.fullName}`} items={[
+                      { label: 'Đặt lại mật khẩu', icon: KeyRound, onSelect: () => resetPw(s) },
+                      ...(s.status === 'ACTIVE' ? [{ label: 'Khoá tài khoản', icon: UserMinus, danger: true, onSelect: () => revoke(s) }] : []),
+                    ]} />
                   </td>
                 </tr>
               ))}
@@ -614,7 +620,7 @@ function ManagerAccounts() {
         )}
       </div>
       <form className="panel panel-pad" onSubmit={hire} style={{ display: 'grid', gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17 }}>Cấp tài khoản Quản lý mới</h2>
+        <h2 style={{ margin: 0, fontSize: 'var(--fs-16)' }}>Cấp tài khoản Quản lý mới</h2>
         <div className="grid-form">
           <label className="field">Họ tên<input className="input" required value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></label>
           <label className="field">Tên đăng nhập<input className="input" required minLength={3} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
@@ -644,14 +650,14 @@ function AuditLogs() {
     <div style={{ display: 'grid', gap: 18 }}>
       <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
         <label className="field" style={{ margin: 0 }}>
-          <span className="muted" style={{ fontSize: 13 }}>Chi nhánh</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Chi nhánh</span>
           <select className="select" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
             <option value="">Tất cả</option>
             {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
         <label className="field" style={{ margin: 0 }}>
-          <span className="muted" style={{ fontSize: 13 }}>Hành động</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Hành động</span>
           <select className="select" value={action} onChange={(e) => setAction(e.target.value)}>
             <option value="">Tất cả</option>
             {['CREATE', 'UPDATE', 'DELETE', 'RESIGN', 'PAYMENT', 'VOID_REQUEST', 'VOID_RESOLVE'].map((a) => (
@@ -660,7 +666,7 @@ function AuditLogs() {
           </select>
         </label>
         <label className="field" style={{ margin: 0 }}>
-          <span className="muted" style={{ fontSize: 13 }}>Loại đối tượng</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Loại đối tượng</span>
           <select className="select" value={entityType} onChange={(e) => setEntityType(e.target.value)}>
             <option value="">Tất cả</option>
             {['STAFF', 'ORDER', 'ORDER_ITEM', 'BRANCH', 'PAYMENT'].map((t) => (
@@ -670,7 +676,7 @@ function AuditLogs() {
         </label>
       </div>
       <div className="panel">
-        <div className="panel-head"><h2>Nhật ký hoạt động</h2><span className="muted" style={{ fontSize: 13 }}>100 mục gần nhất</span></div>
+        <div className="panel-head"><h2>Nhật ký hoạt động</h2><span className="muted" style={{ fontSize: 'var(--fs-13)' }}>100 mục gần nhất</span></div>
         {logs.loading ? <Loading /> : (logs.data?.length ?? 0) === 0 ? <Empty title="Chưa có nhật ký" /> : (
           <table className="data">
             <thead><tr><th>Thời gian</th><th>Hành động</th><th>Đối tượng</th><th>ID</th><th>Nhân viên</th><th>Chi nhánh</th><th>Giá trị mới</th></tr></thead>
@@ -681,9 +687,9 @@ function AuditLogs() {
                   <td><span className="sys-role-badge">{l.action}</span></td>
                   <td className="muted">{l.entityType}</td>
                   <td className="num muted">{l.entityId}</td>
-                  <td className="num">{l.staffId ?? '—'}</td>
-                  <td className="num">{l.branchId ? branches.find((b) => b.id === l.branchId)?.name ?? l.branchId : '—'}</td>
-                  <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }} className="muted">
+                  <td className={l.staffId ? undefined : 'empty-val'}>{l.staffId ?? EMPTY}</td>
+                  <td className={l.branchId ? undefined : 'empty-val'}>{l.branchId ? branches.find((b) => b.id === l.branchId)?.name ?? l.branchId : EMPTY}</td>
+                  <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--fs-12)' }} className="muted">
                     {l.newValue}
                   </td>
                 </tr>

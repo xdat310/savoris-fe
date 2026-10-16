@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Flame, Gauge, HandPlatter, Layers, ShoppingBag, TriangleAlert, UtensilsCrossed, Zap } from 'lucide-react'
+import { AlertTriangle, Banknote, Check, CheckCircle2, Clock, Flame, Gauge, HandPlatter, Layers, RotateCcw, ShoppingBag, TriangleAlert, UtensilsCrossed, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, get, put } from '../api/client'
 import type { BranchLoadResponse, BranchMenuItemResponse, KitchenTicketResponse, OrderResponse, TableResponse } from '../api/types'
@@ -6,11 +6,13 @@ import { useAuth } from '../auth'
 import { Strikable } from '../components/ChalkStrike'
 import { DishThumb } from '../components/DishThumb'
 import { useToast } from '../components/Toast'
-import { ORDER_TYPE_LABEL } from '../lib/format'
+import { ORDER_TYPE_LABEL, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { Counter } from '../components/Counter'
+import { Icon } from '../components/ui/Icon'
 
-const LATE_MINUTES  = 15
+const WARN_MINUTES  = 8    // wait timer turns amber
+const LATE_MINUTES  = 15   // wait timer turns red
 const PEAK_THRESHOLD = 80   // % load that triggers PEAK MODE
 
 const LOAD_STATE = {
@@ -149,7 +151,7 @@ export function Kitchen() {
       {/* ── PEAK MODE banner ── */}
       {isPeak && (
         <div className="kds-peak-banner" role="alert">
-          <Zap size={16} aria-hidden="true" />
+          <Icon icon={Zap} />
           <strong>PEAK MODE</strong>
           <span>Bếp đang cao tải ({loadPct}%). Ước tính thời gian chờ tăng thêm ~{waitExtra} phút.</span>
           {load.data?.status === 'OVERLOADED' && <span className="kds-peak-stop">Đã tạm ngưng đơn mang về.</span>}
@@ -159,16 +161,16 @@ export function Kitchen() {
       <header className="kds-head">
         <div className="kds-head-left">
           <h1>Bếp · {branch?.name ?? ''}</h1>
-          {queue.error && <div style={{ color: '#ff9db3', fontSize: 14 }}>{queue.error}</div>}
+          {queue.error && <div className="notice notice-bad" role="alert">{queue.error}</div>}
 
           {/* ── Quick filter tabs ── */}
-          <div className="kds-filter">
-            {FILTERS.map(({ key, label, Icon }) => (
+          <div className="seg kds-filter" role="group" aria-label="Lọc theo loại đơn">
+            {FILTERS.map(({ key, label, Icon: Glyph }) => (
               <button key={key}
-                className={`kds-filter-btn${filter === key ? ' kds-filter-btn--on' : ''}`}
+                aria-pressed={filter === key}
                 onClick={() => setFilter(key)}
               >
-                <Icon size={13} aria-hidden="true" />
+                <Icon icon={Glyph} />
                 {label}
                 {key !== 'ALL' && (
                   <span className="kds-filter-count">
@@ -182,7 +184,7 @@ export function Kitchen() {
 
         {load.data && (
           <div className="load">
-            <span className={`kds-state ${state.cls}`}><state.Icon size={16} aria-hidden="true" />{state.label}</span>
+            <span className={`kds-state ${state.cls}`}><Icon icon={state.Icon} />{state.label}</span>
             <div className="load-meter" role="meter" aria-valuenow={loadPct} aria-valuemin={0} aria-valuemax={100} aria-label="Tải bếp">
               <span style={{
                 transform: `scaleX(${Math.min(100, loadPct) / 100})`,
@@ -199,25 +201,24 @@ export function Kitchen() {
         {/* Smart Batch toggle — shown to kitchen operators */}
         {cooks && (
           <button
-            className={`kds-batch-btn${batchMode ? ' kds-batch-btn--on' : ''}`}
+            className={`btn btn-lg${batchMode ? ' btn-primary' : ''}`}
+            aria-pressed={batchMode}
             onClick={() => setBatchMode((v) => !v)}
             title="Gộp các món trùng nhau từ nhiều bàn thành 1 dòng để nấu hàng loạt"
           >
-            <Layers size={16} aria-hidden="true" />
-            {batchMode ? 'Đang gộp món' : '⚡ Gộp Món'}
+            <Icon icon={Layers} size={20} />
+            {batchMode ? 'Đang gộp món' : 'Gộp món'}
           </button>
         )}
 
-        <div className="clock" aria-label="Giờ hiện tại">
-          {now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-        </div>
+        <div className="clock" aria-label="Giờ hiện tại">{time(now)}</div>
       </header>
 
       {/* ── Void queue panel ── */}
       {(voids.data?.length ?? 0) > 0 && (
         <div className="kds-void-panel" role="region" aria-label="Yêu cầu hủy món">
           <div className="kds-void-head">
-            <TriangleAlert size={16} aria-hidden="true" />
+            <Icon icon={TriangleAlert} />
             <span>Yêu cầu hủy món ({voids.data!.length})</span>
             <span className="kds-void-sub">Bếp xem xét và quyết định xử lý</span>
           </div>
@@ -239,17 +240,17 @@ export function Kitchen() {
                 </div>
                 {cooks && (
                   <div className="kds-void-actions">
-                    <button className="btn btn-sm kds-void-accept" disabled={busyId === t.itemId}
+                    <button className="btn btn-lg btn-danger" disabled={busyId === t.itemId}
                       onClick={() => resolveVoid(t, 'ACCEPT')}>
-                      ✓ Chấp nhận hủy
+                      <Icon icon={Check} size={20} /> Chấp nhận hủy
                     </button>
-                    <button className="btn btn-sm kds-void-remake" disabled={busyId === t.itemId}
+                    <button className="btn btn-lg" disabled={busyId === t.itemId}
                       onClick={() => resolveVoid(t, 'REMAKE')}>
-                      ↻ Làm lại miễn phí
+                      <Icon icon={RotateCcw} size={20} /> Làm lại miễn phí
                     </button>
-                    <button className="btn btn-sm kds-void-charge" disabled={busyId === t.itemId}
+                    <button className="btn btn-lg" disabled={busyId === t.itemId}
                       onClick={() => resolveVoid(t, 'CHARGE')}>
-                      $ Khách vẫn trả
+                      <Icon icon={Banknote} size={20} /> Khách vẫn trả
                     </button>
                   </div>
                 )}
@@ -280,9 +281,9 @@ export function Kitchen() {
             pending.map((t, i) => (
               <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)} next={i === 0}>
                 {cooks && (
-                  <button className={`btn btn-block ${i === 0 ? 'btn-accent' : 'btn-ghost-chalk'}`}
-                    disabled={busyId === t.itemId} onClick={() => move(t, 'start')}>
-                    Nhận nấu
+                  <button className={`btn btn-xl btn-block${i === 0 ? ' btn-primary' : ''}`}
+                    disabled={busyId === t.itemId} data-loading={busyId === t.itemId || undefined} onClick={() => move(t, 'start')}>
+                    <Icon icon={Flame} size="touch" /> Nhận nấu
                   </button>
                 )}
               </Ticket>
@@ -294,9 +295,9 @@ export function Kitchen() {
           {cooking.map((t, i) => (
             <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)} next={i === 0} cooking>
               {cooks && (
-                <button className={`btn btn-block ${i === 0 ? 'btn-chalk-blue' : 'btn-ghost-chalk'}`}
-                  disabled={busyId === t.itemId} onClick={() => move(t, 'ready')}>
-                  Hoàn thành
+                <button className={`btn btn-xl btn-block${i === 0 ? ' btn-primary' : ''}`}
+                  disabled={busyId === t.itemId} data-loading={busyId === t.itemId || undefined} onClick={() => move(t, 'ready')}>
+                  <Icon icon={Check} size="touch" /> Hoàn thành
                 </button>
               )}
             </Ticket>
@@ -306,9 +307,9 @@ export function Kitchen() {
         <Column title="Xong · chờ bưng" count={ready.length} Icon={HandPlatter}>
           {ready.map((t) => (
             <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)}>
-              <button className="btn btn-ghost-chalk btn-block"
-                disabled={busyId === t.itemId} onClick={() => move(t, 'served')}>
-                Đã bưng ra
+              <button className="btn btn-xl btn-block"
+                disabled={busyId === t.itemId} data-loading={busyId === t.itemId || undefined} onClick={() => move(t, 'served')}>
+                <Icon icon={HandPlatter} size="touch" /> Đã bưng ra
               </button>
             </Ticket>
           ))}
@@ -331,14 +332,16 @@ export function Kitchen() {
   )
 }
 
-function Column({ title, count, Icon, children }: {
+const ColIcon = Icon
+
+function Column({ title, count, Icon: Glyph, children }: {
   title: string; count: number; Icon: typeof Flame; children: React.ReactNode
 }) {
   const empty = Array.isArray(children) ? children.length === 0 : !children
   return (
     <section className="kds-col" aria-label={title}>
       <h2>
-        <Icon size={18} aria-hidden="true" />
+        <ColIcon icon={Glyph} />
         {title}
         <span className={`count${count === 0 ? ' zero' : ''}`}>
           <Counter value={count} label={`${count} món`} />
@@ -353,18 +356,21 @@ function Ticket({ t, image, tableName, next, cooking, children }: {
   t: KitchenTicketResponse; image?: string; tableName: string
   next?: boolean; cooking?: boolean; children: React.ReactNode
 }) {
-  const late    = (t.waitingMinutes ?? 0) >= LATE_MINUTES && t.status !== 'READY'
+  const waiting  = t.waitingMinutes ?? 0
+  const isReady  = t.status === 'READY'
+  const late     = waiting >= LATE_MINUTES && !isReady
+  const warn     = !late && waiting >= WARN_MINUTES && !isReady
   const isDineIn = t.orderType === 'DINE_IN'
   const isTake   = t.orderType === 'TAKEAWAY' || t.orderType === 'DELIVERY'
 
   return (
-    <article className={['kticket', late ? 'late' : '', next ? 'next' : '', cooking ? 'cooking' : '',
+    <article className={['kticket', late ? 'late' : '', warn ? 'wait-warn' : '', isReady ? 'ready' : '', next ? 'next' : '', cooking ? 'cooking' : '',
       isDineIn ? 'kticket--dine' : '', isTake ? 'kticket--take' : ''].filter(Boolean).join(' ')}>
 
       <div className={`kticket-badge${isDineIn ? ' kticket-badge--dine' : isTake ? ' kticket-badge--take' : ''}`}>
         {isDineIn
-          ? <><UtensilsCrossed size={11} aria-hidden="true" /> Bàn {tableName}</>
-          : <><ShoppingBag size={11} aria-hidden="true" /> {ORDER_TYPE_LABEL[t.orderType!]} #{t.orderCode?.split('-').pop()}</>}
+          ? <><Icon icon={UtensilsCrossed} /> Bàn {tableName}</>
+          : <><Icon icon={ShoppingBag} /> {ORDER_TYPE_LABEL[t.orderType!]} #{t.orderCode?.split('-').pop()}</>}
       </div>
 
       <div className="ktop">
@@ -378,10 +384,10 @@ function Ticket({ t, image, tableName, next, cooking, children }: {
       {t.note && <div className="knote">{t.note}</div>}
 
       <div className="kmeta">
-        <span>{t.orderCode?.split('-').pop()}</span>
-        <span className="kwait">
-          {late && <AlertTriangle size={14} aria-hidden="true" style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />}
-          {t.waitingMinutes} phút
+        <span className="num">Đơn {t.orderCode?.split('-').pop()}</span>
+        <span className="kwait" aria-label={`Chờ ${waiting} phút${late ? ', trễ' : ''}`}>
+          <Icon icon={late ? AlertTriangle : Clock} />
+          {waiting} phút
         </span>
       </div>
       {children}

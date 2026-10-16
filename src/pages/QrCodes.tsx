@@ -1,4 +1,5 @@
 import { useAuth } from '../auth'
+import { TabList } from '../components/ui/TabList'
 import { TableQr } from './TableQr'
 
 // Every table of every branch has its own QR: scanning it tells the order which branch and which table it is for
@@ -15,13 +16,13 @@ export function QrCodes() {
         </div>
       </div>
       {!ownBranch && (
-        <div className="tabs no-print" role="tablist" aria-label="Chi nhánh">
+        <TabList className="no-print" label="Chi nhánh">
           {branches.map((b) => (
             <button key={b.id} role="tab" className="tab" aria-selected={b.id === branchId} onClick={() => setBranchId(b.id!)}>
               {b.code}
             </button>
           ))}
-        </div>
+        </TabList>
       )}
       {branchId && <TableQr key={branchId} branchId={branchId} />}
     </div>
