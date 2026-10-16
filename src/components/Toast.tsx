@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { Icon } from './ui/Icon'
 
 interface Toast { id: number; text: string; bad: boolean }
 const ToastContext = createContext<(text: string, bad?: boolean) => void>(() => {})
@@ -17,7 +18,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="toast-stack" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast${t.bad ? ' bad' : ''}`}>
-            {t.bad ? <AlertCircle size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+            <Icon icon={t.bad ? AlertCircle : CheckCircle2} />
             <span>{t.text}</span>
           </div>
         ))}

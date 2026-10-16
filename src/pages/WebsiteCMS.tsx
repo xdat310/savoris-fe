@@ -7,6 +7,8 @@ import {
   type SiteMilestone, type SiteSection,
 } from '../api/site'
 import { useToast } from '../components/Toast'
+import { Loading } from '../components/Feedback'
+import { TabList } from '../components/ui/TabList'
 
 // ── Shared helpers ────────────────────────────────────────────────────────
 
@@ -38,12 +40,13 @@ function SaveBtn({ saving, onSave }: { saving: boolean; onSave: () => void }) {
 function ImgUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
+  const toast = useToast()
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
     setBusy(true)
     try { onChange((await uploadSiteImage(file)).url) }
-    catch { alert('Upload thất bại. Thử lại.') }
+    catch { toast('Tải ảnh lên thất bại. Thử lại.', true) }
     finally { setBusy(false); if (ref.current) ref.current.value = '' }
   }
 
@@ -431,23 +434,25 @@ export function WebsiteCMS() {
   function cfg<T>(key: string): T | undefined { return configs?.[key] as T | undefined }
 
   if (loading) return (
-    <div className="page"><div className="page-head"><h1>Website CMS</h1></div><p className="cms-loading">Đang tải…</p></div>
+    <div className="page"><div className="page-head"><h1>Website CMS</h1></div><div className="panel"><Loading /></div></div>
   )
 
   return (
     <div className="page cms-page">
       <div className="page-head">
-        <h1>Website CMS</h1>
-        <p className="cms-subtitle">Thay đổi phản ánh ngay trên trang web công khai.</p>
+        <div>
+          <h1>Website CMS</h1>
+          <p>Thay đổi phản ánh ngay trên trang web công khai.</p>
+        </div>
       </div>
 
-      <div className="cms-tabs">
+      <TabList label="Phần nội dung website">
         {TABS.map(t => (
-          <button key={t.id} className={`cms-tab${tab===t.id?' cms-tab--on':''}`} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" className="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
-      </div>
+      </TabList>
 
       <div className="cms-tab-body">
         {tab === 'hero'       && <HeroTab       initial={cfg('hero')} />}

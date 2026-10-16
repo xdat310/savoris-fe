@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource/be-vietnam-pro/400.css'
 import '@fontsource/be-vietnam-pro/500.css'
 import '@fontsource/be-vietnam-pro/600.css'
-import '@fontsource/be-vietnam-pro/700.css'
+// No 700 on purpose: the design system uses 400/500/600 only, so any leftover "bold" renders at 600
 // Condensed serif display: variable width (62.5–100%) and weight, with the Vietnamese subset
 import '@fontsource-variable/noto-serif-display/wdth.css'
 // Public site fonts
@@ -20,6 +20,7 @@ import '@fontsource/manrope/500.css'
 import '@fontsource/manrope/600.css'
 import '@fontsource/manrope/700.css'
 import './index.css'
+import './styles/ds.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

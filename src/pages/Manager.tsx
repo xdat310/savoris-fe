@@ -1,4 +1,4 @@
-import { CalendarPlus, KeyRound, Plus, UserMinus } from 'lucide-react'
+import { CalendarPlus, Check, KeyRound, Plus, UserMinus, UsersRound, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiError, del, get, post, put } from '../api/client'
 import type {
@@ -11,7 +11,12 @@ import { DishThumb } from '../components/DishThumb'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { Chip } from '../components/State'
 import { useToast } from '../components/Toast'
-import { ROLE_LABEL, dateTime, isoDate, money, number } from '../lib/format'
+import { TabList } from '../components/ui/TabList'
+import { Avatar, Badge, RoleBadge } from '../components/ui/Badge'
+import { Drawer, confirmDialog, promptDialog } from '../components/ui/Dialog'
+import { Icon } from '../components/ui/Icon'
+import { RowMenu } from '../components/ui/RowMenu'
+import { EMPTY, ROLE_LABEL, date, dateTime, hourly, isoDate, money, number, phone, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { BranchSettings } from './BranchSettings'
 
@@ -29,11 +34,11 @@ export function Manager() {
           <p>Nhân viên, ca làm, menu và cài đặt của chi nhánh.</p>
         </div>
       </div>
-      <div className="tabs" role="tablist">
+      <TabList label="Mục quản lý chi nhánh">
         {([['staff', 'Nhân viên'], ['shifts', 'Ca làm & bảng công'], ['menu', 'Menu chi nhánh'], ['reservations', 'Đặt bàn'], ['branch', 'Chi nhánh']] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
-      </div>
+      </TabList>
       {branchId && tab === 'staff' && <Staff branchId={branchId} />}
       {branchId && tab === 'shifts' && <Shifts branchId={branchId} />}
       {branchId && tab === 'menu' && <BranchMenu branchId={branchId} />}
@@ -71,10 +76,13 @@ function Staff({ branchId }: { branchId: number }) {
   const roles: CreateStaffRequest['role'][] = role === 'ADMIN' ? [...HIREABLE, 'BRANCH_MANAGER'] : HIREABLE
   const blank = { fullName: '', username: '', phone: '', email: '', role: 'CASHIER' as CreateStaffRequest['role'], hourlyRate: '30000', password: '' }
   const [f, setF] = useState(blank)
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  function hire(e: FormEvent) {
+  async function hire(e: FormEvent) {
     e.preventDefault()
-    run(async () => {
+    setSaving(true)
+    const ok = await run(async () => {
       await post('/staff', {
         code: `NV${Date.now() % 1000000}`, fullName: f.fullName.trim(), username: f.username.trim(), email: f.email.trim(),
         phone: f.phone.trim(), role: f.role, branchId, hourlyRate: Number(f.hourlyRate), password: f.password,
@@ -82,16 +90,18 @@ function Staff({ branchId }: { branchId: number }) {
       setF(blank)
       await staff.reload()
     }, 'Đã tạo tài khoản')
+    setSaving(false)
+    if (ok) setAdding(false)
   }
 
-  function resetPassword(s: StaffDetailResponse) {
-    const pw = window.prompt(`Mật khẩu mới cho ${s.fullName} (ít nhất 5 ký tự):`)
+  async function resetPassword(s: StaffDetailResponse) {
+    const pw = await promptDialog({ title: `Đặt lại mật khẩu cho ${s.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, confirmLabel: 'Đặt lại' })
     if (!pw) return
     run(() => put(`/staff/${s.id}/password`, { newPassword: pw }), `Đã đặt lại mật khẩu cho ${s.fullName}`)
   }
 
-  function resign(s: StaffDetailResponse) {
-    if (!window.confirm(`Cho ${s.fullName} nghỉ việc? Tài khoản bị khoá ngay lập tức.`)) return
+  async function resign(s: StaffDetailResponse) {
+    if (!(await confirmDialog({ title: `Cho ${s.fullName} nghỉ việc?`, message: 'Tài khoản bị khoá ngay lập tức và không đăng nhập được nữa.', confirmLabel: 'Nghỉ việc', danger: true }))) return
     run(async () => {
       await del(`/staff/${s.id}`)
       await staff.reload()
@@ -99,25 +109,34 @@ function Staff({ branchId }: { branchId: number }) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 18 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-6)' }}>
       {error && <ErrorNotice message={error} />}
       <div className="panel">
-        {staff.loading ? <Loading /> : (staff.data?.length ?? 0) === 0 ? <Empty title="Chưa có nhân viên" /> : (
+        <div className="panel-head">
+          <div>
+            <h2>Nhân viên</h2>
+            {staff.data && <p>{staff.data.length} người đang làm việc</p>}
+          </div>
+          <button className="btn btn-primary" onClick={() => setAdding(true)}><Icon icon={Plus} /> Thêm nhân viên</button>
+        </div>
+        {staff.loading ? <Loading /> : (staff.data?.length ?? 0) === 0
+          ? <Empty title="Chưa có nhân viên" icon={UsersRound} action={<button className="btn btn-primary" onClick={() => setAdding(true)}><Icon icon={Plus} /> Thêm nhân viên</button>}>Tạo tài khoản đầu tiên cho chi nhánh.</Empty>
+          : (
           <table className="data">
-            <thead><tr><th>Họ tên</th><th>Tài khoản</th><th>Vai trò</th><th>Điện thoại</th><th className="right">Lương giờ</th><th /></tr></thead>
+            <thead><tr><th>Họ tên</th><th>Tài khoản</th><th>Vai trò</th><th>Điện thoại</th><th className="right">Lương giờ</th><th className="actions"><span className="sr-only">Thao tác</span></th></tr></thead>
             <tbody>
               {staff.data!.map((s) => (
                 <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>{s.fullName}</td>
-                  <td className="muted">{s.username}</td>
-                  <td>{ROLE_LABEL[s.role ?? '']}</td>
-                  <td className="num">{s.phone}</td>
-                  <td className="num right">{s.hourlyRate ? money(s.hourlyRate) : '—'}</td>
-                  <td className="right">
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      <button className="btn btn-sm" onClick={() => resetPassword(s)}><KeyRound size={14} aria-hidden="true" /> Đặt lại mật khẩu</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => resign(s)}><UserMinus size={14} aria-hidden="true" /> Nghỉ việc</button>
-                    </div>
+                  <td><span className="with-avatar"><Avatar name={s.fullName} size="sm" /><span className="cell-strong">{s.fullName}</span></span></td>
+                  <td className="cell-muted">{s.username}</td>
+                  <td><RoleBadge role={s.role} /></td>
+                  <td className={s.phone ? 'num' : 'empty-val'}>{phone(s.phone)}</td>
+                  <td className={`right${s.hourlyRate ? '' : ' empty-val'}`}>{hourly(s.hourlyRate || null)}</td>
+                  <td className="actions">
+                    <RowMenu label={`Thao tác cho ${s.fullName}`} items={[
+                      { label: 'Đặt lại mật khẩu', icon: KeyRound, onSelect: () => resetPassword(s) },
+                      { label: 'Nghỉ việc', icon: UserMinus, danger: true, onSelect: () => resign(s) },
+                    ]} />
                   </td>
                 </tr>
               ))}
@@ -125,23 +144,31 @@ function Staff({ branchId }: { branchId: number }) {
           </table>
         )}
       </div>
-      <form className="panel panel-pad" onSubmit={hire} style={{ display: 'grid', gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17 }}>Thêm nhân viên</h2>
-        <div className="grid-form">
-          <label className="field">Họ tên<input className="input" required value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></label>
-          <label className="field">Tên đăng nhập<input className="input" required minLength={3} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
-          <label className="field">Mật khẩu ban đầu<input className="input" required minLength={5} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
-          <label className="field">Vai trò
-            <select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as CreateStaffRequest['role'] })}>
-              {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            </select>
-          </label>
-          <label className="field">Điện thoại<input className="input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
-          <label className="field">Email<input className="input" required type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
-          <label className="field">Lương giờ (đ)<input className="input num" required type="number" min={0} step={1000} value={f.hourlyRate} onChange={(e) => setF({ ...f, hourlyRate: e.target.value })} /></label>
-          <button className="btn btn-primary"><Plus size={16} aria-hidden="true" /> Tạo tài khoản</button>
-        </div>
-      </form>
+      {adding && (
+        <Drawer title="Thêm nhân viên" onClose={() => setAdding(false)}>
+          <form onSubmit={hire} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <label className="field">Họ tên<input className="input" required value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} data-autofocus /></label>
+            <div className="form-2">
+              <label className="field">Tên đăng nhập<input className="input" required minLength={3} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
+              <label className="field">Mật khẩu ban đầu<input className="input" required minLength={5} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
+            </div>
+            <label className="field">Vai trò
+              <select className="select" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as CreateStaffRequest['role'] })}>
+                {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+            </label>
+            <div className="form-2">
+              <label className="field">Điện thoại<input className="input" required inputMode="tel" placeholder="0912 345 678" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
+              <label className="field">Lương giờ (₫)<input className="input num" required type="number" min={0} step={1000} value={f.hourlyRate} onChange={(e) => setF({ ...f, hourlyRate: e.target.value })} /></label>
+            </div>
+            <label className="field">Email<input className="input" required type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+            <div className="dialog-actions">
+              <button type="button" className="btn" onClick={() => setAdding(false)}>Huỷ</button>
+              <button className="btn btn-primary" data-loading={saving || undefined} disabled={saving}><Icon icon={Plus} /> Tạo tài khoản</button>
+            </div>
+          </form>
+        </Drawer>
+      )}
     </div>
   )
 }
@@ -175,7 +202,7 @@ function Shifts({ branchId }: { branchId: number }) {
             {shifts.data?.map((s) => (
               <div key={s.id} className="row" style={{ justifyContent: 'space-between' }}>
                 <strong>{s.name}</strong>
-                <span className="chalk num" style={{ fontSize: 22, color: 'var(--ink)' }}>{s.startTime?.slice(0, 5)} – {s.endTime?.slice(0, 5)}</span>
+                <span className="chalk">{s.startTime?.slice(0, 5)} – {s.endTime?.slice(0, 5)}</span>
               </div>
             ))}
             {shifts.data?.length === 0 && <span className="muted">Chưa có ca nào.</span>}
@@ -195,7 +222,7 @@ function Shifts({ branchId }: { branchId: number }) {
             await schedule.reload()
           }, 'Đã xếp ca')
         }}>
-          <h2 style={{ margin: 0, fontSize: 17 }}>Xếp ca</h2>
+          <h2 className="card-title">Xếp ca</h2>
           <label className="field">Nhân viên
             <select className="select" required value={assign.staffId} onChange={(e) => setAssign({ ...assign, staffId: e.target.value })}>
               <option value="">Chọn nhân viên</option>
@@ -214,50 +241,87 @@ function Shifts({ branchId }: { branchId: number }) {
       </div>
 
       <div className="panel">
-        <div className="panel-head"><h2>Lịch làm việc</h2></div>
-        {schedule.loading ? <Loading /> : (schedule.data?.length ?? 0) === 0 ? <Empty title="Chưa xếp ca trong khoảng này" /> : (
-          <table className="data">
-            <thead><tr><th>Ngày</th><th>Ca</th><th>Nhân viên</th><th>Vào</th><th>Ra</th><th /></tr></thead>
-            <tbody>
-              {schedule.data!.map((a) => (
-                <tr key={a.id}>
-                  <td className="num">{a.workDate}</td>
-                  <td>{a.shiftName} <span className="muted num">{a.startTime?.slice(0, 5)}–{a.endTime?.slice(0, 5)}</span></td>
-                  <td style={{ fontWeight: 600 }}>{a.staffName}</td>
-                  <td className="num">{a.checkInAt ? dateTime(a.checkInAt) : <span className="muted">—</span>}</td>
-                  <td className="num">{a.checkOutAt ? dateTime(a.checkOutAt) : <span className="muted">—</span>}</td>
-                  <td className="right">
-                    {!a.checkInAt && (
-                      <button className="btn btn-sm btn-ghost" onClick={() => run(async () => { await del(`/shift-assignments/${a.id}`); await schedule.reload() }, 'Đã bỏ xếp ca')}>Bỏ</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <div className="panel-head"><h2>Lịch làm việc</h2><p>{date(`${from}T00:00`)} – {date(`${to}T00:00`)}</p></div>
+        {schedule.loading ? <Loading /> : (schedule.data?.length ?? 0) === 0
+          ? <Empty title="Chưa xếp ca trong khoảng này" icon={CalendarPlus}>Chọn nhân viên, ca và ngày ở khung “Xếp ca” phía trên.</Empty>
+          : <WeekGrid from={from} to={to} rows={schedule.data!}
+              onRemove={(a) => run(async () => { await del(`/shift-assignments/${a.id}`); await schedule.reload() }, 'Đã bỏ xếp ca')} />}
       </div>
 
       <div className="panel">
-        <div className="panel-head"><h2>Bảng công</h2><span className="muted" style={{ fontSize: 13 }}>Giờ vào → ra thực tế × lương giờ</span></div>
+        <div className="panel-head"><h2>Bảng công</h2><p>Giờ làm thực tế nhân với lương giờ</p></div>
         {sheet.loading ? <Loading /> : (sheet.data?.length ?? 0) === 0 ? <Empty title="Chưa có công trong khoảng này" /> : (
           <table className="data">
             <thead><tr><th>Nhân viên</th><th className="right">Ca đã làm</th><th className="right">Ca vắng</th><th className="right">Giờ làm</th><th className="right">Lương giờ</th><th className="right">Tiền công</th></tr></thead>
             <tbody>
               {sheet.data!.map((r) => (
                 <tr key={r.staffId}>
-                  <td style={{ fontWeight: 600 }}>{r.staffName} <span className="muted" style={{ fontWeight: 400 }}>· {ROLE_LABEL[r.role ?? '']}</span></td>
-                  <td className="num right">{r.shiftsWorked}</td>
-                  <td className="num right">{r.shiftsMissed ? <Chip tone="bad">{r.shiftsMissed}</Chip> : 0}</td>
-                  <td className="num right">{number(r.hoursWorked, 2)}</td>
-                  <td className="num right">{money(r.hourlyRate)}</td>
-                  <td className="num right" style={{ fontWeight: 700 }}>{money(r.wage)}</td>
+                  <td><span className="with-avatar"><Avatar name={r.staffName} size="sm" /><span className="cell-strong">{r.staffName}</span><RoleBadge role={r.role} /></span></td>
+                  <td className="right">{r.shiftsWorked}</td>
+                  <td className="right">{r.shiftsMissed ? <Chip tone="bad">{r.shiftsMissed}</Chip> : 0}</td>
+                  <td className="right">{number(r.hoursWorked, 2)} giờ</td>
+                  <td className="right cell-muted">{hourly(r.hourlyRate)}</td>
+                  <td className="right cell-strong">{money(r.wage)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+    </div>
+  )
+}
+
+// Week grid: one row per staff member, one column per day of the chosen range (max 14 days shown)
+const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+
+function WeekGrid({ from, to, rows, onRemove }: {
+  from: string; to: string; rows: StaffShiftResponse[]; onRemove: (a: StaffShiftResponse) => void
+}) {
+  const days: string[] = []
+  for (let d = new Date(`${from}T00:00`); isoDate(d) <= to && days.length < 14; d.setDate(d.getDate() + 1)) days.push(isoDate(d))
+  const [today] = useState(() => isoDate(new Date()))
+  const people = [...new Set(rows.map((r) => r.staffName ?? ''))].sort((a, b) => a.localeCompare(b, 'vi'))
+  const cell = (name: string, day: string) => rows.filter((r) => r.staffName === name && r.workDate === day)
+
+  return (
+    <div className="week-grid-wrap">
+      <table className="week-grid" style={{ '--days': days.length } as React.CSSProperties}>
+        <thead>
+          <tr>
+            <th className="wg-name">Nhân viên</th>
+            {days.map((d) => {
+              const dt = new Date(`${d}T00:00`)
+              return (
+                <th key={d} className={d === today ? 'wg-today' : undefined}>
+                  <span className="wg-dow">{WEEKDAY[dt.getDay()]}</span>
+                  <span className="wg-date num">{date(dt).slice(0, 5)}</span>
+                </th>
+              )
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {people.map((name) => (
+            <tr key={name}>
+              <th scope="row" className="wg-name"><span className="with-avatar"><Avatar name={name} size="sm" />{name}</span></th>
+              {days.map((d) => (
+                <td key={d} className={d === today ? 'wg-today' : undefined}>
+                  {cell(name, d).map((a) => (
+                    <div key={a.id} className={`wg-shift${a.checkInAt ? ' wg-shift--in' : ''}`}>
+                      <span className="wg-shift-name">{a.shiftName}</span>
+                      <span className="wg-shift-time num">{a.startTime?.slice(0, 5)}–{a.endTime?.slice(0, 5)}</span>
+                      {a.checkInAt
+                        ? <span className="wg-shift-in num">Vào {time(a.checkInAt)}{a.checkOutAt ? ` · Ra ${time(a.checkOutAt)}` : ''}</span>
+                        : <button className="wg-remove" aria-label={`Bỏ ca ${a.shiftName} của ${name} ngày ${date(`${d}T00:00`)}`} data-tip="Bỏ xếp ca" onClick={() => onRemove(a)}><Icon icon={X} size="sm" /></button>}
+                    </div>
+                  ))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -279,23 +343,26 @@ function BranchMenu({ branchId }: { branchId: number }) {
 
   return (
     <div className="panel">
-      <div className="panel-head"><h2>Giá và món đang bán</h2><span className="muted" style={{ fontSize: 13 }}>Để trống giá riêng = theo giá chung của chuỗi</span></div>
+      <div className="panel-head"><h2>Giá và món đang bán</h2><p>Để trống giá riêng thì món theo giá chung của chuỗi</p></div>
       {error && <div style={{ padding: '12px 20px 0' }}><ErrorNotice message={error} /></div>}
       {menu.loading ? <Loading /> : (
         <table className="data">
-          <thead><tr><th>Món</th><th className="right">Giá chung</th><th className="right">Giá riêng chi nhánh</th><th className="right">Khách trả</th><th>Tình trạng</th></tr></thead>
+          <thead><tr><th>Món</th><th className="right">Giá chung</th><th className="right">Giá riêng chi nhánh</th><th className="right">Khách trả</th><th>Tình trạng</th><th className="actions"><span className="sr-only">Thao tác</span></th></tr></thead>
           <tbody>
             {menu.data?.map((m) => (
               <tr key={m.menuItemId}>
-                <td style={{ fontWeight: 600 }}><span className="with-thumb"><DishThumb src={m.imageUrl} name={m.name} size="sm" /><Strikable on={!m.available}>{m.name}</Strikable></span></td>
-                <td className="num right muted">{money(m.basePrice)}</td>
+                <td className="cell-strong"><span className="with-thumb"><DishThumb src={m.imageUrl} name={m.name} size="sm" /><Strikable on={!m.available}>{m.name}</Strikable></span></td>
+                <td className="right cell-muted">{money(m.basePrice)}</td>
                 <td className="right">
-                  <input className="input num" type="number" min={0} step={1000} placeholder="—" defaultValue={m.branchPrice ?? ''} key={m.branchPrice ?? 'none'}
-                    style={{ width: 130, textAlign: 'right' }} onBlur={(e) => setPrice(m, e.target.value)} aria-label={`Giá riêng ${m.name}`} />
+                  <input className="input num input-price" type="number" min={0} step={1000} placeholder={EMPTY} defaultValue={m.branchPrice ?? ''} key={m.branchPrice ?? 'none'}
+                    onBlur={(e) => setPrice(m, e.target.value)} aria-label={`Giá riêng ${m.name}`} />
                 </td>
-                <td className="num right" style={{ fontWeight: 700 }}>{money(m.price)}</td>
+                <td className="right cell-strong">{money(m.price)}</td>
                 <td>
-                  <button className={`btn btn-sm${m.available ? '' : ' btn-accent'}`} onClick={() => run(async () => {
+                  {m.available ? <Badge tone="success">Đang bán</Badge> : <Badge tone="danger">Hết món</Badge>}
+                </td>
+                <td className="actions">
+                  <button className={`btn btn-sm${m.available ? '' : ' btn-primary'}`} onClick={() => run(async () => {
                     await put(`/branches/${branchId}/menu/${m.menuItemId}/availability`, { available: !m.available })
                     await menu.reload()
                   }, m.available ? `Đã báo hết ${m.name}` : `${m.name} bán lại`)}>
@@ -341,18 +408,24 @@ function Reservations({ branchId }: { branchId: number }) {
         <div className="panel-head"><h2>Đặt bàn chờ xác nhận</h2></div>
         {list.loading ? <Loading /> : (list.data?.length ?? 0) === 0 ? <Empty title="Không có đặt bàn chờ xác nhận" /> : (
           <table className="data">
-            <thead><tr><th>Thời gian</th><th className="right">Số khách</th><th>Ghi chú</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Thời gian</th><th className="right">Số khách</th><th>Ghi chú</th><th>Trạng thái</th><th className="actions"><span className="sr-only">Thao tác</span></th></tr></thead>
             <tbody>
               {list.data!.map((r) => (
                 <tr key={r.id}>
-                  <td className="num" style={{ fontWeight: 600 }}>{dateTime(r.reservationDate)}</td>
-                  <td className="num right">{r.numberOfGuests}</td>
-                  <td>{r.notes}</td>
+                  <td className="cell-strong">{dateTime(r.reservationDate)}</td>
+                  <td className="right">{r.numberOfGuests} khách</td>
+                  <td className={r.notes ? undefined : 'empty-val'}>{r.notes || EMPTY}</td>
                   <td><Chip tone="warn">Chờ xác nhận</Chip></td>
-                  <td className="right">
-                    <div className="row" style={{ justifyContent: 'flex-end' }}>
-                      <button className="btn btn-sm btn-accent" onClick={() => run(async () => { await put(`/reservations/${r.id}/confirm`); await list.reload() }, 'Đã xác nhận')}>Xác nhận</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => run(async () => { await put(`/reservations/${r.id}/cancel`); await list.reload() }, 'Đã huỷ đặt bàn')}>Huỷ</button>
+                  <td className="actions">
+                    <div className="row">
+                      <button className="btn btn-sm btn-primary" onClick={() => run(async () => { await put(`/reservations/${r.id}/confirm`); await list.reload() }, 'Đã xác nhận')}><Icon icon={Check} /> Xác nhận</button>
+                      <RowMenu label="Thao tác khác" items={[{
+                        label: 'Huỷ đặt bàn', icon: X, danger: true,
+                        onSelect: async () => {
+                          if (!(await confirmDialog({ title: 'Huỷ đặt bàn này?', message: `${dateTime(r.reservationDate)} · ${r.numberOfGuests} khách`, confirmLabel: 'Huỷ đặt bàn', cancelLabel: 'Giữ lại', danger: true }))) return
+                          run(async () => { await put(`/reservations/${r.id}/cancel`); await list.reload() }, 'Đã huỷ đặt bàn')
+                        },
+                      }]} />
                     </div>
                   </td>
                 </tr>
@@ -362,7 +435,7 @@ function Reservations({ branchId }: { branchId: number }) {
         )}
       </div>
       <form className="panel panel-pad" onSubmit={book} style={{ display: 'grid', gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 17 }}>Đặt bàn mới</h2>
+        <h2 className="card-title">Đặt bàn mới</h2>
         <div className="grid-form">
           <label className="field">SĐT khách<input className="input" required inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
           <label className="field">Tên (nếu khách mới)<input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
