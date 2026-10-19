@@ -35,6 +35,11 @@ function cdnUrl(url: string, w: number) {
   return url.replace('/upload/', `/upload/f_auto,q_auto,w_${w}/`)
 }
 
+function safeStoryLink(url?: string) {
+  const href = url?.trim()
+  return href && !/^(javascript|data|vbscript):/i.test(href) ? href : undefined
+}
+
 function useFadeIn(ref: React.RefObject<Element | null>) {
   useEffect(() => {
     const el = ref.current
@@ -51,7 +56,8 @@ function useFadeIn(ref: React.RefObject<Element | null>) {
 function StoryBlock({ s, index }: { s: SiteSection; index: number }) {
   const ref = useRef<HTMLElement>(null)
   useFadeIn(ref as React.RefObject<Element>)
-  const flip = s.image_side === 'left'
+  const flip = index % 2 === 1
+  const link = safeStoryLink(s.link_url)
 
   return (
     <article
@@ -75,9 +81,9 @@ function StoryBlock({ s, index }: { s: SiteSection; index: number }) {
             <span key={i}>{line}<br /></span>
           ))}
         </h2>
-        <Md className="story-body">{s.body}</Md>
-        {s.link_text && (
-          <a className="story-link" href={s.link_url ?? '#'}>
+        <Md className="story-body md-render">{s.body}</Md>
+        {s.link_text && link && (
+          <a className="story-link" href={link}>
             {s.link_text} <ArrowRight size={14} aria-hidden="true" />
           </a>
         )}

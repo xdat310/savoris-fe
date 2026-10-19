@@ -137,10 +137,9 @@ export function SystemSettings() {
           <tbody>
             {[
               ['ADMIN', 'Quản trị viên hệ thống / Chủ chuỗi', 'Toàn bộ hệ thống'],
-              ['BRANCH_MANAGER', 'Quản lý chi nhánh', '1 chi nhánh cố định'],
+              ['MANAGER', 'Quản lý chi nhánh', '1 chi nhánh cố định'],
               ['CHEF', 'Đầu bếp / KDS', 'Bếp của chi nhánh'],
-              ['WAITER', 'Nhân viên phục vụ / Thu ngân', 'Khu vực bàn ăn'],
-              ['WAREHOUSE', 'Kho & Thu mua', 'Kho của chi nhánh'],
+              ['STAFF', 'Nhân viên phục vụ / Thu ngân', 'Khu vực bàn ăn'],
             ].map(([role, desc, scope]) => (
               <tr key={role}>
                 <td><span className="sys-role-badge">{role}</span></td>

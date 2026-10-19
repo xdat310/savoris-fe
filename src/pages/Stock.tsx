@@ -20,7 +20,7 @@ const PO_STATUS: Record<string, { label: string; tone: 'neutral' | 'info' | 'ok'
 export function Stock() {
   const { branchId, branches, role } = useAuth()
   const toast = useToast()
-  const manager = role === 'ADMIN' || role === 'BRANCH_MANAGER'
+  const manager = role === 'ADMIN' || role === 'MANAGER'
   const branch = branches.find((b) => b.id === branchId)
   const ingredients = useData(() => get<IngredientResponse[]>('/ingredients'), [])
   const stock = useData(() => get<InventoryResponse[]>(`/inventory/branch/${branchId}`), [branchId])

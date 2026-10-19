@@ -16,6 +16,9 @@ import { Stock } from './pages/Stock'
 import { BranchAdmin } from './pages/BranchAdmin'
 import { WebsiteCMS } from './pages/WebsiteCMS'
 import { SystemSettings } from './pages/SystemSettings'
+import { Owner } from './pages/Owner'
+import { AdminRoutes } from './pages/AdminPortal'
+import { BookingComingSoon, BranchMenu, PublicBranch } from './pages/PublicBranch'
 
 function Guard({ allow, children }: { allow: (role?: string) => boolean; children: ReactNode }) {
   const { role } = useAuth()
@@ -26,10 +29,15 @@ function AppRoutes() {
   const { session, role, branchId } = useAuth()
   const { pathname } = useLocation()
 
+  if (pathname.startsWith('/admin')) return <AdminRoutes />
+
   if (!pathname.startsWith(STAFF)) {
     return (
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/chi-nhanh/:slug" element={<PublicBranch />} />
+        <Route path="/chi-nhanh/:slug/thuc-don" element={<BranchMenu />} />
+        <Route path="/dat-ban" element={<BookingComingSoon />} />
         <Route path="/goi-mon/:token" element={<GuestOrder />} />
         <Route path="/mang-ve" element={<Takeaway />} />
         <Route path="/don-mang-ve/:token" element={<TakeawayTrack />} />
@@ -47,8 +55,7 @@ function AppRoutes() {
         {/* ── ADMIN ──────────────────────────────────────────────────── */}
         <Route path="chuoi"
           element={<Guard allow={can.owner}>
-            {/* Owner chain dashboard — imported lazily via BranchAdmin to avoid duplication */}
-            <BranchAdmin />
+            <Owner />
           </Guard>} />
 
         {/* ── ADMIN + BRANCH_MANAGER ─────────────────────────────────── */}

@@ -1,10 +1,10 @@
-import { Check, ChevronDown, ChevronUp, Plus, Save, Trash2, Upload } from 'lucide-react'
+import { Bold, Check, ChevronDown, ChevronUp, Code, Eye, Heading2, Italic, Link2, List, ListOrdered, Pencil, Plus, Quote, Save, Strikethrough, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Md } from '../lib/md'
 import {
-  getAllSiteConfig, updateFounder, updateGallery,
-  updateHero, updateManifesto, updateMilestones, updateSections, uploadSiteImage,
-  type HeroConfig, type SiteFounder, type SiteGalleryItem,
+  getAllSiteConfig, updateGallery,
+  updateHero, updateMilestones, updateSections, uploadSiteImage,
+  type HeroConfig, type SiteGalleryItem,
   type SiteMilestone, type SiteSection,
 } from '../api/site'
 import { useToast } from '../components/Toast'
@@ -24,8 +24,74 @@ function Inp({ value, onChange, placeholder }: { value: string; onChange: (v: st
   return <input className="cms-input" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
 }
 
-function Txt({ value, onChange, rows = 3 }: { value: string; onChange: (v: string) => void; rows?: number }) {
-  return <textarea className="cms-textarea" value={value} rows={rows} onChange={e => onChange(e.target.value)} />
+const MD_TOOLS = [
+  { label: 'In đậm', Icon: Bold, before: '**', after: '**' },
+  { label: 'In nghiêng', Icon: Italic, before: '*', after: '*' },
+  { label: 'Gạch ngang', Icon: Strikethrough, before: '~~', after: '~~' },
+  { label: 'Mã nội tuyến', Icon: Code, before: '`', after: '`' },
+  { label: 'Tiêu đề', Icon: Heading2, before: '## ', line: true },
+  { label: 'Danh sách', Icon: List, before: '- ', line: true },
+  { label: 'Danh sách đánh số', Icon: ListOrdered, before: '1. ', line: true },
+  { label: 'Trích dẫn', Icon: Quote, before: '> ', line: true },
+  { label: 'Liên kết', Icon: Link2, before: '[', after: '](https://)' },
+] as const
+
+function MarkdownInput({ value, onChange, rows = 3 }: { value: string; onChange: (v: string) => void; rows?: number }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const [preview, setPreview] = useState(false)
+
+  function format(tool: typeof MD_TOOLS[number]) {
+    const input = ref.current
+    if (!input) return
+    const start = input.selectionStart
+    const end = input.selectionEnd
+
+    if ('line' in tool) {
+      const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1
+      const nextBreak = value.indexOf('\n', end)
+      const lineEnd = nextBreak < 0 ? value.length : nextBreak
+      const block = value.slice(lineStart, lineEnd)
+      const formatted = block.split('\n').map(line => `${tool.before}${line}`).join('\n')
+      onChange(value.slice(0, lineStart) + formatted + value.slice(lineEnd))
+      requestAnimationFrame(() => {
+        input.focus()
+        input.setSelectionRange(lineStart, lineStart + formatted.length)
+      })
+      return
+    }
+
+    const selected = value.slice(start, end) || 'văn bản'
+    onChange(value.slice(0, start) + tool.before + selected + tool.after + value.slice(end))
+    requestAnimationFrame(() => {
+      input.focus()
+      input.setSelectionRange(start + tool.before.length, start + tool.before.length + selected.length)
+    })
+  }
+
+  return (
+    <div className="cms-md-input">
+      <div className="cms-md-toolbar">
+        <div className="cms-md-tools" role="toolbar" aria-label="Định dạng Markdown">
+          {MD_TOOLS.map(tool => {
+            const Icon = tool.Icon
+            return (
+              <button key={tool.label} type="button" className="cms-icon-btn" title={tool.label} aria-label={tool.label}
+                onMouseDown={event => event.preventDefault()} onClick={() => format(tool)}>
+                <Icon size={14} aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
+        <div className="cms-md-mode" role="group" aria-label="Chế độ nội dung">
+          <button type="button" className={!preview ? 'is-active' : ''} aria-pressed={!preview} onClick={() => setPreview(false)}><Pencil size={13} /> Soạn</button>
+          <button type="button" className={preview ? 'is-active' : ''} aria-pressed={preview} onClick={() => setPreview(true)}><Eye size={13} /> Xem trước</button>
+        </div>
+      </div>
+      {preview
+        ? <div className="cms-md-preview md-render">{value ? <Md>{value}</Md> : <span className="cms-prev-empty">Chưa có nội dung</span>}</div>
+        : <textarea ref={ref} className="cms-textarea" value={value} rows={rows} onChange={e => onChange(e.target.value)} />}
+    </div>
+  )
 }
 
 function SaveBtn({ saving, onSave }: { saving: boolean; onSave: () => void }) {
@@ -118,7 +184,7 @@ function HeroTab({ initial }: { initial?: HeroConfig }) {
         </Field>
 
         <Field label="Mô tả ngắn">
-          <Txt value={cfg.description} onChange={v => set('description', v)} rows={2} />
+          <MarkdownInput value={cfg.description} onChange={v => set('description', v)} rows={2} />
         </Field>
         <Field label="Nút đặt bàn (text)">
           <Inp value={cfg.cta_text} onChange={v => set('cta_text', v)} placeholder="ĐẶT BÀN" />
@@ -175,7 +241,11 @@ function StoryTab({ initial }: { initial?: SiteSection[] }) {
             </div>
             <Field label="Ảnh"><ImgUpload value={s.image_url} onChange={url => upd(i, { image_url: url })} /></Field>
             <Field label="Tiêu đề"><Inp value={s.title} onChange={v => upd(i, { title: v })} /></Field>
-            <Field label="Nội dung"><Txt value={s.body} onChange={v => upd(i, { body: v })} rows={4} /></Field>
+            <Field label="Nội dung"><MarkdownInput value={s.body} onChange={v => upd(i, { body: v })} rows={4} /></Field>
+            <div className="cms-two-col">
+              <Field label="Chữ trên nút"><Inp value={s.link_text ?? ''} onChange={v => upd(i, { link_text: v || undefined })} placeholder="Tìm hiểu thêm" /></Field>
+              <Field label="Đường dẫn khi bấm"><Inp value={s.link_url ?? ''} onChange={v => upd(i, { link_url: v || undefined })} placeholder="#lien-he hoặc https://..." /></Field>
+            </div>
           </div>
         ))}
 
@@ -191,6 +261,7 @@ function StoryTab({ initial }: { initial?: SiteSection[] }) {
             <div className="cms-prev-story-text">
               {s.title && <div className="cms-prev-story-title">{s.title}</div>}
               {s.body && <Md className="cms-prev-story-body">{s.body}</Md>}
+              {s.link_text && s.link_url && <span className="cms-prev-story-link">{s.link_text} <span aria-hidden="true">→</span></span>}
             </div>
           </div>
         ))}
@@ -226,7 +297,6 @@ function GalleryTab({ initial }: { initial?: SiteGalleryItem[] }) {
           <div key={i} className="cms-card cms-card--inline">
             <span className="cms-card-num">{i+1}</span>
             <ImgUpload value={it.image_url} onChange={url => upd(i, { image_url: url })} />
-            <Inp value={it.caption ?? ''} onChange={v => upd(i, { caption: v || undefined })} placeholder="Caption (tuỳ chọn)" />
             <div className="cms-card-actions">
               <button className="cms-icon-btn" onClick={() => move(i, -1)} disabled={i===0}><ChevronUp size={13}/></button>
               <button className="cms-icon-btn" onClick={() => move(i, 1)} disabled={i===items.length-1}><ChevronDown size={13}/></button>
@@ -245,96 +315,9 @@ function GalleryTab({ initial }: { initial?: SiteGalleryItem[] }) {
           {items.filter(it => it.image_url).map((it, i) => (
             <div key={i} className="cms-prev-gal-item">
               <img src={it.image_url} alt={it.caption ?? ''} />
-              {it.caption && <span className="cms-prev-gal-cap">{it.caption}</span>}
             </div>
           ))}
           {!items.some(it => it.image_url) && <span className="cms-prev-empty">Chưa có ảnh</span>}
-        </div>
-      </Preview>
-    </div>
-  )
-}
-
-// ── TAB: Manifesto ────────────────────────────────────────────────────────
-
-function ManifestoTab({ initial }: { initial?: { quote: string; author: string; authorTitle: string } }) {
-  const [cfg, setCfg] = useState(initial ?? { quote: '', author: '', authorTitle: '' })
-  const [saving, setSaving] = useState(false)
-  const toast = useToast()
-
-  async function save() {
-    setSaving(true)
-    try { await updateManifesto(cfg); toast('Đã lưu Manifesto') }
-    catch { toast('Lưu thất bại', true) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="cms-split">
-      <section className="cms-section">
-        <div className="cms-section-head"><h2>Manifesto — Trích dẫn</h2><SaveBtn saving={saving} onSave={save} /></div>
-        <Field label="Trích dẫn"><Txt value={cfg.quote} onChange={v => setCfg(c=>({...c,quote:v}))} rows={4} /></Field>
-        <Field label="Tên tác giả"><Inp value={cfg.author} onChange={v => setCfg(c=>({...c,author:v}))} /></Field>
-        <Field label="Chức danh"><Inp value={cfg.authorTitle} onChange={v => setCfg(c=>({...c,authorTitle:v}))} /></Field>
-      </section>
-
-      <Preview>
-        <div className="cms-prev-manifesto">
-          {cfg.quote
-            ? <blockquote className="cms-prev-quote"><Md>{cfg.quote}</Md></blockquote>
-            : <span className="cms-prev-empty">Chưa có trích dẫn</span>}
-          {(cfg.author || cfg.authorTitle) && (
-            <div className="cms-prev-author">
-              {cfg.author && <strong>{cfg.author}</strong>}
-              {cfg.authorTitle && <span> · {cfg.authorTitle}</span>}
-            </div>
-          )}
-        </div>
-      </Preview>
-    </div>
-  )
-}
-
-// ── TAB: Founder ──────────────────────────────────────────────────────────
-
-function FounderTab({ initial }: { initial?: SiteFounder }) {
-  const [cfg, setCfg] = useState<SiteFounder>(
-    initial ?? { portrait_url: '', portrait_public_id: '', name: '', title: '', quote: '', bio: '' }
-  )
-  const [saving, setSaving] = useState(false)
-  const toast = useToast()
-
-  function set<K extends keyof SiteFounder>(k: K, v: SiteFounder[K]) { setCfg(c => ({...c, [k]: v})) }
-
-  async function save() {
-    setSaving(true)
-    try { await updateFounder(cfg); toast('Đã lưu Người sáng lập') }
-    catch { toast('Lưu thất bại', true) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="cms-split">
-      <section className="cms-section">
-        <div className="cms-section-head"><h2>Người sáng lập</h2><SaveBtn saving={saving} onSave={save} /></div>
-        <Field label="Ảnh chân dung"><ImgUpload value={cfg.portrait_url} onChange={v => set('portrait_url', v)} /></Field>
-        <Field label="Tên"><Inp value={cfg.name} onChange={v => set('name', v)} /></Field>
-        <Field label="Chức danh"><Inp value={cfg.title} onChange={v => set('title', v)} /></Field>
-        <Field label="Trích dẫn nổi bật"><Txt value={cfg.quote} onChange={v => set('quote', v)} rows={2} /></Field>
-        <Field label="Tiểu sử"><Txt value={cfg.bio} onChange={v => set('bio', v)} rows={5} /></Field>
-      </section>
-
-      <Preview>
-        <div className="cms-prev-founder">
-          {cfg.portrait_url
-            ? <img className="cms-prev-founder-img" src={cfg.portrait_url} alt={cfg.name} />
-            : <div className="cms-prev-founder-placeholder" />}
-          <div className="cms-prev-founder-info">
-            {cfg.name && <div className="cms-prev-founder-name">{cfg.name}</div>}
-            {cfg.title && <div className="cms-prev-founder-title">{cfg.title}</div>}
-            {cfg.quote && <blockquote className="cms-prev-founder-quote"><Md>{cfg.quote}</Md></blockquote>}
-            {cfg.bio && <Md className="cms-prev-founder-bio">{cfg.bio}</Md>}
-          </div>
         </div>
       </Preview>
     </div>
@@ -379,7 +362,7 @@ function MilestonesTab({ initial }: { initial?: SiteMilestone[] }) {
               <Field label="Năm"><Inp value={m.year} onChange={v => upd(i,{year:v})} placeholder="2024" /></Field>
               <Field label="Tiêu đề"><Inp value={m.title} onChange={v => upd(i,{title:v})} /></Field>
             </div>
-            <Field label="Mô tả"><Txt value={m.description} onChange={v => upd(i,{description:v})} rows={2} /></Field>
+            <Field label="Mô tả"><MarkdownInput value={m.description} onChange={v => upd(i,{description:v})} rows={2} /></Field>
           </div>
         ))}
 
@@ -409,15 +392,13 @@ function MilestonesTab({ initial }: { initial?: SiteMilestone[] }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────
 
-type TabId = 'hero' | 'story' | 'gallery' | 'milestones' | 'manifesto' | 'founder'
+type TabId = 'hero' | 'story' | 'gallery' | 'milestones'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'hero',       label: 'Hero' },
   { id: 'story',      label: 'Story' },
   { id: 'gallery',    label: 'Gallery' },
   { id: 'milestones', label: 'Hành trình' },
-  { id: 'manifesto',  label: 'Manifesto' },
-  { id: 'founder',    label: 'Người sáng lập' },
 ]
 
 export function WebsiteCMS() {
@@ -455,8 +436,6 @@ export function WebsiteCMS() {
         {tab === 'story'      && <StoryTab      initial={cfg('sections')} />}
         {tab === 'gallery'    && <GalleryTab    initial={cfg('gallery')} />}
         {tab === 'milestones' && <MilestonesTab initial={cfg('milestones')} />}
-        {tab === 'manifesto'  && <ManifestoTab  initial={cfg('manifesto')} />}
-        {tab === 'founder'    && <FounderTab    initial={cfg('founder')} />}
       </div>
     </div>
   )

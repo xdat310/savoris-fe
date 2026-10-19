@@ -27,11 +27,9 @@ export function isoDate(d: Date) {
 
 export const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Chủ chuỗi',
-  BRANCH_MANAGER: 'Quản lý chi nhánh',
-  CASHIER: 'Thu ngân',
-  WAITER: 'Phục vụ',
+  MANAGER: 'Quản lý chi nhánh',
+  STAFF: 'Nhân viên phục vụ / Thu ngân',
   CHEF: 'Đầu bếp',
-  WAREHOUSE: 'Kho',
 }
 
 export const ORDER_TYPE_LABEL: Record<string, string> = {

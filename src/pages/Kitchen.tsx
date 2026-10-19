@@ -32,7 +32,7 @@ const KITCHEN_CHANNEL = 'savoris-kitchen'
 export function Kitchen() {
   const { branchId, role, branches } = useAuth()
   const toast = useToast()
-  const cooks = role === 'CHEF' || role === 'BRANCH_MANAGER' || role === 'ADMIN'
+  const cooks = role === 'CHEF' || role === 'ADMIN'
   const queue  = useData(() => get<KitchenTicketResponse[]>(`/kitchen/branches/${branchId}/queue`), [branchId], 4000)
   const voids  = useData(() => get<KitchenTicketResponse[]>(`/kitchen/branches/${branchId}/void-queue`), [branchId], 4000)
   const load   = useData(() => get<BranchLoadResponse>(`/kitchen/branches/${branchId}/load`), [branchId], 8000)

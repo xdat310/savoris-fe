@@ -24,7 +24,7 @@ const TITLES: Record<string, string> = {
 }
 
 // CHEF and WAITER get a fullscreen kiosk layout — no sidebar
-const FULLSCREEN_ROLES = ['CASHIER', 'WAITER', 'CHEF']
+const FULLSCREEN_ROLES = ['STAFF', 'CHEF']
 
 export function Shell() {
   const { session, role, branchId, branches, setBranchId, logout } = useAuth()
@@ -52,17 +52,16 @@ export function Shell() {
   // BRANCH_MANAGER: branch ops + website menu editor
   const opsLinks = [
     can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Dashboard',       Icon: LayoutDashboard },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`,  label: 'Bán hàng',        Icon: ReceiptText },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,       label: 'Bếp',             Icon: ChefHat },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,       label: 'Kho & nhập hàng', Icon: Package },
-    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,     label: 'Mã QR bàn',       Icon: QrCode },
-    role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,       label: 'Kho & nhập hàng', Icon: Package },
+    role === 'MANAGER' && { to: `${STAFF}/ban-hang`,  label: 'Bán hàng',        Icon: ReceiptText },
+    role === 'MANAGER' && { to: `${STAFF}/bep`,       label: 'Bếp',             Icon: ChefHat },
+    role === 'MANAGER' && { to: `${STAFF}/kho`,       label: 'Kho & nhập hàng', Icon: Package },
+    role === 'MANAGER' && { to: `${STAFF}/ma-qr`,     label: 'Mã QR bàn',       Icon: QrCode },
   ].filter(Boolean) as { to: string; label: string; Icon: typeof Users }[]
 
   // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages CMS only
   const cmsLinks = can.owner(role)
     ? [{ to: `${STAFF}/website/trang-chu`, label: 'Website CMS', Icon: Globe }]
-    : role === 'BRANCH_MANAGER'
+    : role === 'MANAGER'
     ? [
         { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Icon: BookOpen },
         { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Icon: Globe },
@@ -88,7 +87,7 @@ export function Shell() {
     </header>
   )
 
-  // ── Fullscreen layout (CHEF / WAITER / CASHIER) ──────────────────────
+  // ── Fullscreen layout (CHEF / WAITER) ─────────────────────────────────
   if (isFullscreen) {
     return (
       <div className="ad-shell ad-shell--full">

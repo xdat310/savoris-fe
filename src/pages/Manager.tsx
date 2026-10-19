@@ -62,14 +62,14 @@ function useAction() {
 
 // ---------------------------------------------------------------- staff
 
-const HIREABLE: CreateStaffRequest['role'][] = ['CASHIER', 'WAITER', 'CHEF', 'WAREHOUSE']
+const HIREABLE: CreateStaffRequest['role'][] = ['STAFF', 'CHEF']
 
 function Staff({ branchId }: { branchId: number }) {
   const { role } = useAuth()
   const staff = useData(() => get<StaffDetailResponse[]>(`/staff/branch/${branchId}`), [branchId])
   const { error, run } = useAction()
-  const roles: CreateStaffRequest['role'][] = role === 'ADMIN' ? [...HIREABLE, 'BRANCH_MANAGER'] : HIREABLE
-  const blank = { fullName: '', username: '', phone: '', email: '', role: 'CASHIER' as CreateStaffRequest['role'], hourlyRate: '30000', password: '' }
+  const roles: CreateStaffRequest['role'][] = role === 'ADMIN' ? [...HIREABLE, 'MANAGER'] : HIREABLE
+  const blank = { fullName: '', username: '', phone: '', email: '', role: 'STAFF' as CreateStaffRequest['role'], hourlyRate: '30000', password: '' }
   const [f, setF] = useState(blank)
 
   function hire(e: FormEvent) {

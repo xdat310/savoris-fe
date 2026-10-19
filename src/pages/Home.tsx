@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
 import type {
   HeroConfig, PublicBranch, SiteFooter as FooterData,
-  SiteFounder as FounderData, SiteMilestone,
+  SiteGalleryItem, SiteMilestone,
   SiteNavItem, SiteSection,
 } from '../api/site'
 import {
-  getBranches, getFooterConfig, getFounder,
-  getHero, getMilestones, getNav, getSections,
+  getBranches, getFooterConfig,
+  getGallery, getHero, getMilestones, getNav, getSections,
 } from '../api/site'
 import { SiteContact } from '../components/site/SiteContact'
 import { SiteFooter } from '../components/site/SiteFooter'
-import { SiteFounder } from '../components/site/SiteFounder'
 import { SiteHeader } from '../components/site/SiteHeader'
+import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHero } from '../components/site/SiteHero'
-import { SiteManifesto } from '../components/site/SiteManifesto'
 import { SiteOrderModal } from '../components/site/SiteOrderModal'
 import { SiteBookingModal } from '../components/site/SiteBookingModal'
 import { SiteStory } from '../components/site/SiteStory'
@@ -24,8 +23,8 @@ export function Home() {
   const [hero, setHero] = useState<HeroConfig | null>(null)
   const [branches, setBranches] = useState<PublicBranch[]>([])
   const [sections, setSections] = useState<SiteSection[]>([])
+  const [gallery, setGallery] = useState<SiteGalleryItem[]>([])
   const [milestones, setMilestones] = useState<SiteMilestone[]>([])
-  const [founder, setFounder] = useState<FounderData | null>(null)
   const [footer, setFooter] = useState<FooterData | null>(null)
   const [orderOpen, setOrderOpen] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(false)
@@ -35,8 +34,8 @@ export function Home() {
     getHero().then(setHero).catch(() => {})
     getBranches().then(setBranches).catch(() => {})
     getSections().then(setSections).catch(() => {})
+    getGallery().then(setGallery).catch(() => {})
     getMilestones().then(setMilestones).catch(() => {})
-    getFounder().then(setFounder).catch(() => {})
     getFooterConfig().then(setFooter).catch(() => {})
   }, [])
 
@@ -57,10 +56,9 @@ export function Home() {
         onCtaClick={() => setOrderOpen(true)}
         onBookClick={() => setBookingOpen(true)}
       />
-      <SiteManifesto />
       <SiteStory sections={sections} />
+      <SiteGallery items={gallery} />
       <SiteTimeline milestones={milestones} />
-<SiteFounder founder={founder} />
       <SiteContact branches={branches} />
       <SiteFooter
         config={footer}

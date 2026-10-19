@@ -1,6 +1,14 @@
 import { marked } from 'marked'
 
-marked.use({ gfm: true, breaks: true })
+marked.use({
+  gfm: true,
+  breaks: true,
+  renderer: {
+    html({ text }) {
+      return text.replace(/[&<>]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)
+    },
+  },
+})
 
 /** Renders markdown using the marked library. */
 export function Md({ children, className }: { children: string; className?: string }) {

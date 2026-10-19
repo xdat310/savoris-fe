@@ -1,4 +1,35 @@
-import { get, put, upload } from './client'
+import { del, get, post, put, upload } from './client'
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
+export const mediaUrl = (url?: string) => {
+  if (!url) return ''
+  return url.startsWith('/api/v1/') ? `${API_BASE}${url.slice('/api/v1'.length)}` : url
+}
+
+export interface SiteBranchPage {
+  branch: PublicBranch
+  page: Record<string, string>
+  offers: Record<string, unknown>[]
+  gallery: Record<string, unknown>[]
+  accolades: Record<string, unknown>[]
+  testimonials: Record<string, unknown>[]
+  menus: Record<string, unknown>[]
+  openingHours: { weekday: number; opens_at?: string; closes_at?: string; closed: boolean }[]
+}
+
+export const getPublicSite = () => get<Record<string, unknown>>('/public/site')
+export const getPublicBranchPage = (slug: string) => get<SiteBranchPage>(`/public/branches/${slug}`)
+export const getWebsiteCms = () => get<Record<string, any>>('/admin/website')
+export const saveWebsiteSettings = (payload: Record<string, unknown>) => put('/admin/website/settings', payload)
+export const saveBranchPage = (branchId: number, payload: Record<string, unknown>) => put(`/admin/website/branches/${branchId}`, payload)
+export const createWebsiteItem = (resource: string, payload: Record<string, unknown>) => post<Record<string, any>>(`/admin/website/${resource}`, payload)
+export const updateWebsiteItem = (resource: string, id: number, payload: Record<string, unknown>) => put(`/admin/website/${resource}/${id}`, payload)
+export const deleteWebsiteItem = (resource: string, id: number) => del(`/admin/website/${resource}/${id}`)
+export const reorderWebsiteItems = (resource: string, ids: number[]) => put(`/admin/website/${resource}/order`, ids)
+export function uploadWebsiteMedia(file: File, alt: string) {
+  const form = new FormData(); form.append('file', file); form.append('alt', alt)
+  return post<{ url: string; alt: string }>('/admin/media', form)
+}
 
 // ── Nav ──────────────────────────────────────────────────────────────────
 export interface SiteNavItem {
@@ -61,18 +92,6 @@ export interface SiteGalleryItem {
   order: number
 }
 export const getGallery = () => get<SiteGalleryItem[]>('/site/gallery')
-
-// ── Founder ───────────────────────────────────────────────────────────────
-export interface SiteFounder {
-  portrait_url: string
-  portrait_public_id: string
-  name: string
-  title: string
-  quote: string
-  bio: string
-  signature_url?: string
-}
-export const getFounder = () => get<SiteFounder>('/site/founder')
 
 // ── Order modal (service-type cards) ─────────────────────────────────────
 export interface SiteOrderCard {
@@ -141,12 +160,9 @@ export const updateHero        = (body: HeroConfig)        => put<HeroConfig>('/
 export const updateSections    = (body: SiteSection[])     => put<SiteSection[]>('/site/sections', body)
 export const updateMilestones  = (body: SiteMilestone[])   => put<SiteMilestone[]>('/site/milestones', body)
 export const updateGallery     = (body: SiteGalleryItem[]) => put<SiteGalleryItem[]>('/site/gallery', body)
-export const updateFounder     = (body: SiteFounder)       => put<SiteFounder>('/site/founder', body)
 export const updateOrderConfig = (body: SiteOrderConfig)   => put<SiteOrderConfig>('/site/order-config', body)
 export const updateFooter      = (body: SiteFooter)        => put<SiteFooter>('/site/footer', body)
 export const updateNav         = (body: SiteNavItem[])     => put<SiteNavItem[]>('/site/nav', body)
-export const updateManifesto   = (body: { quote: string; author: string; authorTitle: string }) =>
-  put<{ quote: string; author: string; authorTitle: string }>('/site/manifesto', body)
 
 // ── Image upload (admin, to Cloudinary via backend) ───────────────────────
 export const uploadSiteImage = (file: File) =>

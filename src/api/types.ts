@@ -33,9 +33,6 @@ export interface AssignShiftRequest {
 }
 
 export interface AuthResponse {
-  accessToken?: string;
-  refreshToken?: string;
-  expiresIn?: number;
   staff?: StaffResponse;
 }
 
@@ -101,6 +98,7 @@ export interface BranchResponse {
   address?: string;
   city?: string;
   phone?: string;
+  email?: string;
   latitude?: number;
   longitude?: number;
   openTime?: string;
@@ -146,6 +144,7 @@ export interface CreateBranchRequest {
   address: string;
   city: string;
   phone?: string;
+  email?: string;
   latitude?: number;
   longitude?: number;
   openTime?: string;
@@ -243,8 +242,8 @@ export interface CreateStaffRequest {
   email: string;
   phone: string;
   password: string;
-  role: 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'WAITER' | 'CHEF' | 'WAREHOUSE';
-  branchId: number;
+  role: 'ADMIN' | 'MANAGER' | 'STAFF' | 'CHEF';
+  branchId: number | null;
   hourlyRate: number;
 }
 
@@ -641,8 +640,8 @@ export interface StaffDetailResponse {
   username?: string;
   email?: string;
   phone?: string;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'WAITER' | 'CHEF' | 'WAREHOUSE';
-  status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED';
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF' | 'CHEF';
+  status?: 'ACTIVE' | 'LOCKED' | 'ON_LEAVE' | 'RESIGNED';
   hourlyRate?: number;
   hiredAt?: string;
   createdAt?: string;
@@ -658,8 +657,8 @@ export interface StaffResponse {
   phone?: string;
   email?: string;
   username?: string;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'WAITER' | 'CHEF' | 'WAREHOUSE';
-  status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED';
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF' | 'CHEF';
+  status?: 'ACTIVE' | 'LOCKED' | 'ON_LEAVE' | 'RESIGNED';
   hourlyRate?: number;
   hiredAt?: string;
 }
@@ -715,7 +714,7 @@ export interface TableResponse {
 export interface TimesheetResponse {
   staffId?: number;
   staffName?: string;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'WAITER' | 'CHEF' | 'WAREHOUSE';
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF' | 'CHEF';
   shiftsWorked?: number;
   shiftsMissed?: number;
   minutesWorked?: number;
@@ -733,6 +732,7 @@ export interface UpdateBranchRequest {
   address: string;
   city: string;
   phone?: string;
+  email?: string;
   latitude?: number;
   longitude?: number;
   openTime?: string;
@@ -766,7 +766,8 @@ export interface UpdateStaffRequest {
   fullName: string;
   email: string;
   phone: string;
-  role: 'ADMIN' | 'BRANCH_MANAGER' | 'CASHIER' | 'WAITER' | 'CHEF' | 'WAREHOUSE';
+  role: 'ADMIN' | 'MANAGER' | 'STAFF' | 'CHEF';
+  branchId?: number | null;
   hourlyRate: number;
 }
 

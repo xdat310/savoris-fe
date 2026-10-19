@@ -1,14 +1,8 @@
-import type { AuthResponse, ErrorResponse } from './types'
-import { readMigratedStorage } from '../lib/storage'
+import type { ErrorResponse, StaffResponse } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
-const STORAGE_KEY = 'savoris.session'
-const LEGACY_STORAGE_KEY = 'dinechain.session'
-
 export interface Session {
-  accessToken: string
-  refreshToken: string
-  staff: NonNullable<AuthResponse['staff']>
+  staff: StaffResponse
 }
 
 // Vietnamese wording for the error codes staff meet most; anything else shows the server's message
@@ -44,18 +38,13 @@ export class ApiError extends Error {
 }
 
 export function loadSession(): Session | null {
-  try {
-    const raw = readMigratedStorage(localStorage, STORAGE_KEY, LEGACY_STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Session) : null
-  } catch {
-    return null
-  }
+  return null
 }
 
 export function saveSession(session: Session | null) {
   try {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-    else localStorage.removeItem(STORAGE_KEY)
+    if (session) sessionStorage.setItem('savoris.staff', JSON.stringify(session))
+    else sessionStorage.removeItem('savoris.staff')
   } catch {
     // private mode: the session simply lives in memory
   }
@@ -79,17 +68,16 @@ let refreshing: Promise<boolean> | null = null
 
 // Access tokens last an hour; on a 401 try the refresh token once before giving up
 async function refresh(): Promise<boolean> {
-  if (!current?.refreshToken) return false
   refreshing ??= (async () => {
     try {
       const res = await fetch(`${BASE}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: current!.refreshToken }),
+        credentials: 'include',
       })
       if (!res.ok) return false
-      const data = (await res.json()) as AuthResponse
-      saveSession({ accessToken: data.accessToken!, refreshToken: data.refreshToken!, staff: data.staff! })
+      const staff = (await res.json()) as StaffResponse
+      saveSession({ staff })
       return true
     } catch {
       return false
@@ -105,16 +93,15 @@ export async function api<T>(method: string, path: string, body?: unknown, retry
   // A FormData body (file upload) sets its own multipart content type
   const form = body instanceof FormData
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json'
-  if (current?.accessToken) headers.Authorization = `Bearer ${current.accessToken}`
 
   let res: Response
   try {
-    res = await fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : form ? body : JSON.stringify(body) })
+    res = await fetch(`${BASE}${path}`, { method, headers, credentials: 'include', body: body === undefined ? undefined : form ? body : JSON.stringify(body) })
   } catch {
     throw new ApiError(0, { code: 'NETWORK', message: 'Không kết nối được máy chủ. Kiểm tra backend đã chạy chưa.' })
   }
 
-  if (res.status === 401 && retry && current && !path.startsWith('/auth/login')) {
+  if (res.status === 401 && retry && !path.startsWith('/auth/login') && !path.startsWith('/auth/refresh')) {
     if (await refresh()) return api<T>(method, path, body, false)
     saveSession(null)
   }

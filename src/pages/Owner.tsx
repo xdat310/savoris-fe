@@ -533,7 +533,7 @@ function ManagerAccounts() {
     act(async () => {
       await post('/staff', {
         code: `QL${Date.now() % 1000000}`, fullName: f.fullName.trim(), username: f.username.trim(),
-        email: f.email.trim(), phone: f.phone.trim(), role: 'BRANCH_MANAGER' as CreateStaffRequest['role'],
+        email: f.email.trim(), phone: f.phone.trim(), role: 'MANAGER' as CreateStaffRequest['role'],
         branchId, hourlyRate: Number(f.hourlyRate), password: f.password,
       } satisfies CreateStaffRequest)
       setF(blank)
@@ -555,7 +555,7 @@ function ManagerAccounts() {
     }, `Đã khoá ${s.fullName}`)
   }
 
-  const managers = staff.data?.filter((s) => s.role === 'BRANCH_MANAGER') ?? []
+  const managers = staff.data?.filter((s) => s.role === 'MANAGER') ?? []
 
   return (
     <div style={{ display: 'grid', gap: 18 }}>

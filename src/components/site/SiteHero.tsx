@@ -15,10 +15,14 @@ const FALLBACK: HeroConfig = {
   cta_link: '#dat-ban',
 }
 
-// Cloudinary responsive URL helper
+// Serve a high-quality source for large and high-density displays.
 function cdnUrl(url: string, width: number) {
   if (!url.includes('cloudinary.com')) return url
-  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`)
+  return url.replace('/upload/', `/upload/f_auto,q_auto:best,w_${width}/`)
+}
+
+function heroSrcSet(url: string) {
+  return `${cdnUrl(url, 1280)} 1280w, ${cdnUrl(url, 1920)} 1920w, ${cdnUrl(url, 2560)} 2560w`
 }
 
 interface Props {
@@ -87,7 +91,7 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
                 key={m.public_id}
                 className={`sh-hero-bg sh-hero-slide${i === active ? ' sh-hero-slide--active' : ''}${i === active && fading ? ' sh-hero-slide--fade' : ''}`}
                 src={cdnUrl(m.url, 1920)}
-                srcSet={`${cdnUrl(m.url, 960)} 960w, ${cdnUrl(m.url, 1440)} 1440w, ${cdnUrl(m.url, 1920)} 1920w`}
+                srcSet={heroSrcSet(m.url)}
                 sizes="100vw"
                 alt={m.alt ?? ''}
                 loading={i === 0 ? 'eager' : 'lazy'}
@@ -98,7 +102,7 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
             <img
               className="sh-hero-bg"
               src={cdnUrl(c.media[0].url, 1920)}
-              srcSet={`${cdnUrl(c.media[0].url, 960)} 960w, ${cdnUrl(c.media[0].url, 1440)} 1440w, ${cdnUrl(c.media[0].url, 1920)} 1920w`}
+              srcSet={heroSrcSet(c.media[0].url)}
               sizes="100vw"
               alt={c.media[0].alt ?? ''}
               loading="eager"

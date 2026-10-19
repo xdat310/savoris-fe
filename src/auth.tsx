@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { readMigratedStorage } from './lib/storage'
 import { get, getSession, onSessionChange, post, saveSession, type Session } from './api/client'
-import type { AuthResponse, BranchResponse } from './api/types'
+import type { BranchResponse, StaffResponse } from './api/types'
 
 interface AuthState {
   session: Session | null
+  authLoading: boolean
   role?: string
   // The branch this screen works on: the staff member's own, or the one the owner picked
   branchId?: number
@@ -22,6 +23,7 @@ const LEGACY_BRANCH_KEY = 'dinechain.branch'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(getSession())
+  const [authLoading, setAuthLoading] = useState(() => !getSession())
   const [branches, setBranches] = useState<BranchResponse[]>([])
   const [pickedBranch, setPickedBranch] = useState<number | null | undefined>(() => {
     try {
@@ -34,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => onSessionChange(setSession), [])
+
+  useEffect(() => {
+    if (getSession()) return
+    get<StaffResponse>('/auth/me')
+      .then((staff) => saveSession({ staff }))
+      .catch(() => undefined)
+      .finally(() => setAuthLoading(false))
+  }, [])
 
   const loadBranches = () => get<BranchResponse[]>('/branches').then(setBranches).catch(() => setBranches([]))
   useEffect(() => {
@@ -49,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthState = {
     session,
+    authLoading,
     role,
     branchId,
     branches,
@@ -62,13 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     login: async (username, password) => {
-      const data = await post<AuthResponse>('/auth/login', { username, password })
-      saveSession({ accessToken: data.accessToken!, refreshToken: data.refreshToken!, staff: data.staff! })
+      const staff = await post<StaffResponse>('/auth/login', { username, password })
+      saveSession({ staff })
     },
     logout: async () => {
-      const refreshToken = getSession()?.refreshToken
       try {
-        if (refreshToken) await post('/auth/logout', { refreshToken })
+        await post('/auth/logout')
       } catch {
         // signing out locally is what matters
       }
@@ -86,28 +96,27 @@ export function useAuth() {
 
 export const can = {
   // Functional permissions (used throughout the app for feature access)
-  pos: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'].includes(role ?? ''),
-  kitchen: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CHEF'].includes(role ?? ''),
-  cash: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'CASHIER'].includes(role ?? ''),
-  cancelCooking: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''),
+  pos: (role?: string) => ['ADMIN', 'MANAGER', 'STAFF'].includes(role ?? ''),
+  kitchen: (role?: string) => ['ADMIN', 'MANAGER', 'CHEF'].includes(role ?? ''),
+  cash: (role?: string) => ['ADMIN', 'MANAGER', 'STAFF'].includes(role ?? ''),
+  cancelCooking: (role?: string) => ['ADMIN', 'MANAGER'].includes(role ?? ''),
   shifts: (role?: string) => role !== 'ADMIN',
-  manage: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''),
-  stock: (role?: string) => ['ADMIN', 'BRANCH_MANAGER', 'WAREHOUSE'].includes(role ?? ''),
+  manage: (role?: string) => ['ADMIN', 'MANAGER'].includes(role ?? ''),
+  stock: (role?: string) => ['ADMIN', 'MANAGER'].includes(role ?? ''),
   owner: (role?: string) => role === 'ADMIN',
   // Sidebar nav visibility per RBAC spec
   siteAdmin: (role?: string) => role === 'ADMIN',          // full website CMS
-  menuCms: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''), // thực đơn website
-  branchAdmin: (role?: string) => ['ADMIN', 'BRANCH_MANAGER'].includes(role ?? ''), // /chi-nhanh
-  isStaff: (role?: string) => ['CHEF', 'WAITER', 'CASHIER'].includes(role ?? ''), // front-of-house (fullscreen)
+  menuCms: (role?: string) => ['ADMIN', 'MANAGER'].includes(role ?? ''), // thực đơn website
+  branchAdmin: (role?: string) => role === 'ADMIN', // branch changes are ADMIN-only
+  isStaff: (role?: string) => ['CHEF', 'STAFF'].includes(role ?? ''),
 }
 
 // Everything for the restaurant's own people (owner, managers, staff) lives under this prefix; guests use the root
 export const STAFF = '/nha-hang'
 
 export function homeFor(role?: string) {
-  if (role === 'ADMIN') return `${STAFF}/chuoi`
-  if (role === 'CHEF') return `${STAFF}/bep`
-  if (role === 'BRANCH_MANAGER') return `${STAFF}/chi-nhanh`
-  if (role === 'WAREHOUSE') return `${STAFF}/kho`
-  return `${STAFF}/ban-hang`
+  if (role === 'ADMIN') return '/admin/overview'
+  if (role === 'MANAGER') return '/admin/branch'
+  if (role === 'CHEF') return '/admin/kitchen'
+  return '/admin/floor'
 }

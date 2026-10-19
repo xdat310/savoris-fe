@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import beefWine     from '../../assets/photos/beef-steak-wine.webp'
 import slicedSteak  from '../../assets/photos/sliced-steak.webp'
@@ -31,13 +31,19 @@ export function SiteGallery({ items }: Props) {
     : SEED
 
   const [lightbox, setLightbox] = useState<number | null>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (lightbox === null) return
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+  }, [lightbox !== null])
 
   useEffect(() => {
     if (lightbox === null) return
     function handler(e: KeyboardEvent) {
       if (e.key === 'ArrowRight') setLightbox((i) => ((i ?? 0) + 1) % data.length)
       if (e.key === 'ArrowLeft')  setLightbox((i) => ((i ?? 0) - 1 + data.length) % data.length)
-      if (e.key === 'Escape')     setLightbox(null)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -45,28 +51,28 @@ export function SiteGallery({ items }: Props) {
 
   return (
     <section className="gal-wrap" id="thu-vien" aria-label="Thư viện ảnh">
-      <div className="gal-grid">
+      <div className="gal-list">
         {data.map((item, i) => (
           <button
             key={item.id}
-            className="gal-cell"
+            className="gal-item"
             onClick={() => setLightbox(i)}
             aria-label={item.caption ?? `Ảnh ${i + 1}`}
           >
-            <img
-              src={cdnGrid(item.image_url)}
-              alt=""
-              loading={i < 3 ? 'eager' : 'lazy'}
-            />
-            <div className="gal-cell-overlay" aria-hidden="true" />
-            <span className="gal-cell-cap">{item.caption ?? `Ảnh ${i + 1}`}</span>
+            <img src={cdnGrid(item.image_url)} alt={item.caption ?? ''} loading={i < 3 ? 'eager' : 'lazy'} />
           </button>
         ))}
       </div>
 
       {lightbox !== null && createPortal(
-        <div className="gal-lb" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
-          <button className="gal-lb-close" onClick={() => setLightbox(null)} aria-label="Đóng">
+        <dialog
+          ref={dialogRef}
+          className="gal-lb"
+          aria-label="Xem ảnh lớn"
+          onClose={() => setLightbox(null)}
+          onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close() }}
+        >
+          <button className="gal-lb-close" onClick={() => dialogRef.current?.close()} aria-label="Đóng">
             <X size={20} />
           </button>
           <button
@@ -88,11 +94,7 @@ export function SiteGallery({ items }: Props) {
           >
             <ChevronRight size={28} />
           </button>
-          {data[lightbox].caption && (
-            <p className="gal-lb-caption">{data[lightbox].caption}</p>
-          )}
-          <div className="gal-lb-bg" onClick={() => setLightbox(null)} />
-        </div>,
+        </dialog>,
         document.body
       )}
     </section>
