@@ -1,13 +1,20 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Inbox, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Icon } from './ui/Icon'
+import { Skeleton } from './ui/Badge'
 
-export function Loading({ label = 'Đang tải…' }: { label?: string }) {
+/** Skeleton rows while data loads; the label is kept for screen readers. */
+export function Loading({ label = 'Đang tải…', rows = 4 }: { label?: string; rows?: number }) {
   return (
-    <div className="empty" role="status">
-      <div className="row" style={{ justifyContent: 'center' }}>
-        <span className="spinner" aria-hidden="true" />
-        {label}
-      </div>
+    <div className="loading-skel" role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="loading-skel-row">
+          <Skeleton width={`${28 + ((i * 17) % 20)}%`} />
+          <Skeleton width={`${18 + ((i * 11) % 14)}%`} />
+          <Skeleton width="12%" />
+        </div>
+      ))}
     </div>
   )
 }
@@ -15,7 +22,7 @@ export function Loading({ label = 'Đang tải…' }: { label?: string }) {
 export function ErrorNotice({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="notice notice-bad" role="alert">
-      <AlertCircle size={18} aria-hidden="true" />
+      <Icon icon={AlertCircle} />
       <div>
         {message}
         {onRetry && (
@@ -29,11 +36,19 @@ export function ErrorNotice({ message, onRetry }: { message: string; onRetry?: (
   )
 }
 
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+/** Empty state: icon + one sentence + optional action. */
+export function Empty({ title, children, icon = Inbox, action }: {
+  title: string
+  children?: ReactNode
+  icon?: LucideIcon
+  action?: ReactNode
+}) {
   return (
     <div className="empty">
+      <span className="empty-icon"><Icon icon={icon} size="touch" /></span>
       <strong>{title}</strong>
-      {children}
+      {children && <div>{children}</div>}
+      {action}
     </div>
   )
 }

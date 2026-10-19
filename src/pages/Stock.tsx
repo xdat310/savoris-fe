@@ -1,4 +1,4 @@
-import { PackageCheck, Plus, Send, Trash2 } from 'lucide-react'
+import { PackageCheck, Plus, Send, Trash2, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type { IngredientResponse, InventoryResponse, PurchaseOrderResponse, SupplierResponse } from '../api/types'
@@ -6,7 +6,11 @@ import { useAuth } from '../auth'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
 import { Chip } from '../components/State'
 import { useToast } from '../components/Toast'
-import { dateTime, money, number } from '../lib/format'
+import { dateTime, money, quantity } from '../lib/format'
+import { Badge } from '../components/ui/Badge'
+import { confirmDialog } from '../components/ui/Dialog'
+import { Icon } from '../components/ui/Icon'
+import { RowMenu } from '../components/ui/RowMenu'
 import { useData } from '../lib/useData'
 import { StockImport } from './StockImport'
 
@@ -60,7 +64,7 @@ export function Stock() {
         <div className="panel">
           <div className="panel-head">
             <h2>Tồn kho</h2>
-            {(low.data?.length ?? 0) > 0 ? <Chip tone="bad">{low.data!.length} nguyên liệu sắp hết</Chip> : <Chip tone="ok">Đủ hàng</Chip>}
+            {(low.data?.length ?? 0) > 0 ? <Badge tone="warning">{low.data!.length} nguyên liệu sắp hết</Badge> : <Badge tone="success">Đủ hàng</Badge>}
           </div>
           {stock.loading ? <Loading /> : (stock.data?.length ?? 0) === 0 ? <Empty title="Chi nhánh chưa có tồn kho" /> : (
             <table className="data">
@@ -69,13 +73,14 @@ export function Stock() {
                 {[...stock.data!].sort((a, b) => Number(lowIds.has(b.ingredientId)) - Number(lowIds.has(a.ingredientId))).map((s) => {
                   const i = ing(s.ingredientId)
                   const isLow = lowIds.has(s.ingredientId)
+                  const isOut = (s.quantity ?? 0) <= 0
                   return (
-                    <tr key={s.id} style={isLow ? { background: 'var(--red-wash)' } : undefined}>
-                      <td style={{ fontWeight: 600 }}>{i?.name ?? `#${s.ingredientId}`} {isLow && <Chip tone="bad">Sắp hết</Chip>}</td>
-                      <td className="num right" style={{ fontWeight: 700 }}>{number(s.quantity, 3)} {i?.unit}</td>
-                      <td className="num right muted">{number(i?.minStock, 3)}</td>
+                    <tr key={s.id} className={isOut ? 'row-danger' : isLow ? 'row-warning' : undefined}>
+                      <td><span className="with-avatar"><span className="cell-strong">{i?.name ?? `#${s.ingredientId}`}</span>{isOut ? <Badge tone="danger">Hết hàng</Badge> : isLow && <Badge tone="warning">Sắp hết</Badge>}</span></td>
+                      <td className="right cell-strong">{quantity(s.quantity, i?.unit, 3)}</td>
+                      <td className="right cell-muted">{quantity(i?.minStock, i?.unit, 3)}</td>
                       <td>
-                        <input className="input num" type="number" step="0.1" min={0} placeholder="Số thực tế" style={{ width: 120 }}
+                        <input className="input num" type="number" step="0.1" min={0} placeholder="Số thực tế" style={{ width: 132 }}
                           aria-label={`Số kiểm kho ${i?.name}`}
                           onKeyDown={(e) => {
                             if (e.key !== 'Enter') return
@@ -101,26 +106,38 @@ export function Stock() {
       </div>
 
       <div className="panel" style={{ marginTop: 18 }}>
-        <div className="panel-head"><h2>Phiếu nhập</h2>{!manager && <span className="muted" style={{ fontSize: 13 }}>Quản lý duyệt phiếu trước khi đặt hàng</span>}</div>
+        <div className="panel-head"><h2>Phiếu nhập</h2>{!manager && <p>Quản lý duyệt phiếu trước khi đặt hàng</p>}</div>
         {orders.loading ? <Loading /> : (orders.data?.length ?? 0) === 0 ? <Empty title="Chưa có phiếu nhập" /> : (
           <table className="data">
-            <thead><tr><th>Mã phiếu</th><th>Nhà cung cấp</th><th>Hàng</th><th className="right">Thành tiền</th><th>Trạng thái</th><th>Lập lúc</th><th /></tr></thead>
+            <thead><tr><th>Mã phiếu</th><th>Nhà cung cấp</th><th>Hàng</th><th className="right">Thành tiền</th><th>Trạng thái</th><th>Lập lúc</th><th className="actions"><span className="sr-only">Thao tác</span></th></tr></thead>
             <tbody>
               {orders.data!.map((o) => {
                 const s = PO_STATUS[o.status ?? 'DRAFT']
                 return (
                   <tr key={o.id}>
-                    <td className="num" style={{ fontWeight: 700 }}>{o.code}</td>
+                    <td className="cell-strong num">{o.code}</td>
                     <td>{suppliers.data?.find((x) => x.id === o.supplierId)?.name ?? `#${o.supplierId}`}</td>
-                    <td style={{ fontSize: 13 }}>{o.items?.map((it) => `${it.ingredientName} ${number(it.receivedQuantity ?? it.quantity, 3)} ${it.unit}`).join(', ')}</td>
-                    <td className="num right" style={{ fontWeight: 700 }}>{money(o.totalAmount)}</td>
+                    <td className="po-items">
+                      {o.items?.map((it, k) => (
+                        <span key={k} className="po-item">{it.ingredientName} <span className="num">{quantity(it.receivedQuantity ?? it.quantity, it.unit, 3)}</span></span>
+                      ))}
+                    </td>
+                    <td className="right cell-strong">{money(o.totalAmount)}</td>
                     <td><Chip tone={s.tone}>{s.label}</Chip></td>
-                    <td className="num" style={{ fontSize: 13 }}>{dateTime(o.createdAt)}</td>
-                    <td className="right">
-                      <div className="row" style={{ justifyContent: 'flex-end' }}>
-                        {o.status === 'DRAFT' && manager && <button className="btn btn-sm btn-accent" onClick={() => run(() => put(`/purchase-orders/${o.id}/order`), `Đã đặt hàng ${o.code}`)}><Send size={14} aria-hidden="true" /> Duyệt & đặt</button>}
-                        {o.status === 'ORDERED' && <button className="btn btn-sm" onClick={() => run(() => put(`/purchase-orders/${o.id}/receive`), `Đã nhận hàng ${o.code}`)}><PackageCheck size={14} aria-hidden="true" /> Nhận đủ hàng</button>}
-                        {(o.status === 'DRAFT' || o.status === 'ORDERED') && manager && <button className="btn btn-sm btn-danger" onClick={() => window.confirm(`Huỷ phiếu ${o.code}?`) && run(() => put(`/purchase-orders/${o.id}/cancel`), `Đã huỷ ${o.code}`)}>Huỷ</button>}
+                    <td className="cell-muted">{dateTime(o.createdAt)}</td>
+                    <td className="actions">
+                      <div className="row">
+                        {o.status === 'DRAFT' && manager && <button className="btn btn-sm btn-primary" onClick={() => run(() => put(`/purchase-orders/${o.id}/order`), `Đã đặt hàng ${o.code}`)}><Icon icon={Send} /> Duyệt & đặt</button>}
+                        {o.status === 'ORDERED' && <button className="btn btn-sm btn-primary" onClick={() => run(() => put(`/purchase-orders/${o.id}/receive`), `Đã nhận hàng ${o.code}`)}><Icon icon={PackageCheck} /> Nhận đủ hàng</button>}
+                        {(o.status === 'DRAFT' || o.status === 'ORDERED') && manager && (
+                          <RowMenu label={`Thao tác khác cho ${o.code}`} items={[{
+                            label: 'Huỷ phiếu', icon: X, danger: true,
+                            onSelect: async () => {
+                              if (!(await confirmDialog({ title: `Huỷ phiếu ${o.code}?`, message: 'Phiếu sẽ không được đặt hoặc nhận hàng nữa.', confirmLabel: 'Huỷ phiếu', cancelLabel: 'Giữ phiếu', danger: true }))) return
+                              run(() => put(`/purchase-orders/${o.id}/cancel`), `Đã huỷ ${o.code}`)
+                            },
+                          }]} />
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -153,7 +170,7 @@ function NewPurchaseOrder({ branchId, ingredients, suppliers, lowIds, onCreate }
 
   return (
     <form className="panel panel-pad" style={{ display: 'grid', gap: 12 }} onSubmit={submit}>
-      <h2 style={{ margin: 0, fontSize: 17 }}>Lập phiếu nhập</h2>
+      <h2 className="card-title">Lập phiếu nhập</h2>
       <label className="field">Nhà cung cấp
         <select className="select" required value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
           <option value="">Chọn nhà cung cấp</option>
@@ -175,9 +192,9 @@ function NewPurchaseOrder({ branchId, ingredients, suppliers, lowIds, onCreate }
       ))}
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <button type="button" className="btn btn-sm" onClick={() => setLines([...lines, { ingredientId: '', quantity: '', unitPrice: '' }])}><Plus size={14} aria-hidden="true" /> Thêm dòng</button>
-        <span className="num">Thành tiền: <strong>{money(total)}</strong></span>
+        <span className="po-total">Thành tiền <strong className="num">{money(total)}</strong></span>
       </div>
-      <button className="btn btn-primary">Lập phiếu (chờ duyệt)</button>
+      <button className="btn btn-primary btn-lg">Lập phiếu (chờ duyệt)</button>
     </form>
   )
 }

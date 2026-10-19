@@ -1,12 +1,12 @@
 import {
-  Bell, BookOpen, ChefHat, ChevronDown,
-  ExternalLink, Globe, LayoutDashboard, LogOut,
-  Package, QrCode, ReceiptText, Users,
+  Bell, BookOpen, ChefHat, ChevronDown, ExternalLink, Globe, LayoutDashboard, LogOut, Menu,
+  Package, PanelLeftClose, PanelLeftOpen, QrCode, ReceiptText, Users,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { STAFF, can, useAuth } from '../auth'
 import { ROLE_LABEL } from '../lib/format'
+import { Icon } from './ui/Icon'
 
 const TITLES: Record<string, string> = {
   [`${STAFF}/chuoi`]:         'Toàn chuỗi',
@@ -24,7 +24,12 @@ const TITLES: Record<string, string> = {
 }
 
 // CHEF and WAITER get a fullscreen kiosk layout — no sidebar
-const FULLSCREEN_ROLES = ['STAFF', 'CHEF']
+const FULLSCREEN_ROLES = ['CASHIER', 'WAITER', 'CHEF']
+const RAIL_KEY = 'savoris.railCollapsed'
+
+function readCollapsed() {
+  try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false }
+}
 
 export function Shell() {
   const { session, role, branchId, branches, setBranchId, logout } = useAuth()
@@ -33,6 +38,8 @@ export function Shell() {
   const branch = branches.find((b) => b.id === branchId)
   const isFullscreen = FULLSCREEN_ROLES.includes(role ?? '')
   const pageTitle = TITLES[pathname] ?? 'Savoris'
+  // Unread count is not provided by the API yet; the bell shows a number as soon as one is passed here
+  const unread = 0
 
   // Swap favicon to fork-knife icon while inside staff area
   useEffect(() => {
@@ -46,42 +53,73 @@ export function Shell() {
 
   const [branchOpen, setBranchOpen] = useState(false)
   const branchRef = useRef<HTMLDivElement>(null)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [drawer, setDrawer] = useState(false)
+
+  useEffect(() => {
+    try { localStorage.setItem(RAIL_KEY, collapsed ? '1' : '0') } catch { /* private mode */ }
+  }, [collapsed])
+
+  useEffect(() => {
+    if (!branchOpen) return
+    const close = (e: MouseEvent) => { if (!branchRef.current?.contains(e.target as Node)) setBranchOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [branchOpen])
 
   // ── RBAC nav links per spec ──────────────────────────────────────────
   // ADMIN: dashboard (with transfer QR built-in) + branch mgmt + settings
   // BRANCH_MANAGER: branch ops + website menu editor
   const opsLinks = [
-    can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Dashboard',       Icon: LayoutDashboard },
-    role === 'MANAGER' && { to: `${STAFF}/ban-hang`,  label: 'Bán hàng',        Icon: ReceiptText },
-    role === 'MANAGER' && { to: `${STAFF}/bep`,       label: 'Bếp',             Icon: ChefHat },
-    role === 'MANAGER' && { to: `${STAFF}/kho`,       label: 'Kho & nhập hàng', Icon: Package },
-    role === 'MANAGER' && { to: `${STAFF}/ma-qr`,     label: 'Mã QR bàn',       Icon: QrCode },
-  ].filter(Boolean) as { to: string; label: string; Icon: typeof Users }[]
+    can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Glyph: LayoutDashboard },
+    can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Glyph: Users },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Glyph: QrCode },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Glyph: Package },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/ban-hang`, label: 'Bán hàng',           Glyph: ReceiptText },
+    role === 'BRANCH_MANAGER' && { to: `${STAFF}/bep`,      label: 'Bếp',               Glyph: ChefHat },
+    role === 'WAREHOUSE'      && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Glyph: Package },
+  ].filter(Boolean) as { to: string; label: string; Glyph: typeof Users }[]
 
   // WEBSITE — BRANCH_MANAGER edits menu; ADMIN manages CMS only
   const cmsLinks = can.owner(role)
-    ? [{ to: `${STAFF}/website/trang-chu`, label: 'Website CMS', Icon: Globe }]
-    : role === 'MANAGER'
+    ? [{ to: `${STAFF}/website/trang-chu`, label: 'Website CMS', Glyph: Globe }]
+    : role === 'BRANCH_MANAGER'
     ? [
-        { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Icon: BookOpen },
-        { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Icon: Globe },
+        { to: `${STAFF}/website/thuc-don`, label: 'Thực đơn website', Glyph: BookOpen },
+        { to: `${STAFF}/website/trang-chu`, label: 'Website CMS',     Glyph: Globe },
       ]
     : []
+
+  const roleLabel = ROLE_LABEL[staff.role ?? ''] ?? staff.role
 
   // ── Shared top bar ───────────────────────────────────────────────────
   const TopBar = (
     <header className={`ad-top${isFullscreen ? ' ad-top--full' : ''}`}>
+      {!isFullscreen && (
+        <button className="btn btn-ghost btn-icon ad-menu-btn" aria-label="Mở menu" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+          <Icon icon={Menu} size={20} />
+        </button>
+      )}
       {isFullscreen && <span className="ad-top-mark">Savoris</span>}
       <h1 className="ad-top-title">{pageTitle}</h1>
       <div className="ad-top-actions">
-        <a className="ad-top-site" href="/" target="_blank" rel="noopener noreferrer">
-          <ExternalLink size={14} aria-hidden="true" /> Xem website
+        <a className="btn btn-sm ad-top-site" href="/" target="_blank" rel="noopener noreferrer" aria-label="Xem website (mở tab mới)">
+          <Icon icon={ExternalLink} /> <span className="ad-top-site-label">Xem website</span>
         </a>
-        <button className="ad-top-icon" aria-label="Thông báo"><Bell size={18} /></button>
+        <button className="btn btn-ghost btn-icon ad-bell" aria-label={unread ? `Thông báo, ${unread} chưa đọc` : 'Thông báo'} data-tip="Thông báo">
+          <Icon icon={Bell} size={20} />
+          {unread > 0 && <span className="ad-bell-count">{unread > 99 ? '99+' : unread}</span>}
+        </button>
         {isFullscreen && (
-          <button className="ad-top-logout" onClick={logout} aria-label="Đăng xuất">
-            <LogOut size={16} /> Thoát
-          </button>
+          <>
+            <span className="ad-top-who" title={`${staff.fullName} · ${roleLabel}`}>
+              <span className="avatar avatar-sm" aria-hidden="true">{(staff.fullName ?? 'U')[0].toUpperCase()}</span>
+              <span className="ad-top-who-name">{staff.fullName}</span>
+            </span>
+            <button className="btn btn-sm btn-ghost" onClick={logout} aria-label="Đăng xuất">
+              <Icon icon={LogOut} /> Thoát
+            </button>
+          </>
         )}
       </div>
     </header>
@@ -90,7 +128,7 @@ export function Shell() {
   // ── Fullscreen layout (CHEF / WAITER) ─────────────────────────────────
   if (isFullscreen) {
     return (
-      <div className="ad-shell ad-shell--full">
+      <div className="ad-shell ad-shell--full ds-ambient">
         {TopBar}
         <main className="ad-main"><Outlet /></main>
       </div>
@@ -98,12 +136,38 @@ export function Shell() {
   }
 
   // ── Sidebar layout ───────────────────────────────────────────────────
-  return (
-    <div className="ad-shell">
-      <aside className="ad-rail">
+  const link = ({ to, label, Glyph }: { to: string; label: string; Glyph: typeof Users }) => (
+    <NavLink
+      key={to}
+      to={to}
+      className={({ isActive }) => `ad-link${isActive ? ' ad-link--on' : ''}`}
+      title={collapsed ? label : undefined}
+      aria-label={label}
+      onClick={() => setDrawer(false)} // phone drawer closes after navigating
+    >
+      <Icon icon={Glyph} size="nav" />
+      <span>{label}</span>
+    </NavLink>
+  )
 
-        {/* Brand mark */}
-        <div className="ad-rail-mark">Savoris</div>
+  return (
+    <div className={`ad-shell ds-ambient${collapsed ? ' ad-shell--collapsed' : ''}${drawer ? ' ad-shell--drawer' : ''}`}>
+      {drawer && <div className="ad-rail-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
+      <aside className="ad-rail" aria-label="Điều hướng">
+
+        {/* Brand mark + collapse */}
+        <div className="ad-rail-head">
+          <div className="ad-rail-mark" aria-label="Savoris">S<span className="ad-mark-rest">avoris</span></div>
+          <button
+            className="ad-collapse"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+            aria-pressed={collapsed}
+            data-tip={collapsed ? 'Mở rộng' : 'Thu gọn'}
+          >
+            <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} size={18} />
+          </button>
+        </div>
 
         {/* Branch context
             - ADMIN: branch dropdown (can switch, Toàn chuỗi by default)
@@ -118,16 +182,17 @@ export function Shell() {
             <button
               className="ad-branch-btn"
               aria-expanded={branchOpen}
+              aria-haspopup="listbox"
               onClick={() => setBranchOpen(v => !v)}
             >
               <span>
                 <span className="ad-branch-label">Đang xem</span>
                 <strong className="ad-branch-name">{branch?.name ?? 'Toàn chuỗi'}</strong>
               </span>
-              <ChevronDown size={14} className={branchOpen ? 'ad-branch-chev--open' : ''} aria-hidden="true" />
+              <Icon icon={ChevronDown} className={branchOpen ? 'ad-branch-chev--open' : ''} />
             </button>
             {branchOpen && (
-              <div className="ad-branch-drop">
+              <div className="ad-branch-drop" role="listbox" aria-label="Chọn chi nhánh">
                 <button
                   className={`ad-branch-opt${!branchId ? ' ad-branch-opt--on' : ''}`}
                   onClick={() => { setBranchId(null); setBranchOpen(false) }}
@@ -138,6 +203,8 @@ export function Shell() {
                 {branches.map((b) => (
                   <button
                     key={b.id}
+                    role="option"
+                    aria-selected={b.id === branchId}
                     className={`ad-branch-opt${b.id === branchId ? ' ad-branch-opt--on' : ''}`}
                     onClick={() => { setBranchId(b.id!); setBranchOpen(false) }}
                   >
@@ -152,41 +219,31 @@ export function Shell() {
 
         {/* VẬN HÀNH */}
         <nav className="ad-nav" aria-label="Vận hành">
-          <span className="ad-nav-group">VẬN HÀNH</span>
-          {opsLinks.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `ad-link${isActive ? ' ad-link--on' : ''}`}>
-              <Icon size={16} aria-hidden="true" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          <span className="ad-nav-group">Vận hành</span>
+          {opsLinks.map(link)}
         </nav>
 
         {/* WEBSITE */}
         {cmsLinks.length > 0 && (
           <nav className="ad-nav" aria-label="Website CMS">
-            <span className="ad-nav-group">WEBSITE</span>
-            {cmsLinks.map(({ to, label, Icon }) => (
-              <NavLink key={to} to={to} className={({ isActive }) => `ad-link${isActive ? ' ad-link--on' : ''}`}>
-                <Icon size={16} aria-hidden="true" />
-                <span>{label}</span>
-              </NavLink>
-            ))}
+            <span className="ad-nav-group">Website</span>
+            {cmsLinks.map(link)}
           </nav>
         )}
 
-        {/* User footer */}
+        {/* User footer: full name wraps to two lines, tooltip carries it when the rail is collapsed */}
         <div className="ad-rail-foot">
-          <div className="ad-who">
+          <div className="ad-who" title={`${staff.fullName} · ${roleLabel}`}>
             <div className="ad-who-avatar" aria-hidden="true">
               {(staff.fullName ?? 'U')[0].toUpperCase()}
             </div>
             <div className="ad-who-info">
               <strong>{staff.fullName}</strong>
-              <span>{ROLE_LABEL[staff.role ?? ''] ?? staff.role}</span>
+              <span>{roleLabel}</span>
             </div>
           </div>
-          <button className="ad-logout" onClick={logout}>
-            <LogOut size={14} aria-hidden="true" /> Thoát
+          <button className="ad-logout" onClick={logout} aria-label="Đăng xuất" data-tip="Đăng xuất">
+            <Icon icon={LogOut} />
           </button>
         </div>
       </aside>

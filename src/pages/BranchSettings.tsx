@@ -5,6 +5,7 @@ import type { BranchResponse } from '../api/types'
 import { useAuth } from '../auth'
 import { ErrorNotice } from '../components/Feedback'
 import { useToast } from '../components/Toast'
+import { confirmDialog } from '../components/ui/Dialog'
 
 const blank = (v?: string) => (v && v !== 'Chưa cập nhật' ? v : '')
 
@@ -33,13 +34,13 @@ export function BranchSettings({ branch }: { branch: BranchResponse }) {
 function BranchList({ branches, current, onPick }: { branches: BranchResponse[]; current?: number; onPick: (id: number) => void }) {
   return (
     <div className="panel">
-      <div className="panel-head"><h2>Các chi nhánh</h2><span className="muted" style={{ fontSize: 13 }}>Chọn một chi nhánh để sửa</span></div>
+      <div className="panel-head"><h2>Các chi nhánh</h2><span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Chọn một chi nhánh để sửa</span></div>
       <table className="data">
         <thead><tr><th>Mã</th><th>Tên</th><th>Địa chỉ</th><th>Thành phố</th><th>Vị trí bản đồ</th></tr></thead>
         <tbody>
           {branches.map((b) => (
             <tr key={b.id} className={b.id === current ? 'is-current' : ''} onClick={() => onPick(b.id!)} style={{ cursor: 'pointer' }}>
-              <td className="num" style={{ fontWeight: 600 }}>{b.code}</td>
+              <td className="num" style={{ fontWeight: 'var(--fw-semibold)' }}>{b.code}</td>
               <td>{b.name}</td>
               <td>{blank(b.address) || <span className="muted">Chưa có</span>}</td>
               <td>{blank(b.city) || <span className="muted">—</span>}</td>
@@ -103,7 +104,7 @@ function BranchForm({ branch, owner, onSaved }: { branch: BranchResponse; owner:
   }
 
   async function close() {
-    if (!window.confirm(`Ngừng hoạt động ${branch.name}? Chi nhánh sẽ biến mất khỏi trang khách và danh sách chi nhánh.`)) return
+    if (!(await confirmDialog({ title: `Ngừng hoạt động ${branch.name}?`, message: 'Chi nhánh sẽ biến mất khỏi trang khách và danh sách chi nhánh.', confirmLabel: 'Ngừng hoạt động', danger: true }))) return
     setBusy('close')
     try {
       await del(`/branches/${branch.id}`)
@@ -148,7 +149,7 @@ function BranchForm({ branch, owner, onSaved }: { branch: BranchResponse; owner:
         </div>
         <label className="field" style={{ maxWidth: 360 }}>Sức chứa bếp giờ cao điểm (phần)
           <input className="input num" type="number" min={1} placeholder="40" value={f.capacity} onChange={set('capacity')} />
-          <span className="muted" style={{ fontWeight: 400 }}>Món chờ + đang nấu tối đa. Vượt mức này hệ thống tạm ngưng mang về và giao hàng; khách tại bàn vẫn được phục vụ. Để trống = 40.</span>
+          <span className="muted" style={{ fontWeight: 'var(--fw-regular)' }}>Món chờ + đang nấu tối đa. Vượt mức này hệ thống tạm ngưng mang về và giao hàng; khách tại bàn vẫn được phục vụ. Để trống = 40.</span>
         </label>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <button className="btn btn-primary" disabled={busy !== null}>{busy === 'save' && <span className="spinner" aria-hidden="true" />} Lưu thông tin</button>
