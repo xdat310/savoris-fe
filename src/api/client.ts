@@ -38,7 +38,12 @@ export class ApiError extends Error {
 }
 
 export function loadSession(): Session | null {
-  return null
+  try {
+    const raw = sessionStorage.getItem('savoris.staff')
+    return raw ? (JSON.parse(raw) as Session) : null
+  } catch {
+    return null
+  }
 }
 
 export function saveSession(session: Session | null) {
