@@ -73,7 +73,68 @@ export function AdminLogin() {
   </form></div></main>
 }
 
-function Overview() { return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">SAVORIS · TOÀN CHUỖI</span><h1>Tổng quan</h1><p>Không gian quản trị hệ thống nhà hàng.</p></div></div></div> }
+interface ChainDashboard {
+  generatedAt: string
+  openOrders: number
+  completedOrdersToday: number
+  revenueToday: number
+  overloadedBranches: number
+  branches: {
+    branchId: number
+    code: string
+    name: string
+    openOrders: number
+    completedOrdersToday: number
+    revenueToday: number
+    kitchen: { status: string; loadPercent: number; pendingPortions: number; acceptingTakeaway: boolean }
+  }[]
+}
+
+function Overview() {
+  const [data, setData] = useState<ChainDashboard | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    get<ChainDashboard>('/dashboard/chain')
+      .then(setData)
+      .catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được dữ liệu'))
+      .finally(() => setLoading(false))
+  }, [])
+  const vnd = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n)
+  return (
+    <div className="ap-page">
+      <div className="ap-heading">
+        <div><span className="ap-kicker">SAVORIS · TOÀN CHUỖI</span><h1>Tổng quan</h1><p>Dữ liệu vận hành hôm nay theo thời gian thực.</p></div>
+      </div>
+      {error && <ErrorNotice message={error} />}
+      {loading && !error && <div className="ap-empty">Đang tải…</div>}
+      {data && <>
+        <div className="ap-stat-grid">
+          <div className="ap-stat-card"><span>Đơn đang mở</span><strong>{data.openOrders}</strong></div>
+          <div className="ap-stat-card"><span>Hoàn thành hôm nay</span><strong>{data.completedOrdersToday}</strong></div>
+          <div className="ap-stat-card"><span>Doanh thu hôm nay</span><strong>{vnd(data.revenueToday)}</strong></div>
+          <div className={`ap-stat-card${data.overloadedBranches > 0 ? ' ap-stat-card--warn' : ''}`}><span>Chi nhánh quá tải</span><strong>{data.overloadedBranches}</strong></div>
+        </div>
+        <div className="ap-table-wrap">
+          <table className="ap-table">
+            <thead><tr><th>Chi nhánh</th><th>Đơn đang mở</th><th>Hoàn thành</th><th>Doanh thu</th><th>Bếp</th><th>Tải bếp</th><th>Takeaway</th></tr></thead>
+            <tbody>{data.branches.map((b) => (
+              <tr key={b.branchId}>
+                <td><strong>{b.name}</strong><small>{b.code}</small></td>
+                <td>{b.openOrders}</td>
+                <td>{b.completedOrdersToday}</td>
+                <td>{vnd(b.revenueToday)}</td>
+                <td><span className={`ap-status${b.kitchen.status === 'NORMAL' ? ' active' : ''}`}>{b.kitchen.status === 'NORMAL' ? 'Bình thường' : 'Quá tải'}</span></td>
+                <td>{b.kitchen.loadPercent}%</td>
+                <td><span className={`ap-status${b.kitchen.acceptingTakeaway ? ' active' : ''}`}>{b.kitchen.acceptingTakeaway ? 'Có' : 'Không'}</span></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </>}
+    </div>
+  )
+}
 
 function BranchPage() {
   const { role, branchId, branches, reloadBranches, session } = useAuth()
@@ -118,7 +179,7 @@ function StaffPage() {
   const [branchChoice, setBranchChoice] = useState<number | undefined>(scopedBranch)
   useEffect(() => { setBranchChoice(scopedBranch) }, [scopedBranch])
   useEffect(() => {
-    const path = isAdmin && !branchChoice ? '/staff' : branchChoice ? `/staff/branch/${branchChoice}` : null
+    const path = isAdmin && !branchChoice ? '/staff/search?q=' : branchChoice ? `/staff/branch/${branchChoice}` : null
     if (!path) { setRows([]); return }
     get<StaffDetailResponse[]>(path).then(setRows).catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được danh sách'))
   }, [branchChoice, isAdmin])
@@ -135,7 +196,7 @@ function StaffPage() {
     }
     try {
       await post('/staff', payload); setShowForm(false)
-      setRows(await get<StaffDetailResponse[]>(isAdmin && !branchChoice ? '/staff' : `/staff/branch/${payload.branchId}`))
+      setRows(await get<StaffDetailResponse[]>(isAdmin && !branchChoice ? '/staff/search?q=' : `/staff/branch/${payload.branchId}`))
       form.reset()
     }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Không tạo được tài khoản') }
@@ -154,7 +215,7 @@ function StaffPage() {
         hourlyRate: Number(data.get('hourlyRate')),
       })
       setEditing(null)
-      setRows(await get<StaffDetailResponse[]>(isAdmin && !branchChoice ? '/staff' : `/staff/branch/${branchChoice}`))
+      setRows(await get<StaffDetailResponse[]>(isAdmin && !branchChoice ? '/staff/search?q=' : `/staff/branch/${branchChoice}`))
     } catch (e) { setError(e instanceof ApiError ? e.message : 'Không cập nhật được tài khoản') }
   }
   async function lockStaff(staff: StaffDetailResponse) {

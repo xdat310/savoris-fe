@@ -33,6 +33,9 @@ export interface AssignShiftRequest {
 }
 
 export interface AuthResponse {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
   staff?: StaffResponse;
 }
 

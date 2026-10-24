@@ -1,24 +1,20 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import beefWine     from '../../assets/photos/beef-steak-wine.webp'
-import slicedSteak  from '../../assets/photos/sliced-steak.webp'
-import steakPlate   from '../../assets/photos/steak-plate.webp'
-import steakCloseup from '../../assets/photos/steak-closeup.webp'
-import gourmet      from '../../assets/photos/gourmet-dishes.webp'
-import interior     from '../../assets/photos/restaurant-interior.webp'
-import fineDining   from '../../assets/photos/fine-dining-tokyo.webp'
 import type { SiteGalleryItem } from '../../api/site'
 
-const SEED: SiteGalleryItem[] = [
-  { id: 1, order: 1, image_url: beefWine,     public_id: '', caption: 'Bò Wagyu A5 — Sốt rượu vang đỏ Bordeaux' },
-  { id: 2, order: 2, image_url: steakCloseup, public_id: '', caption: 'Bít tết thăn ngoại — Sốt truffle đen Périgord' },
-  { id: 3, order: 3, image_url: gourmet,      public_id: '', caption: 'Thực đơn Degustación 8 món — Chef\'s Table' },
-  { id: 4, order: 4, image_url: interior,     public_id: '', caption: 'Không gian Savoris Hoàn Kiếm — Tầng 5' },
-  { id: 5, order: 5, image_url: fineDining,   public_id: '', caption: 'Khai vị đặc trưng — Savoris Tây Hồ' },
-  { id: 6, order: 6, image_url: slicedSteak,  public_id: '', caption: 'Sliced Wagyu — Sân thượng Đà Nẵng' },
-  { id: 7, order: 7, image_url: steakPlate,   public_id: '', caption: 'Bò bít tết thăn lưng — Sốt béarnaise' },
-]
+export function uniqueGalleryItems(items?: SiteGalleryItem[]): SiteGalleryItem[] {
+  const seen = new Set<string>()
+  return [...(items ?? [])]
+    .filter((item) => item.image_url?.trim())
+    .sort((a, b) => a.order - b.order)
+    .filter((item) => {
+      const url = item.image_url.trim()
+      if (seen.has(url)) return false
+      seen.add(url)
+      return true
+    })
+}
 
 function cdnGrid(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_800/') : url }
 function cdnFull(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_1600/') : url }
@@ -26,9 +22,7 @@ function cdnFull(url: string)  { return url.includes('cloudinary.com') ? url.rep
 interface Props { items?: SiteGalleryItem[] }
 
 export function SiteGallery({ items }: Props) {
-  const data = items && items.length > 0
-    ? [...items].sort((a, b) => a.order - b.order)
-    : SEED
+  const data = uniqueGalleryItems(items)
 
   const [lightbox, setLightbox] = useState<number | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -48,6 +42,8 @@ export function SiteGallery({ items }: Props) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [lightbox, data.length])
+
+  if (data.length === 0) return null
 
   return (
     <section className="gal-wrap" id="thu-vien" aria-label="Thư viện ảnh">

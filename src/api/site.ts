@@ -26,9 +26,10 @@ export const createWebsiteItem = (resource: string, payload: Record<string, unkn
 export const updateWebsiteItem = (resource: string, id: number, payload: Record<string, unknown>) => put(`/admin/website/${resource}/${id}`, payload)
 export const deleteWebsiteItem = (resource: string, id: number) => del(`/admin/website/${resource}/${id}`)
 export const reorderWebsiteItems = (resource: string, ids: number[]) => put(`/admin/website/${resource}/order`, ids)
-export function uploadWebsiteMedia(file: File, alt: string) {
-  const form = new FormData(); form.append('file', file); form.append('alt', alt)
-  return post<{ url: string; alt: string }>('/admin/media', form)
+export async function uploadWebsiteMedia(file: File, alt: string) {
+  const form = new FormData(); form.append('file', file)
+  const result = await post<{ url: string }>('/images/site', form)
+  return { url: result.url, alt }
 }
 
 // ── Nav ──────────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export interface SiteSection {
   id: number
   image_url: string
   public_id: string
+  image_alt?: string
   title: string
   body: string
   link_text?: string

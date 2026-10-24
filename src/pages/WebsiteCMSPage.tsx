@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff, ImagePlus, Plus, Save, Trash2 } from 'lucide-react'
 import { ApiError } from '../api/client'
 import { createWebsiteItem, deleteWebsiteItem, getWebsiteCms, reorderWebsiteItems, saveBranchPage, saveWebsiteSettings, updateWebsiteItem, uploadWebsiteMedia } from '../api/site'
@@ -44,10 +44,10 @@ export function WebsiteCMSPage() {
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [dirty])
-  const items = useMemo(() => (cms?.[tab] ?? []) as Entry[], [cms, tab])
+  const items = useMemo(() => { const v = cms?.[tab]; return (Array.isArray(v) ? v : []) as Entry[] }, [cms, tab])
   const visibleItems = useMemo(() => items.filter(item => !valueOf(item, 'branchId', 'branch_id') || Number(valueOf(item, 'branchId', 'branch_id')) === branchId), [items, branchId])
 
-  function setValue(setter: (v: Entry) => void, key: string, value: unknown) {
+  function setValue(setter: Dispatch<SetStateAction<Entry>>, key: string, value: unknown) {
     setter((old: Entry) => ({ ...old, [key]: value })); setDirty(true)
   }
   async function saveMain(event: FormEvent) {
@@ -105,6 +105,16 @@ export function WebsiteCMSPage() {
   function uploadField() {
     return <div className="wc-upload"><label>Mô tả ảnh (alt)<input required value={draft.imageAlt ?? draft.alt ?? ''} onChange={e => setDraft((old: Entry) => ({ ...old, imageAlt: e.target.value, alt: e.target.value }))}/></label><label className="wc-file"><ImagePlus size={16}/>{uploading ? 'Đang tải lên…' : 'Chọn ảnh'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0])}/></label>{draft.imageUrl && <img src={draft.imageUrl} alt={draft.imageAlt ?? ''}/>}</div>
   }
+  async function uploadDirect(file: File | undefined, key: string, setter: Dispatch<SetStateAction<Entry>>) {
+    if (!file) return
+    setUploading(true); setError('')
+    try { const r = await uploadWebsiteMedia(file, key); setter((old: Entry) => ({ ...old, [key]: r.url })); setDirty(true) }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Tải ảnh thất bại') }
+    finally { setUploading(false) }
+  }
+  function imgField(key: string, label: string, url: string, setter: Dispatch<SetStateAction<Entry>>) {
+    return <div key={key} className="wc-image-field"><label>{label}<input value={url} onChange={e => setValue(setter, key, e.target.value)}/></label><label className="wc-file"><ImagePlus size={16}/>{uploading ? 'Đang tải…' : 'Chọn ảnh'}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void uploadDirect(e.target.files?.[0], key, setter)}/></label>{url && <img src={url} alt={label}/>}</div>
+  }
   if (!cms) return <div className="wc-page"><p>{error || 'Đang tải CMS…'}</p></div>
   const currentBranch = cms.branches?.find((b: Entry) => Number(b.id) === branchId)
   return <div className="wc-page"><div className="wc-heading"><div><span>SAVORIS · NỘI DUNG SỐ</span><h1>Website</h1></div>{currentBranch && <a href={tab === 'settings' ? '/' : `/chi-nhanh/${currentBranch.slug}`} target="_blank" rel="noreferrer">Xem trên website <ExternalLink size={15}/></a>}</div>
@@ -112,7 +122,7 @@ export function WebsiteCMSPage() {
     {error && <div className="wc-error" role="alert">{error}</div>}
     {(tab === 'settings' || tab === 'branch') && <form className="wc-form" onSubmit={saveMain}>
       {tab === 'branch' && <label>Chi nhánh<select value={branchId} onChange={e => { const id = Number(e.target.value); if (dirty && !window.confirm('Rời trang khi chưa lưu thay đổi?')) return; setBranchId(id); setPage((cms.branchPages ?? []).find((x: Entry) => x.branchId === id)?.payload ?? {}); setDirty(false) }}>{cms.branches?.map((branch: Entry) => <option key={branch.id} value={branch.id}>{branch.name} · {branch.slug}</option>)}</select></label>}
-      {tab === 'settings' ? <>{[['brandLine','Câu thương hiệu'],['heroImage','Ảnh hero chuỗi'],['logo','Logo'],['facebookUrl','Facebook'],['instagramUrl','Instagram'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}<input value={settings[key] ?? ''} onChange={e => setValue(setSettings,key,e.target.value)}/></label>)}</> : <>{[['heroImage','Ảnh hero'],['heroAlt','Mô tả ảnh hero'],['introduction','Câu giới thiệu'],['brandLine','Câu thương hiệu'],['privateEvent','Nội dung sự kiện riêng'],['mapUrl','Link Google Maps'],['seoTitle','SEO title'],['seoDescription','SEO description'],['seoImage','Ảnh chia sẻ']].map(([key,label]) => <label key={key}>{label}{key === 'introduction' || key === 'privateEvent' ? <textarea rows={4} value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/> : <input value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/>}</label>)}<div className="wc-current-image">{page.heroImage && <img src={page.heroImage} alt={page.heroAlt ?? ''}/>}<label>Mô tả ảnh thay thế<input value={draft.heroAlt ?? page.heroAlt ?? ''} required onChange={e => setDraft((v: Entry) => ({ ...v, heroAlt: e.target.value }))}/></label><label className="wc-file"><ImagePlus size={16}/>Thay ảnh hero<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0])}/></label>{uploading && <progress/>}</div></>}
+      {tab === 'settings' ? <>{[['brandLine','Câu thương hiệu'],['facebookUrl','Facebook'],['instagramUrl','Instagram'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}<input value={settings[key] ?? ''} onChange={e => setValue(setSettings,key,e.target.value)}/></label>)}{imgField('heroImage','Ảnh hero chuỗi',String(settings.heroImage ?? ''),setSettings)}{imgField('logo','Logo',String(settings.logo ?? ''),setSettings)}</> : <>{[['heroImage','Ảnh hero'],['heroAlt','Mô tả ảnh hero'],['introduction','Câu giới thiệu'],['brandLine','Câu thương hiệu'],['privateEvent','Nội dung sự kiện riêng'],['mapUrl','Link Google Maps'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}{key === 'introduction' || key === 'privateEvent' ? <textarea rows={4} value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/> : <input value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/>}</label>)}{imgField('seoImage','Ảnh chia sẻ',String(page.seoImage ?? ''),setPage)}<div className="wc-current-image">{page.heroImage && <img src={page.heroImage} alt={page.heroAlt ?? ''}/>}<label>Mô tả ảnh thay thế<input value={draft.heroAlt ?? page.heroAlt ?? ''} required onChange={e => setDraft((v: Entry) => ({ ...v, heroAlt: e.target.value }))}/></label><label className="wc-file"><ImagePlus size={16}/>Thay ảnh hero<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0])}/></label>{uploading && <progress/>}</div></>}
       <button className="wc-primary" disabled={busy}><Save size={16}/>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
     </form>}
     {!['settings','branch'].includes(tab) && <section className="wc-list"><div className="wc-list-head"><div><h2>{TABS.find(([id]) => id === tab)?.[1]}</h2><p>{currentBranch?.name ?? 'Toàn chuỗi'}</p></div><button onClick={() => setDraft({})}><Plus size={16}/> Thêm mới</button></div>

@@ -3,6 +3,8 @@ import type { ErrorResponse, StaffResponse } from './types'
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
 export interface Session {
   staff: StaffResponse
+  accessToken?: string
+  refreshToken?: string
 }
 
 // Vietnamese wording for the error codes staff meet most; anything else shows the server's message
@@ -40,7 +42,9 @@ export class ApiError extends Error {
 export function loadSession(): Session | null {
   try {
     const raw = sessionStorage.getItem('savoris.staff')
-    return raw ? (JSON.parse(raw) as Session) : null
+    if (!raw) return null
+    const s = JSON.parse(raw) as Session
+    return s?.staff?.id ? s : null
   } catch {
     return null
   }
@@ -75,13 +79,16 @@ let refreshing: Promise<boolean> | null = null
 async function refresh(): Promise<boolean> {
   refreshing ??= (async () => {
     try {
+      const rt = current?.refreshToken
+      if (!rt) return false
       const res = await fetch(`${BASE}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        body: JSON.stringify({ refreshToken: rt }),
       })
       if (!res.ok) return false
       const staff = (await res.json()) as StaffResponse
+      if (!staff?.id) return false
       saveSession({ staff })
       return true
     } catch {
@@ -95,9 +102,10 @@ async function refresh(): Promise<boolean> {
 
 export async function api<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
   const headers: Record<string, string> = {}
-  // A FormData body (file upload) sets its own multipart content type
   const form = body instanceof FormData
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json'
+  const token = current?.accessToken
+  if (token) headers['Authorization'] = `Bearer ${token}`
 
   let res: Response
   try {

@@ -21,6 +21,12 @@ async function signOut(page: import('@playwright/test').Page) {
 }
 
 test('each role lands on the right page, sees only its menu, and chef direct URL is forbidden', async ({ page }) => {
+  await signIn(page, 'admin')
+  await page.goto('/nha-hang')
+  await expect(page).toHaveURL(/\/admin\/overview$/)
+  await expect(page.getByRole('heading', { name: 'Tổng quan' })).toBeVisible()
+  await signOut(page)
+
   await mkdir('test-results/screenshots', { recursive: true })
   await page.context().clearCookies()
   for (const account of accounts) {

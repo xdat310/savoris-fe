@@ -143,7 +143,7 @@ function Preview({ children }: { children: React.ReactNode }) {
 
 const HERO_DEF: HeroConfig = {
   type: 'image', media: [], overlay_opacity: 0.45,
-  badge_enabled: false, badge_line1: '', badge_line2: '',
+  brand_name: 'SAVORIS', badge_enabled: false, badge_line1: '', badge_line2: '',
   description: '', cta_text: 'ĐẶT BÀN', cta_link: '#dat-ban',
 }
 
@@ -175,6 +175,7 @@ function HeroTab({ initial }: { initial?: HeroConfig }) {
                 <ImgUpload value={m.url} onChange={url => {
                   const next = [...cfg.media]; next[i] = { ...next[i], url }; set('media', next)
                 }} />
+                <Inp value={m.alt ?? ''} onChange={alt => { const next = [...cfg.media]; next[i] = { ...next[i], alt }; set('media', next) }} placeholder="Mô tả ảnh (alt)" />
                 <button className="cms-icon-btn cms-icon-btn--del" onClick={() => set('media', cfg.media.filter((_, j) => j !== i))}>
                   <Trash2 size={14} />
                 </button>
@@ -186,6 +187,19 @@ function HeroTab({ initial }: { initial?: HeroConfig }) {
           </div>
         </Field>
 
+        <Field label="Tên thương hiệu trên ảnh bìa">
+          <Inp value={cfg.brand_name ?? ''} onChange={v => set('brand_name', v)} placeholder="SAVORIS" />
+        </Field>
+        <Field label="Hiển thị huy hiệu">
+          <input type="checkbox" checked={cfg.badge_enabled} onChange={e => set('badge_enabled', e.target.checked)} />
+        </Field>
+        {cfg.badge_enabled && <div className="cms-two-col">
+          <Field label="Dòng huy hiệu 1"><Inp value={cfg.badge_line1} onChange={v => set('badge_line1', v)} /></Field>
+          <Field label="Dòng huy hiệu 2"><Inp value={cfg.badge_line2} onChange={v => set('badge_line2', v)} /></Field>
+        </div>}
+        <Field label="Độ tối lớp phủ (0–1)">
+          <input className="cms-input" type="number" min="0" max="1" step="0.05" value={cfg.overlay_opacity} onChange={e => set('overlay_opacity', Number(e.target.value))} />
+        </Field>
         <Field label="Mô tả ngắn">
           <MarkdownInput value={cfg.description} onChange={v => set('description', v)} rows={2} />
         </Field>
@@ -198,7 +212,7 @@ function HeroTab({ initial }: { initial?: HeroConfig }) {
         <div className="cms-prev-hero" style={{ backgroundImage: firstImg ? `url(${firstImg})` : undefined }}>
           <div className="cms-prev-hero-overlay" />
           <div className="cms-prev-hero-text">
-            <div className="cms-prev-eyebrow">SAVORIS</div>
+            <div className="cms-prev-eyebrow">{cfg.brand_name || 'SAVORIS'}</div>
             {cfg.description && <Md className="cms-prev-desc">{cfg.description}</Md>}
             {cfg.cta_text && <div className="cms-prev-cta">{cfg.cta_text}</div>}
           </div>
@@ -243,6 +257,7 @@ function StoryTab({ initial }: { initial?: SiteSection[] }) {
               </div>
             </div>
             <Field label="Ảnh"><ImgUpload value={s.image_url} onChange={url => upd(i, { image_url: url })} /></Field>
+            <Field label="Mô tả ảnh (alt)"><Inp value={s.image_alt ?? ''} onChange={v => upd(i, { image_alt: v })} placeholder={s.title || 'Mô tả nội dung ảnh'} /></Field>
             <Field label="Tiêu đề"><Inp value={s.title} onChange={v => upd(i, { title: v })} /></Field>
             <Field label="Nội dung"><MarkdownInput value={s.body} onChange={v => upd(i, { body: v })} rows={4} /></Field>
             <div className="cms-two-col">
@@ -300,6 +315,7 @@ function GalleryTab({ initial }: { initial?: SiteGalleryItem[] }) {
           <div key={i} className="cms-card cms-card--inline">
             <span className="cms-card-num">{i+1}</span>
             <ImgUpload value={it.image_url} onChange={url => upd(i, { image_url: url })} />
+            <div className="cms-gallery-caption"><Field label="Chú thích ảnh"><Inp value={it.caption ?? ''} onChange={v => upd(i, { caption: v })} placeholder="Chú thích hiển thị khi xem ảnh" /></Field></div>
             <div className="cms-card-actions">
               <button className="cms-icon-btn" onClick={() => move(i, -1)} disabled={i===0}><ChevronUp size={13}/></button>
               <button className="cms-icon-btn" onClick={() => move(i, 1)} disabled={i===items.length-1}><ChevronDown size={13}/></button>

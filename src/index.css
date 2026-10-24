@@ -1526,7 +1526,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .sh-hero-content {
   position: relative; z-index: 2;
   display: flex; flex-direction: column; align-items: center; gap: 20px;
-  padding: 0 24px 96px; text-align: center; width: 100%;
+  padding: 96px 24px; text-align: center; width: 100%;
   animation: dc-content-in 900ms 400ms cubic-bezier(0.16,1,0.3,1) both;
 }
 @keyframes dc-content-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
@@ -1547,9 +1547,12 @@ table.data tr.is-current td { background: var(--accent-wash); }
   mix-blend-mode: lighten;
   display: block;
 }
-/* Brand name (fallback — hidden now logo is used) */
+/* Editable wordmark, centered like an editorial restaurant cover. */
 .sh-hero-brand {
-  display: none;
+  display: block; margin: 0; color: var(--dc-gold);
+  font-family: var(--dc-serif, Georgia, serif); font-size: clamp(42px, 8vw, 104px);
+  font-weight: 400; letter-spacing: 0.16em; line-height: 1;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.35);
 }
 .sh-hero-brand span { color: var(--dc-text); }
 

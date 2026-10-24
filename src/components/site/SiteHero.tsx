@@ -10,7 +10,8 @@ const FALLBACK: HeroConfig = {
   badge_enabled: false,
   badge_line1: 'ĐƯỢC YÊU THÍCH',
   badge_line2: '2026',
-  description: 'Ẩm thực tinh hoa — Không gian đẳng cấp — Trải nghiệm khó quên.',
+  brand_name: 'SAVORIS',
+  description: '',
   cta_text: 'ĐẶT BÀN',
   cta_link: '#dat-ban',
 }
@@ -119,13 +120,16 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
 
       {/* ── Content ── */}
       <div className="sh-hero-content">
-
-<Md className="sh-hero-desc">{c.description}</Md>
+        {c.badge_enabled && (c.badge_line1 || c.badge_line2) && (
+          <div className="sh-hero-badge">{c.badge_line1 && <span>{c.badge_line1}</span>}{c.badge_line2 && <span>{c.badge_line2}</span>}</div>
+        )}
+        <h1 className="sh-hero-brand">{c.brand_name?.trim() || 'SAVORIS'}</h1>
+        {c.description?.trim() && <Md className="sh-hero-desc">{c.description}</Md>}
 
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
           <button className="sh-hero-cta" onClick={handleCta}>{c.cta_text}</button>
-          <button className="sh-hero-cta sh-hero-cta--ghost" onClick={onBookClick}>ĐẶT BÀN TRỰC TUYẾN</button>
+          {onBookClick && <button className="sh-hero-cta sh-hero-cta--ghost" onClick={onBookClick}>ĐẶT BÀN TRỰC TUYẾN</button>}
           <div className="sh-hero-rule" aria-hidden="true" />
         </div>
       </div>

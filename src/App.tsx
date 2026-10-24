@@ -51,6 +51,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={STAFF} element={<Shell />}>
+        <Route index element={<Navigate to={homeFor(role)} replace />} />
 
         {/* ── ADMIN ──────────────────────────────────────────────────── */}
         <Route path="chuoi"

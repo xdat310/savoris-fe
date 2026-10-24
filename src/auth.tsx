@@ -52,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
-  const role = session?.staff.role
-  const ownBranch = session?.staff.branchId
+  const role = session?.staff?.role
+  const ownBranch = session?.staff?.branchId
   // null = ADMIN explicitly chose "Toàn chuỗi"; undefined = never picked, fall back to first branch
   const branchId = ownBranch ?? (pickedBranch === null ? undefined : (pickedBranch ?? branches[0]?.id))
 
