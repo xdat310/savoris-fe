@@ -23,8 +23,6 @@ export function SiteTimeline({ milestones }: Props) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  if (data.length === 0) return null
-
   const perPage = mobile ? PER_PAGE_MOBILE : PER_PAGE_DESKTOP
   const maxIdx = Math.max(0, data.length - perPage)
   const canPrev = idx > 0
@@ -44,6 +42,8 @@ export function SiteTimeline({ milestones }: Props) {
     el?.addEventListener('keydown', handler)
     return () => el?.removeEventListener('keydown', handler)
   })
+
+  if (data.length === 0) return null
 
   // Touch swipe
   function onPointerDown(e: React.PointerEvent) { startX.current = e.clientX }
