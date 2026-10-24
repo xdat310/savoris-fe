@@ -18,8 +18,8 @@ const menu = [
   { to: '/admin/website', label: 'Website', roles: ['ADMIN', 'MANAGER'], Icon: Globe2 },
   { to: '/admin/branch', label: 'Chi nhánh', roles: ['ADMIN', 'MANAGER'], Icon: Building2 },
   { to: '/admin/staff', label: 'Nhân viên', roles: ['ADMIN', 'MANAGER'], Icon: Users },
-  { to: '/admin/floor', label: 'Sơ đồ bàn', roles: ['STAFF'], Icon: Utensils },
-  { to: '/admin/kitchen', label: 'Màn hình bếp', roles: ['CHEF'], Icon: ChefHat },
+  { to: '/admin/floor', label: 'Sơ đồ bàn', roles: ['ADMIN', 'MANAGER', 'STAFF'], Icon: Utensils },
+  { to: '/admin/kitchen', label: 'Màn hình bếp', roles: ['ADMIN', 'MANAGER', 'CHEF'], Icon: ChefHat },
 ]
 
 function SignedIn() {
@@ -234,7 +234,47 @@ function StaffPage() {
   </div>
 }
 
-function Placeholder({ title }: { title: string }) { return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>Không gian thao tác sẽ được hoàn thiện ở phần vận hành.</p></div></div><div className="ap-placeholder" /></div> }
+function OperationalPage({ title, staffPath }: { title: string; staffPath: string }) {
+  const { role, branchId, branches, setBranchId } = useAuth()
+  const isAdmin = role === 'ADMIN'
+
+  if (isAdmin && !branchId) {
+    return (
+      <div className="ap-page">
+        <div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>Chọn chi nhánh để mở trang này.</p></div></div>
+        <div className="ap-empty" style={{ minHeight: 320 }}>
+          <ShieldAlert size={34} />
+          <h1>Chọn chi nhánh</h1>
+          <p>Bạn đang ở chế độ Toàn chuỗi. Hãy chọn một chi nhánh để xem {title.toLowerCase()}.</p>
+          <select
+            aria-label="Chọn chi nhánh"
+            style={{ marginTop: 12, minHeight: 42, padding: '0 12px', background: '#1a1b18', border: '1px solid #383a34', color: '#f0eee8', borderRadius: 4, fontSize: 13 }}
+            defaultValue=""
+            onChange={(e) => { if (e.target.value) setBranchId(Number(e.target.value)) }}
+          >
+            <option value="" disabled>Chọn chi nhánh…</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
+          </select>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="ap-page">
+      <div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>Mở giao diện vận hành tại chi nhánh đang chọn.</p></div></div>
+      <div className="ap-empty" style={{ minHeight: 260 }}>
+        <a
+          href={staffPath}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', background: '#a85a44', color: '#fff', borderRadius: 4, textDecoration: 'none', fontWeight: 700, fontSize: 13 }}
+        >
+          Mở {title} →
+        </a>
+        <p style={{ marginTop: 8, fontSize: 13, color: '#a6a79e' }}>Giao diện mở trên cùng trình duyệt, trong tab hiện tại.</p>
+      </div>
+    </div>
+  )
+}
 
 export function AdminRoutes() {
   const { session } = useAuth()
@@ -246,8 +286,8 @@ export function AdminRoutes() {
     <Route path="website" element={<Allowed roles={['ADMIN', 'MANAGER']}><WebsiteCMSPage branchOnly={session?.staff.role === 'MANAGER'} /></Allowed>} />
     <Route path="branch" element={<Allowed roles={['ADMIN', 'MANAGER']}><BranchPage /></Allowed>} />
     <Route path="staff" element={<Allowed roles={['ADMIN', 'MANAGER']}><StaffPage /></Allowed>} />
-    <Route path="floor" element={<Allowed roles={['STAFF']}><Placeholder title="Sơ đồ bàn" /></Allowed>} />
-    <Route path="kitchen" element={<Allowed roles={['CHEF']}><Placeholder title="Màn hình bếp" /></Allowed>} />
+    <Route path="floor" element={<Allowed roles={['ADMIN', 'MANAGER', 'STAFF']}><OperationalPage title="Sơ đồ bàn" staffPath="/nha-hang/ban-hang" /></Allowed>} />
+    <Route path="kitchen" element={<Allowed roles={['ADMIN', 'MANAGER', 'CHEF']}><OperationalPage title="Màn hình bếp" staffPath="/nha-hang/bep" /></Allowed>} />
     <Route path="*" element={<NoAccess />} />
   </Route></Route><Route path="*" element={<Navigate to="/admin/login" replace />} /></Routes>
 }

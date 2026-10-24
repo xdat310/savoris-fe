@@ -68,10 +68,10 @@ export function SiteGallery({ items, excludedUrls }: Props) {
   return (
     <section className="gal-wrap" id="thu-vien" aria-label="Thư viện ảnh">
       <header className="gal-heading">
-        <h2>Hương vị Savoris</h2>
-        <p>Mỗi món ăn là một lát cắt của căn bếp và những mùa nguyên liệu.</p>
+        <h2>Không gian Savoris</h2>
+        <p>Mỗi khoảnh khắc tại bàn, một trải nghiệm đáng nhớ.</p>
       </header>
-      <div className={`gal-grid${data.length >= 4 ? ' gal-grid--editorial' : ''}`}>
+      <div className={`gal-grid${data.length >= 6 && data.length % 6 === 0 ? ' gal-grid--editorial' : ''}`}>
         {data.map((item, i) => (
           <button
             key={item.id}

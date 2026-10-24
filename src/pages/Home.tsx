@@ -4,6 +4,8 @@ import type {
   SiteMilestone, SiteNavItem, SiteSection,
 } from '../api/site'
 import { getHero, getMilestones, getNav, getPublicSite, getSections } from '../api/site'
+import { get } from '../api/client'
+import type { GuestMenuCategory, BranchMenuItemResponse } from '../api/types'
 import { SiteContact } from '../components/site/SiteContact'
 import { SiteFooter } from '../components/site/SiteFooter'
 import { SiteHeader } from '../components/site/SiteHeader'
@@ -11,7 +13,7 @@ import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHero } from '../components/site/SiteHero'
 import { SiteStory } from '../components/site/SiteStory'
 import { SiteTimeline } from '../components/site/SiteTimeline'
-import { SiteCmsHighlights } from '../components/site/SiteCmsHighlights'
+import { SiteCmsHighlights, type FeaturedDish } from '../components/site/SiteCmsHighlights'
 import { applySeo } from '../lib/seo'
 
 type CmsContent = {
@@ -31,12 +33,16 @@ export function Home() {
   const [milestones, setMilestones] = useState<SiteMilestone[]>([])
   const [publicSite, setPublicSite] = useState<CmsContent | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [featuredDishes, setFeaturedDishes] = useState<FeaturedDish[]>([])
 
   useEffect(() => {
     getNav().then((items) => setNav(items ?? [])).catch(() => {})
     getHero().then(setHero).catch(() => {})
     getSections().then((items) => setSections(items ?? [])).catch(() => {})
     getMilestones().then((items) => setMilestones(items ?? [])).catch(() => {})
+    get<{ categories?: GuestMenuCategory[]; dishes?: BranchMenuItemResponse[] }>('/public/menu')
+      .then((data) => setFeaturedDishes(data.dishes?.filter((d) => d.imageUrl) ?? []))
+      .catch(() => {})
 
     let settled = false
     const timeout = setTimeout(() => {
@@ -90,6 +96,7 @@ export function Home() {
         testimonials={publicSite?.testimonials ?? []}
         menus={publicSite?.menus ?? []}
         branches={(publicSite?.branches ?? []) as { id?: number; name?: string; slug?: string }[]}
+        featuredDishes={featuredDishes}
       />
       <SiteGallery items={gallery} excludedUrls={[
         ...(hero?.media ?? []).map((media) => media.url),

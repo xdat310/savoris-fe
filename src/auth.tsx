@@ -116,7 +116,7 @@ export const STAFF = '/nha-hang'
 
 export function homeFor(role?: string) {
   if (role === 'ADMIN') return '/admin/overview'
-  if (role === 'MANAGER') return '/admin/branch'
+  if (role === 'MANAGER') return '/admin/reservations'
   if (role === 'CHEF') return '/admin/kitchen'
   return '/admin/floor'
 }

@@ -6,10 +6,10 @@ import './menu-management-page.css'
 
 type CategoryDraft = { id?: number; name: string; sortOrder: number; isActive: boolean }
 type ItemDraft = {
-  id?: number; code: string; name: string; description: string; categoryId: number; basePrice: number
+  id?: number; code: string; name: string; description: string; categoryId: number; basePrice: number | ''
   imageUrl: string; unit: string; isActive: boolean; needsKitchen: boolean; takeawayAvailable: boolean
 }
-const emptyItem = (): ItemDraft => ({ code: '', name: '', description: '', categoryId: 0, basePrice: 0, imageUrl: '', unit: 'phần', isActive: true, needsKitchen: true, takeawayAvailable: true })
+const emptyItem = (): ItemDraft => ({ code: '', name: '', description: '', categoryId: 0, basePrice: '', imageUrl: '', unit: 'phần', isActive: true, needsKitchen: true, takeawayAvailable: true })
 
 export function MenuManagementPage() {
   const [categories, setCategories] = useState<MenuCategoryResponse[]>([])
@@ -25,6 +25,7 @@ export function MenuManagementPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   async function load() {
     setError('')
@@ -53,6 +54,12 @@ export function MenuManagementPage() {
     void refreshBranchMenu(branchId)
   }, [branchId])
 
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(''), 3000)
+    return () => clearTimeout(t)
+  }, [notice])
+
   const orderedCategories = useMemo(() => categories, [categories])
   const categoryName = (id?: number) => categories.find((category) => category.id === id)?.name ?? 'Chưa có danh mục'
 
@@ -75,12 +82,25 @@ export function MenuManagementPage() {
     catch (e) { setError(e instanceof ApiError ? e.message : 'Không xóa được danh mục') }
   }
 
+  function validateItem(draft: ItemDraft): Record<string, string> {
+    const err: Record<string, string> = {}
+    if (!draft.code.trim()) err.code = 'Vui lòng nhập mã món'
+    if (!draft.name.trim()) err.name = 'Vui lòng nhập tên món'
+    if (!draft.categoryId) err.categoryId = 'Vui lòng chọn danh mục'
+    if (draft.basePrice === '' || Number(draft.basePrice) <= 0) err.basePrice = 'Giá phải lớn hơn 0'
+    return err
+  }
+
   async function saveItem(event: FormEvent) {
     event.preventDefault()
     if (!itemDraft) return
+    const errs = validateItem(itemDraft)
+    if (Object.keys(errs).length > 0) { setErrors(errs); return }
+    setErrors({})
     setBusy(true); setError(''); setNotice('')
     try {
-      const { id, ...payload } = itemDraft
+      const { id, ...fields } = itemDraft
+      const payload = { ...fields, basePrice: Number(fields.basePrice) }
       const savedItem = id
         ? await put<MenuItemResponse>(`/menu-items/${id}`, payload)
         : await post<MenuItemResponse>('/menu-items', payload)
@@ -158,12 +178,12 @@ export function MenuManagementPage() {
       <div className="menu-table-wrap"><table className="menu-table"><thead><tr><th>Món</th><th>Danh mục</th><th>Giá</th><th>Bán tại</th><th>Tình trạng</th><th></th></tr></thead><tbody>{items.map((item) => { const branchItem = branchMenu.find((row) => row.menuItemId === item.id); return <tr key={item.id}><td><div className="menu-dish-cell">{item.imageUrl ? <img src={item.imageUrl} alt=""/> : <span className="menu-no-image">Ảnh</span>}<div><strong>{item.name}</strong><small>{item.code} · {item.description || 'Chưa có mô tả'}</small></div></div></td><td>{categoryName(item.categoryId)}</td><td>{new Intl.NumberFormat('vi-VN').format(item.basePrice ?? 0)} ₫</td><td><label className="menu-inline-check"><input type="checkbox" checked={!!branchItem} disabled={busy || !branchId} onChange={(e) => void toggleOffered(item, e.target.checked)}/> {branchItem ? 'Đang bán' : 'Không bán'}</label></td><td>{branchItem ? <button className={`menu-stock ${branchItem.available ? 'is-on' : 'is-off'}`} disabled={busy} onClick={() => void toggleAvailability(item)}>{branchItem.available ? 'Còn món' : 'Hết món'}</button> : <span className="menu-muted">—</span>}</td><td className="menu-row-actions"><button onClick={() => void editItem(item)}>Sửa</button><button className="menu-danger" onClick={() => void removeItem(item)} aria-label={`Ẩn món ${item.name}`}><Trash2 size={15}/></button></td></tr> })}</tbody></table>{items.length === 0 && <div className="ap-empty">Chưa có món. Hãy thêm danh mục và món đầu tiên.</div>}</div>
     </section>
 
-    {itemDraft && <div className="menu-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setItemDraft(null) }}><section className="menu-modal" role="dialog" aria-modal="true" aria-labelledby="menu-item-title"><div className="menu-modal-head"><h2 id="menu-item-title">{itemDraft.id ? 'Sửa món' : 'Thêm món'}</h2><button className="menu-icon-button" aria-label="Đóng" onClick={() => setItemDraft(null)}><X size={18}/></button></div><form onSubmit={saveItem}>
-      <div className="menu-form-grid"><label>Mã món<input required disabled={!!itemDraft.id} value={itemDraft.code} onChange={(e) => setItemDraft({ ...itemDraft, code: e.target.value.trim().toUpperCase() })}/></label><label>Tên món<input required value={itemDraft.name} onChange={(e) => setItemDraft({ ...itemDraft, name: e.target.value })}/></label><label>Danh mục<select required value={itemDraft.categoryId || ''} onChange={(e) => setItemDraft({ ...itemDraft, categoryId: Number(e.target.value) })}><option value="" disabled>Chọn danh mục</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Giá (VND)<input required type="number" min="0" step="1000" value={itemDraft.basePrice} onChange={(e) => setItemDraft({ ...itemDraft, basePrice: Number(e.target.value) })}/></label><label>Đơn vị<input value={itemDraft.unit} onChange={(e) => setItemDraft({ ...itemDraft, unit: e.target.value })}/></label><label className="menu-span-2">Mô tả<textarea rows={3} value={itemDraft.description} onChange={(e) => setItemDraft({ ...itemDraft, description: e.target.value })}/></label></div>
+    {itemDraft && <div className="menu-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) { setItemDraft(null); setErrors({}) } }}><section className="menu-modal" role="dialog" aria-modal="true" aria-labelledby="menu-item-title"><div className="menu-modal-head"><h2 id="menu-item-title">{itemDraft.id ? 'Sửa món' : 'Thêm món'}</h2><button className="menu-icon-button" aria-label="Đóng" onClick={() => { setItemDraft(null); setErrors({}) }}><X size={18}/></button></div><form onSubmit={saveItem}>
+      <div className="menu-form-grid"><label>Mã món<input disabled={!!itemDraft.id} value={itemDraft.code} onChange={(e) => setItemDraft({ ...itemDraft, code: e.target.value.trim().toUpperCase() })}/>{errors.code && <span className="menu-field-error">{errors.code}</span>}</label><label>Tên món<input value={itemDraft.name} onChange={(e) => setItemDraft({ ...itemDraft, name: e.target.value })}/>{errors.name && <span className="menu-field-error">{errors.name}</span>}</label><label>Danh mục<select value={itemDraft.categoryId || ''} onChange={(e) => setItemDraft({ ...itemDraft, categoryId: Number(e.target.value) })}><option value="" disabled>Chọn danh mục</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>{errors.categoryId && <span className="menu-field-error">{errors.categoryId}</span>}</label><label>Giá (VND)<input type="number" min="1" step="1000" value={itemDraft.basePrice} onChange={(e) => setItemDraft({ ...itemDraft, basePrice: e.target.value === '' ? '' : Math.max(1, Number(e.target.value)) })}/>{errors.basePrice && <span className="menu-field-error">{errors.basePrice}</span>}</label><label>Đơn vị<input value={itemDraft.unit} onChange={(e) => setItemDraft({ ...itemDraft, unit: e.target.value })}/></label><label className="menu-span-2">Mô tả<textarea rows={3} value={itemDraft.description} onChange={(e) => setItemDraft({ ...itemDraft, description: e.target.value })}/></label></div>
       <div className="menu-photo-field"><span>Ảnh món</span>{itemDraft.imageUrl && <img src={itemDraft.imageUrl} alt="Ảnh xem trước món"/>}<label><ImagePlus size={16}/>{imageUploading ? 'Đang tải lên…' : itemDraft.imageUrl ? 'Đổi ảnh' : 'Chọn ảnh'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageUploading} onChange={(e) => { void uploadPhoto(e.target.files?.[0]); e.target.value = '' }}/></label><small>JPG, PNG hoặc WebP · tối đa 5 MB · lưu trên Cloudinary</small></div>
       <div className="menu-options"><label><input type="checkbox" checked={itemDraft.takeawayAvailable} onChange={(e) => setItemDraft({ ...itemDraft, takeawayAvailable: e.target.checked })}/> Bán mang về</label><label><input type="checkbox" checked={itemDraft.needsKitchen} onChange={(e) => setItemDraft({ ...itemDraft, needsKitchen: e.target.checked })}/> Cần bếp chế biến</label><label><input type="checkbox" checked={itemDraft.isActive} onChange={(e) => setItemDraft({ ...itemDraft, isActive: e.target.checked })}/> Đang hoạt động</label></div>
-      {itemDraft.id && <fieldset className="menu-branches"><legend>Chi nhánh bán món</legend>{branches.map((branch) => <label key={branch.id}><input type="checkbox" checked={offeredBranchIds.includes(branch.id!)} onChange={(e) => setOfferedBranchIds((ids) => e.target.checked ? [...ids, branch.id!] : ids.filter((id) => id !== branch.id))}/>{branch.code} · {branch.name}</label>)}<small>Món mới sẽ được thêm vào chi nhánh đang chọn. Có thể bật thêm các chi nhánh sau khi lưu.</small></fieldset>}
-      <div className="menu-modal-actions"><button type="button" className="menu-secondary" onClick={() => setItemDraft(null)}>Hủy</button><button disabled={busy || imageUploading || categories.length === 0}><Save size={15}/>{busy ? 'Đang lưu…' : 'Lưu món'}</button></div>
+      <fieldset className="menu-branches"><legend>Chi nhánh bán món</legend>{branches.map((branch) => <label key={branch.id}><input type="checkbox" checked={offeredBranchIds.includes(branch.id!)} onChange={(e) => setOfferedBranchIds((ids) => e.target.checked ? [...ids, branch.id!] : ids.filter((id) => id !== branch.id))}/>{branch.code} · {branch.name}</label>)}<small>{itemDraft.id ? 'Bật thêm chi nhánh bán món này.' : 'Chọn chi nhánh sẽ bán món này.'}</small></fieldset>
+      <div className="menu-modal-actions"><button type="button" className="menu-secondary" onClick={() => { setItemDraft(null); setErrors({}) }}>Hủy</button><button disabled={busy || imageUploading || categories.length === 0}><Save size={15}/>{busy ? 'Đang lưu…' : 'Lưu món'}</button></div>
     </form></section></div>}
   </div>
 }
