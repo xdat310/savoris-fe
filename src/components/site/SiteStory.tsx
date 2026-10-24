@@ -29,7 +29,7 @@ function useFadeIn(ref: React.RefObject<Element | null>) {
 function StoryBlock({ s, index }: { s: SiteSection; index: number }) {
   const ref = useRef<HTMLElement>(null)
   useFadeIn(ref as React.RefObject<Element>)
-  const flip = index % 2 === 1
+  const flip = s.image_side ? s.image_side === 'left' : index % 2 === 1
   const link = safeStoryLink(s.link_url)
 
   return (

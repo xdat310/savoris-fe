@@ -1,6 +1,17 @@
 import { del, get, post, put, upload } from './client'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
+export function isCloudinaryImageUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' &&
+      (url.hostname === 'cloudinary.com' || url.hostname.endsWith('.cloudinary.com')) &&
+      /\/image\/upload\//.test(url.pathname)
+  } catch {
+    return false
+  }
+}
+
 export const mediaUrl = (url?: string) => {
   if (!url) return ''
   return url.startsWith('/api/v1/') ? `${API_BASE}${url.slice('/api/v1'.length)}` : url

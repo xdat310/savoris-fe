@@ -30,12 +30,12 @@ export function Home() {
   const [bookingOpen, setBookingOpen] = useState(false)
 
   useEffect(() => {
-    getNav().then(setNav).catch(() => {})
+    getNav().then((items) => setNav(items ?? [])).catch(() => {})
     getHero().then(setHero).catch(() => {})
-    getBranches().then(setBranches).catch(() => {})
-    getSections().then(setSections).catch(() => {})
-    getGallery().then(setGallery).catch(() => {})
-    getMilestones().then(setMilestones).catch(() => {})
+    getBranches().then((items) => setBranches(items ?? [])).catch(() => {})
+    getSections().then((items) => setSections(items ?? [])).catch(() => {})
+    getGallery().then((items) => setGallery(items ?? [])).catch(() => {})
+    getMilestones().then((items) => setMilestones(items ?? [])).catch(() => {})
     getFooterConfig().then(setFooter).catch(() => {})
   }, [])
 
@@ -57,7 +57,10 @@ export function Home() {
         onBookClick={() => setBookingOpen(true)}
       />
       <SiteStory sections={sections} />
-      <SiteGallery items={gallery} />
+      <SiteGallery items={gallery} excludedUrls={[
+        ...(hero?.media ?? []).map((media) => media.url),
+        ...sections.map((section) => section.image_url),
+      ]} />
       <SiteTimeline milestones={milestones} />
       <SiteContact branches={branches} />
       <SiteFooter

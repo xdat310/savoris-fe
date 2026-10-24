@@ -1,4 +1,4 @@
-# Hướng dẫn sử dụng Savoris Platform
+cắm # Hướng dẫn sử dụng Savoris Platform
 
 > **Phiên bản:** 2.0 · **Cập nhật:** Tháng 10/2026  
 > Hệ thống quản lý nhà hàng Savoris — bao gồm ứng dụng web cho khách, nhân viên và ban quản lý.

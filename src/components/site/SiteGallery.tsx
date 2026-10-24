@@ -3,15 +3,34 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { SiteGalleryItem } from '../../api/site'
 
-export function uniqueGalleryItems(items?: SiteGalleryItem[]): SiteGalleryItem[] {
+function imageKey(value: string): string {
+  try {
+    const url = new URL(value, window.location.origin)
+    url.search = ''
+    url.hash = ''
+    const marker = '/image/upload/'
+    const uploadAt = url.pathname.indexOf(marker)
+    if (uploadAt >= 0) {
+      const tail = url.pathname.slice(uploadAt + marker.length)
+      const version = tail.match(/(?:^|\/)(v\d+\/.*)$/)
+      return `${url.hostname}${marker}${version?.[1] ?? tail.split('/').at(-1)}`
+    }
+    return `${url.hostname}${url.pathname}`
+  } catch {
+    return value.split(/[?#]/)[0]
+  }
+}
+
+export function uniqueGalleryItems(items?: SiteGalleryItem[], excludedUrls: string[] = []): SiteGalleryItem[] {
   const seen = new Set<string>()
+  excludedUrls.forEach((url) => seen.add(imageKey(url)))
   return [...(items ?? [])]
     .filter((item) => item.image_url?.trim())
     .sort((a, b) => a.order - b.order)
     .filter((item) => {
-      const url = item.image_url.trim()
-      if (seen.has(url)) return false
-      seen.add(url)
+      const key = imageKey(item.image_url.trim())
+      if (seen.has(key)) return false
+      seen.add(key)
       return true
     })
 }
@@ -19,10 +38,10 @@ export function uniqueGalleryItems(items?: SiteGalleryItem[]): SiteGalleryItem[]
 function cdnGrid(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_800/') : url }
 function cdnFull(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_1600/') : url }
 
-interface Props { items?: SiteGalleryItem[] }
+interface Props { items?: SiteGalleryItem[]; excludedUrls?: string[] }
 
-export function SiteGallery({ items }: Props) {
-  const data = uniqueGalleryItems(items)
+export function SiteGallery({ items, excludedUrls }: Props) {
+  const data = uniqueGalleryItems(items, excludedUrls)
 
   const [lightbox, setLightbox] = useState<number | null>(null)
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -47,15 +66,16 @@ export function SiteGallery({ items }: Props) {
 
   return (
     <section className="gal-wrap" id="thu-vien" aria-label="Thư viện ảnh">
-      <div className="gal-list">
+      <div className={`gal-grid${data.length >= 4 ? ' gal-grid--editorial' : ''}`}>
         {data.map((item, i) => (
           <button
             key={item.id}
-            className="gal-item"
+            className="gal-cell"
             onClick={() => setLightbox(i)}
             aria-label={item.caption ?? `Ảnh ${i + 1}`}
           >
             <img src={cdnGrid(item.image_url)} alt={item.caption ?? ''} loading={i < 3 ? 'eager' : 'lazy'} />
+            {item.caption && <><span className="gal-cell-overlay" aria-hidden="true" /><span className="gal-cell-cap">{item.caption}</span></>}
           </button>
         ))}
       </div>

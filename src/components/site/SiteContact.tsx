@@ -7,7 +7,7 @@ interface Props { branches?: PublicBranch[] }
 export function SiteContact({ branches }: Props) {
   const seen = new Set<string>()
   const data = (branches ?? []).filter((branch) => {
-    const key = branch.slug || String(branch.id)
+    const key = String(branch.code || branch.slug || branch.id).trim().toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -15,6 +15,14 @@ export function SiteContact({ branches }: Props) {
   const [activeId, setActiveId] = useState(data[0]?.id)
   const branch = data.find((b) => b.id === activeId) ?? data[0]
   if (data.length === 0) return null
+  const mapQuery = branch
+    ? branch.lat != null && branch.lng != null
+      ? `${branch.lat},${branch.lng}`
+      : [branch.address, branch.city].filter(Boolean).join(', ')
+    : ''
+  const mapSrc = branch?.google_maps_embed?.trim() || (mapQuery
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`
+    : '')
 
   return (
     <section className="ctt-wrap" id="lien-he" aria-label="Liên hệ & Chi nhánh">
@@ -30,7 +38,7 @@ export function SiteContact({ branches }: Props) {
             aria-selected={b.id === activeId}
             onClick={() => setActiveId(b.id)}
           >
-            {b.name}
+            {b.code ? `${b.code} · ` : ''}{b.name}
           </button>
         ))}
       </div>
@@ -39,17 +47,17 @@ export function SiteContact({ branches }: Props) {
         <div className="ctt-body">
           {/* Map */}
           <div className="ctt-map">
-            {branch.google_maps_embed ? (
+            {mapSrc ? (
               <iframe
                 title={`Bản đồ ${branch.name}`}
-                src={branch.google_maps_embed}
+                src={mapSrc}
                 allowFullScreen loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
             ) : (
               <div className="ctt-map-ph" aria-hidden="true">
                 <MapPin size={32} />
-                <span>Bản đồ đang cập nhật</span>
+                <span>Chưa có địa chỉ bản đồ</span>
               </div>
             )}
           </div>

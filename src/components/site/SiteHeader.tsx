@@ -53,7 +53,9 @@ export function SiteHeader({ nav = FALLBACK_NAV, branches = [], onOrderClick, on
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
-  const visibleNav = nav.filter((n) => n.visible).sort((a, b) => a.order - b.order)
+  const visibleNav = (nav.length > 0 ? nav : FALLBACK_NAV)
+    .filter((n) => n.visible)
+    .sort((a, b) => a.order - b.order)
 
   function handleNavClick(link: string) {
     setMobileOpen(false)

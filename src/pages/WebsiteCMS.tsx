@@ -2,7 +2,7 @@ import { Bold, Check, ChevronDown, ChevronUp, Code, Eye, Heading2, Italic, Link2
 import { useEffect, useRef, useState } from 'react'
 import { Md } from '../lib/md'
 import {
-  getAllSiteConfig, updateGallery,
+  getAllSiteConfig, isCloudinaryImageUrl, updateGallery,
   updateHero, updateMilestones, updateSections, uploadSiteImage,
   type HeroConfig, type SiteGalleryItem,
   type SiteMilestone, type SiteSection,
@@ -111,8 +111,23 @@ function ImgUpload({ value, onChange }: { value: string; onChange: (url: string)
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.', true)
+      if (ref.current) ref.current.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Ảnh không được vượt quá 5 MB.', true)
+      if (ref.current) ref.current.value = ''
+      return
+    }
     setBusy(true)
-    try { onChange((await uploadSiteImage(file)).url) }
+    try {
+      const result = await uploadSiteImage(file)
+      const url = result.url
+      if (!isCloudinaryImageUrl(url)) throw new Error('Upload response is not a Cloudinary image URL')
+      onChange(url)
+    }
     catch { toast('Tải ảnh lên thất bại. Thử lại.', true) }
     finally { setBusy(false); if (ref.current) ref.current.value = '' }
   }
@@ -120,10 +135,11 @@ function ImgUpload({ value, onChange }: { value: string; onChange: (url: string)
   return (
     <div className="cms-imgup">
       {value && <img className="cms-imgup-thumb" src={value} alt="" />}
-      <button className="cms-upload-btn" onClick={() => ref.current?.click()} disabled={busy}>
+      <button type="button" className="cms-upload-btn" onClick={() => ref.current?.click()} disabled={busy}>
         <Upload size={14} /> {busy ? 'Đang tải…' : 'Tải ảnh lên'}
       </button>
-      <input ref={ref} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={pick} />
+      <small className="cms-imgup-help">Ảnh được lưu trên Cloudinary · JPG, PNG, WebP · tối đa 5 MB</small>
+      <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pick} />
     </div>
   )
 }
