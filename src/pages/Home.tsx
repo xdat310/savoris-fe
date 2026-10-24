@@ -63,7 +63,7 @@ export function Home() {
       jsonLd: branchSchemas.length ? { '@context': 'https://schema.org', '@graph': branchSchemas } : undefined })
   }, [publicSite, hero])
 
-  const branches = (publicSite?.branches ?? []) as PublicBranch[]
+  const branches = (publicSite?.branches ?? []) as unknown as PublicBranch[]
   const gallery: SiteGalleryItem[] = (publicSite?.gallery ?? []).map((item) => ({
     id: Number(item.id),
     image_url: String(item.image_url ?? ''),
