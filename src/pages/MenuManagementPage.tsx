@@ -77,7 +77,7 @@ export function MenuManagementPage() {
   }
 
   async function removeCategory(category: MenuCategoryResponse) {
-    if (!category.id || !window.confirm(`Ẩn danh mục “${category.name}”?`)) return
+    if (!category.id || !window.confirm(`Ẩn danh mục "${category.name}"?`)) return
     try { await del(`/menu-categories/${category.id}`); setNotice('Đã ẩn danh mục'); await load() }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Không xóa được danh mục') }
   }
@@ -125,7 +125,7 @@ export function MenuManagementPage() {
   }
 
   async function removeItem(item: MenuItemResponse) {
-    if (!item.id || !window.confirm(`Ẩn món “${item.name}”? Lịch sử đơn hàng sẽ được giữ lại.`)) return
+    if (!item.id || !window.confirm(`Ẩn món "${item.name}"? Lịch sử đơn hàng sẽ được giữ lại.`)) return
     try { await del(`/menu-items/${item.id}`); setNotice('Đã ẩn món'); await load(); await refreshBranchMenu() }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Không xóa được món') }
   }
