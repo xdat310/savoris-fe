@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react'
 import type {
-  HeroConfig, PublicBranch, SiteFooter as FooterData,
-  SiteGalleryItem, SiteMilestone,
-  SiteNavItem, SiteSection,
+  HeroConfig, PublicBranch, SiteGalleryItem,
+  SiteMilestone, SiteNavItem, SiteSection,
 } from '../api/site'
-import { getPublicSite } from '../api/site'
-import {
-  getBranches, getFooterConfig,
-  getGallery, getHero, getMilestones, getNav, getSections,
-} from '../api/site'
+import { getHero, getMilestones, getNav, getPublicSite, getSections } from '../api/site'
 import { SiteContact } from '../components/site/SiteContact'
 import { SiteFooter } from '../components/site/SiteFooter'
 import { SiteHeader } from '../components/site/SiteHeader'
@@ -19,27 +14,38 @@ import { SiteTimeline } from '../components/site/SiteTimeline'
 import { SiteCmsHighlights } from '../components/site/SiteCmsHighlights'
 import { applySeo } from '../lib/seo'
 
-type CmsContent = { settings?: Record<string, unknown>; branches?: Record<string, unknown>[]; offers?: Record<string, unknown>[]; accolades?: Record<string, unknown>[]; testimonials?: Record<string, unknown>[]; menus?: Record<string, unknown>[] }
+type CmsContent = {
+  settings?: Record<string, unknown>
+  branches?: Record<string, unknown>[]
+  gallery?: Record<string, unknown>[]
+  offers?: Record<string, unknown>[]
+  accolades?: Record<string, unknown>[]
+  testimonials?: Record<string, unknown>[]
+  menus?: Record<string, unknown>[]
+}
 
 export function Home() {
   const [nav, setNav] = useState<SiteNavItem[]>([])
   const [hero, setHero] = useState<HeroConfig | null>(null)
-  const [branches, setBranches] = useState<PublicBranch[]>([])
   const [sections, setSections] = useState<SiteSection[]>([])
-  const [gallery, setGallery] = useState<SiteGalleryItem[]>([])
   const [milestones, setMilestones] = useState<SiteMilestone[]>([])
-  const [footer, setFooter] = useState<FooterData | null>(null)
   const [publicSite, setPublicSite] = useState<CmsContent | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     getNav().then((items) => setNav(items ?? [])).catch(() => {})
     getHero().then(setHero).catch(() => {})
-    getBranches().then((items) => setBranches(items ?? [])).catch(() => {})
     getSections().then((items) => setSections(items ?? [])).catch(() => {})
-    getGallery().then((items) => setGallery(items ?? [])).catch(() => {})
     getMilestones().then((items) => setMilestones(items ?? [])).catch(() => {})
-    getFooterConfig().then(setFooter).catch(() => {})
-    getPublicSite().then((site) => setPublicSite(site as CmsContent)).catch(() => {})
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (!settled) { settled = true; setLoadError(true) }
+    }, 90000)
+    getPublicSite()
+      .then((site) => setPublicSite(site as CmsContent))
+      .catch(() => setLoadError(true))
+      .finally(() => { settled = true; clearTimeout(timeout) })
   }, [])
 
   useEffect(() => {
@@ -57,22 +63,34 @@ export function Home() {
       jsonLd: branchSchemas.length ? { '@context': 'https://schema.org', '@graph': branchSchemas } : undefined })
   }, [publicSite, hero])
 
+  const branches = (publicSite?.branches ?? []) as PublicBranch[]
+  const gallery: SiteGalleryItem[] = (publicSite?.gallery ?? []).map((item) => ({
+    id: Number(item.id),
+    image_url: String(item.image_url ?? ''),
+    public_id: '',
+    caption: String(item.alt ?? ''),
+    order: Number(item.sort_order ?? 0),
+  }))
   const menuHref = branches[0]?.slug ? `/chi-nhanh/${branches[0].slug}/thuc-don` : '#thuc-don'
 
   return (
     <div className="dc-site">
-      <SiteHeader
-        nav={nav}
-        branches={branches}
-      />
-      <SiteHero
-        config={hero}
-        menuHref={menuHref}
-      />
+      <SiteHeader nav={nav} branches={branches} />
+      <SiteHero config={hero} menuHref={menuHref} />
+      {loadError && (
+        <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <p style={{ marginBottom: '1rem' }}>Không tải được nội dung. Máy chủ có thể đang khởi động, vui lòng thử lại sau 1–2 phút.</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '0.5rem 1.5rem', cursor: 'pointer' }}>Thử lại</button>
+        </div>
+      )}
       <SiteStory sections={sections} />
-      <SiteCmsHighlights offers={publicSite?.offers ?? []} accolades={publicSite?.accolades ?? []}
-        testimonials={publicSite?.testimonials ?? []} menus={publicSite?.menus ?? []}
-        branches={(publicSite?.branches ?? []) as { id?: number; name?: string; slug?: string }[]} />
+      <SiteCmsHighlights
+        offers={publicSite?.offers ?? []}
+        accolades={publicSite?.accolades ?? []}
+        testimonials={publicSite?.testimonials ?? []}
+        menus={publicSite?.menus ?? []}
+        branches={(publicSite?.branches ?? []) as { id?: number; name?: string; slug?: string }[]}
+      />
       <SiteGallery items={gallery} excludedUrls={[
         ...(hero?.media ?? []).map((media) => media.url),
         ...sections.map((section) => section.image_url),
@@ -80,10 +98,10 @@ export function Home() {
       <SiteTimeline milestones={milestones} />
       <SiteContact branches={branches} />
       <SiteFooter
-        config={{ ...footer,
-          facebook_url: publicSite ? String(publicSite.settings?.facebookUrl ?? '') : footer?.facebook_url,
-          instagram_url: publicSite ? String(publicSite.settings?.instagramUrl ?? '') : footer?.instagram_url,
-          tiktok_url: publicSite ? String(publicSite.settings?.tiktokUrl ?? '') : footer?.tiktok_url,
+        config={{
+          facebook_url: String(publicSite?.settings?.facebookUrl ?? ''),
+          instagram_url: String(publicSite?.settings?.instagramUrl ?? ''),
+          tiktok_url: String(publicSite?.settings?.tiktokUrl ?? ''),
         }}
         menuHref={menuHref}
       />

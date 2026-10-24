@@ -109,7 +109,7 @@ export async function api<T>(method: string, path: string, body?: unknown, retry
 
   let res: Response
   try {
-    res = await fetch(`${BASE}${path}`, { method, headers, credentials: 'include', body: body === undefined ? undefined : form ? body : JSON.stringify(body) })
+    res = await fetch(`${BASE}${path}`, { method, headers, credentials: 'include', cache: 'no-store', body: body === undefined ? undefined : form ? body : JSON.stringify(body) })
   } catch {
     throw new ApiError(0, { code: 'NETWORK', message: 'Không kết nối được máy chủ. Kiểm tra backend đã chạy chưa.' })
   }

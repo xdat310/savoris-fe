@@ -86,7 +86,7 @@ export function SiteFooter({ config, menuHref = '/chi-nhanh/hoan-kiem/thuc-don' 
       </div>
 
       <div className="ftr-bottom">
-        <small>© {year} Savoris · {config?.copyright ?? 'Ẩm thực Việt đương đại'}</small>
+        <small>© {year} Savoris · {config?.copyright || 'Ẩm thực Việt đương đại'}</small>
       </div>
     </footer>
   )

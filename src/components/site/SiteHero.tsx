@@ -34,7 +34,7 @@ interface Props {
 
 export function SiteHero({ config, menuHref = '#thuc-don' }: Props) {
   const c = config ?? FALLBACK
-  const description = c.description?.trim() || 'Ẩm thực Việt đương đại, nơi nguyên liệu theo mùa và cảm hứng sáng tạo gặp nhau.'
+  const description = c.description.trim()
   const [active, setActive] = useState(0)
   const [fading, setFading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
