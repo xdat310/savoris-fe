@@ -34,7 +34,7 @@ interface Props {
   onScrollTo?: (id: string) => void
 }
 
-export function SiteFooter({ config, menuHref = '/chi-nhanh/cn1/thuc-don' }: Props) {
+export function SiteFooter({ config, menuHref = '/chi-nhanh/hoan-kiem/thuc-don' }: Props) {
   const year = YEAR
 
   return (
@@ -60,27 +60,29 @@ export function SiteFooter({ config, menuHref = '/chi-nhanh/cn1/thuc-don' }: Pro
           <a href="mailto:info@savoris.vn">Liên hệ hợp tác</a>
         </nav>
 
-        {/* Social */}
-        <div className="ftr-social">
-          <h4>KẾT NỐI</h4>
-          <div className="ftr-social-links">
-            {config?.facebook_url && (
-              <a href={config.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                <IconFacebook />
-              </a>
-            )}
-            {config?.instagram_url && (
-              <a href={config.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                <IconInstagram />
-              </a>
-            )}
-            {config?.tiktok_url && (
-              <a href={config.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
-                <IconTiktok />
-              </a>
-            )}
+        {/* Social — only render the column when at least one link exists */}
+        {(config?.facebook_url || config?.instagram_url || config?.tiktok_url) && (
+          <div className="ftr-social">
+            <h4>KẾT NỐI</h4>
+            <div className="ftr-social-links">
+              {config?.facebook_url && (
+                <a href={config.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                  <IconFacebook />
+                </a>
+              )}
+              {config?.instagram_url && (
+                <a href={config.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                  <IconInstagram />
+                </a>
+              )}
+              {config?.tiktok_url && (
+                <a href={config.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                  <IconTiktok />
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="ftr-bottom">

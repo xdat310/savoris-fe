@@ -45,7 +45,10 @@ export function Home() {
   useEffect(() => {
     const settings = publicSite?.settings ?? {}
     const branchSchemas = (publicSite?.branches ?? []).map((branch) => ({
-      '@type': 'Restaurant', name: `Savoris · ${String(branch.name ?? '')}`,
+      '@type': 'Restaurant',
+      name: `Savoris · ${String(branch.name ?? '')}`,
+      servesCuisine: 'Vietnamese',
+      url: branch.slug ? `${window.location.origin}/chi-nhanh/${String(branch.slug)}` : window.location.origin,
       address: { '@type': 'PostalAddress', streetAddress: branch.address, addressLocality: branch.city, addressCountry: 'VN' },
       telephone: branch.phone,
     }))

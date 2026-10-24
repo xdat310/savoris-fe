@@ -1,5 +1,6 @@
 import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { branchLabel, type PublicBranch } from '../../api/site'
 
 interface Props { branches?: PublicBranch[] }
@@ -24,7 +25,8 @@ export function SiteContact({ branches }: Props) {
     seen.add(key)
     return true
   })
-  const [activeId, setActiveId] = useState(data[0]?.id)
+  const [activeId, setActiveId] = useState<number | undefined>(data[0]?.id)
+  useEffect(() => { setActiveId((prev) => prev ?? data[0]?.id) }, [data[0]?.id])
   const branch = data.find((item) => item.id === activeId) ?? data[0]
   if (data.length === 0 || !branch) return null
 
@@ -71,6 +73,7 @@ export function SiteContact({ branches }: Props) {
                   {item.hours?.map((hours, index) => <span className="ctt-location-hours" key={index}>{hours.days}: {hours.time}</span>)}
                 </button>
                 {item.phone && <a className="ctt-location-call" href={`tel:${item.phone.replace(/\s/g, '')}`}><Phone size={13} aria-hidden="true"/> Gọi {item.phone}</a>}
+                {item.slug && <Link className="ctt-location-call" to={`/chi-nhanh/${item.slug}`}>Xem chi nhánh</Link>}
               </div>
             ))}
           </div>
