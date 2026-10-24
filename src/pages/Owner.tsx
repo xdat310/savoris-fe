@@ -246,7 +246,6 @@ function BankTransfer() {
 function TransferQr() {
   const toast = useToast()
   const qr = useData(() => get<TransferQrSetting>('/settings/transfer-qr'), [])
-  const [link, setLink] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [broken, setBroken] = useState(false)
@@ -289,14 +288,6 @@ function TransferQr() {
     }, 'Đã cập nhật ảnh mã QR')
   }
 
-  function saveLink(e: FormEvent) {
-    e.preventDefault()
-    act(async () => {
-      await put('/settings/transfer-qr', { url: link.trim() })
-      setLink('')
-    }, 'Đã lưu link ảnh mã QR')
-  }
-
   return (
     <div className="panel panel-pad transfer-setting">
       <div>
@@ -331,12 +322,6 @@ function TransferQr() {
         </div>
       </div>
 
-      <form className="row" onSubmit={saveLink}>
-        <label className="field" style={{ flex: 1, minWidth: 220 }}>Hoặc dán link ảnh
-          <input className="input" type="url" placeholder="https://…/ma-qr.png" value={link} onChange={(e) => setLink(e.target.value)} spellCheck={false} />
-        </label>
-        <button className="btn" style={{ alignSelf: 'flex-end' }} disabled={busy || !link.trim()}>Dùng link này</button>
-      </form>
     </div>
   )
 }

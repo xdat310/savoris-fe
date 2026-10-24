@@ -64,7 +64,7 @@ export function BranchMenu() {
   const [data, setData] = useState<SiteBranchPage | null>(null)
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => setData(null)) }, [slug])
   const menu = data?.menus.find(item => item.visible !== false)
-  return <main className="venue-menu-page"><Link to={`/chi-nhanh/${slug}`} className="venue-brand">SAVORIS</Link><span>THỰC ĐƠN · {data?.branch.name ?? slug.toUpperCase()}</span><h1>Hương vị<br/>đang chờ bạn.</h1>{menu ? <a className="venue-button" href={String(menu.file_url)} target="_blank" rel="noreferrer">Mở thực đơn PDF <ArrowUpRight size={16}/></a> : <p>Thực đơn đang được cập nhật. Hãy ghé Savoris để khám phá các món trong ngày.</p>}<Link to={`/dat-ban?chi-nhanh=${slug}`}>Đặt bàn <ArrowUpRight size={14}/></Link></main>
+  return <main className="venue-menu-page"><Link to={`/chi-nhanh/${slug}`} className="venue-brand">SAVORIS</Link><span>THỰC ĐƠN · {data?.branch.name ?? slug.toUpperCase()}</span><h1>Hương vị<br/>đang chờ bạn.</h1>{menu ? <>{menu.image_url && <img className="venue-menu-cover" src={imageUrl(menu.image_url)} alt={`Ảnh bìa ${String(menu.title ?? 'thực đơn')}`} /> }<a className="venue-button" href={String(menu.file_url)} target="_blank" rel="noreferrer">Mở thực đơn PDF <ArrowUpRight size={16}/></a></> : <p>Thực đơn đang được cập nhật. Hãy ghé Savoris để khám phá các món trong ngày.</p>}<Link to={`/dat-ban?chi-nhanh=${slug}`}>Đặt bàn <ArrowUpRight size={14}/></Link></main>
 }
 
 export function BookingComingSoon() { return <main className="venue-menu-page"><Link to="/" className="venue-brand">SAVORIS</Link><span>ĐẶT BÀN</span><h1>Sắp ra mắt.</h1><p>Chúng tôi đang hoàn thiện trải nghiệm đặt bàn trực tuyến.</p><Link to="/">Quay lại trang chủ</Link></main> }
