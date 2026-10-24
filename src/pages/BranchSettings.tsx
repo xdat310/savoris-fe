@@ -92,7 +92,7 @@ function BranchForm({ branch, owner, onSaved }: { branch: BranchResponse; owner:
         name: f.name.trim(), address: f.address.trim(), city: f.city.trim(), phone: f.phone.trim() || undefined,
         latitude: hasPos ? Number(f.lat) : undefined, longitude: hasPos ? Number(f.lng) : undefined,
         kitchenCapacity: f.capacity ? Number(f.capacity) : undefined,
-        openTime: branch.openTime, closeTime: branch.closeTime, managerId: branch.managerId,
+        managerId: branch.managerId,
       })
       await onSaved()
       toast(`Đã lưu ${f.name.trim()}`)

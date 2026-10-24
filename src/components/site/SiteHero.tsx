@@ -2,6 +2,8 @@ import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { HeroConfig } from '../../api/site'
 import { Md } from '../../lib/md'
+import { cloudinaryDeliveryUrl } from '../../lib/cloudinary'
+import { Link } from 'react-router-dom'
 
 const FALLBACK: HeroConfig = {
   type: 'image',
@@ -18,8 +20,7 @@ const FALLBACK: HeroConfig = {
 
 // Serve a high-quality source for large and high-density displays.
 function cdnUrl(url: string, width: number) {
-  if (!url.includes('cloudinary.com')) return url
-  return url.replace('/upload/', `/upload/f_auto,q_auto:best,w_${width}/`)
+  return cloudinaryDeliveryUrl(url, `f_auto,q_auto:best,w_${width}`)
 }
 
 function heroSrcSet(url: string) {
@@ -28,12 +29,12 @@ function heroSrcSet(url: string) {
 
 interface Props {
   config?: HeroConfig | null
-  onCtaClick?: () => void
-  onBookClick?: () => void
+  menuHref?: string
 }
 
-export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
+export function SiteHero({ config, menuHref = '#thuc-don' }: Props) {
   const c = config ?? FALLBACK
+  const description = c.description?.trim() || 'Ẩm thực Việt đương đại, nơi nguyên liệu theo mùa và cảm hứng sáng tạo gặp nhau.'
   const [active, setActive] = useState(0)
   const [fading, setFading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -61,14 +62,6 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
       const next = hero.nextElementSibling as HTMLElement | null
       next?.scrollIntoView({ behavior: 'smooth' })
     }
-  }
-
-  function handleCta() {
-    if (c.cta_link.startsWith('#')) {
-      const el = document.getElementById(c.cta_link.slice(1))
-      if (el) { el.scrollIntoView({ behavior: 'smooth' }); return }
-    }
-    onCtaClick?.()
   }
 
   const overlayStyle = { '--hero-opacity': c.overlay_opacity } as React.CSSProperties
@@ -124,12 +117,12 @@ export function SiteHero({ config, onCtaClick, onBookClick }: Props) {
           <div className="sh-hero-badge">{c.badge_line1 && <span>{c.badge_line1}</span>}{c.badge_line2 && <span>{c.badge_line2}</span>}</div>
         )}
         <h1 className="sh-hero-brand">{c.brand_name?.trim() || 'SAVORIS'}</h1>
-        {c.description?.trim() && <Md className="sh-hero-desc">{c.description}</Md>}
+        <Md className="sh-hero-desc">{description}</Md>
 
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
-          <button className="sh-hero-cta" onClick={handleCta}>{c.cta_text}</button>
-          {onBookClick && <button className="sh-hero-cta sh-hero-cta--ghost" onClick={onBookClick}>ĐẶT BÀN TRỰC TUYẾN</button>}
+          <Link className="sh-hero-cta" to="/dat-ban">Đặt bàn</Link>
+          <a className="sh-hero-cta sh-hero-cta--ghost" href={menuHref}>Xem thực đơn</a>
           <div className="sh-hero-rule" aria-hidden="true" />
         </div>
       </div>

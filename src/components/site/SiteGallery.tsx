@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { SiteGalleryItem } from '../../api/site'
+import { cloudinaryDeliveryUrl } from '../../lib/cloudinary'
 
 function imageKey(value: string): string {
   try {
@@ -35,8 +36,8 @@ export function uniqueGalleryItems(items?: SiteGalleryItem[], excludedUrls: stri
     })
 }
 
-function cdnGrid(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_800/') : url }
-function cdnFull(url: string)  { return url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/f_auto,q_auto,w_1600/') : url }
+function cdnGrid(url: string)  { return cloudinaryDeliveryUrl(url, 'f_auto,q_auto,w_800') }
+function cdnFull(url: string)  { return cloudinaryDeliveryUrl(url, 'f_auto,q_auto,w_1600') }
 
 interface Props { items?: SiteGalleryItem[]; excludedUrls?: string[] }
 
@@ -66,6 +67,10 @@ export function SiteGallery({ items, excludedUrls }: Props) {
 
   return (
     <section className="gal-wrap" id="thu-vien" aria-label="Thư viện ảnh">
+      <header className="gal-heading">
+        <h2>Hương vị Savoris</h2>
+        <p>Mỗi món ăn là một lát cắt của căn bếp và những mùa nguyên liệu.</p>
+      </header>
       <div className={`gal-grid${data.length >= 4 ? ' gal-grid--editorial' : ''}`}>
         {data.map((item, i) => (
           <button

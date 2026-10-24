@@ -1,77 +1,88 @@
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
 import { useState } from 'react'
-import type { PublicBranch } from '../../api/site'
+import { branchLabel, type PublicBranch } from '../../api/site'
 
 interface Props { branches?: PublicBranch[] }
+
+function locationKey(branch: PublicBranch) {
+  return [branch.name, branch.address, branch.city]
+    .map((part) => part?.trim().toLocaleLowerCase('vi'))
+    .join('|')
+}
+
+function mapQuery(branch: PublicBranch) {
+  return branch.lat != null && branch.lng != null
+    ? `${branch.lat},${branch.lng}`
+    : [branch.address, branch.city].filter(Boolean).join(', ')
+}
 
 export function SiteContact({ branches }: Props) {
   const seen = new Set<string>()
   const data = (branches ?? []).filter((branch) => {
-    const key = String(branch.code || branch.slug || branch.id).trim().toLowerCase()
+    const key = locationKey(branch)
     if (seen.has(key)) return false
     seen.add(key)
     return true
   })
   const [activeId, setActiveId] = useState(data[0]?.id)
-  const branch = data.find((b) => b.id === activeId) ?? data[0]
-  if (data.length === 0) return null
-  const mapQuery = branch
-    ? branch.lat != null && branch.lng != null
-      ? `${branch.lat},${branch.lng}`
-      : [branch.address, branch.city].filter(Boolean).join(', ')
-    : ''
-  const mapSrc = branch?.google_maps_embed?.trim() || (mapQuery
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`
-    : '')
+  const branch = data.find((item) => item.id === activeId) ?? data[0]
+  if (data.length === 0 || !branch) return null
+
+  const query = mapQuery(branch)
+  const mapSrc = branch.google_maps_embed?.trim() ||
+    (query ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed` : '')
+  const mapLink = query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : ''
 
   return (
-    <section className="ctt-wrap" id="lien-he" aria-label="Liên hệ & Chi nhánh">
-      <h2 className="ctt-title">Liên hệ</h2>
+    <section className="ctt-wrap" id="lien-he" aria-label="Liên hệ và địa chỉ nhà hàng">
+      <h2 className="ctt-title">Ghé thăm Savoris</h2>
 
-      {/* Branch tabs */}
-      <div className="ctt-tabs" role="tablist">
-        {data.map((b) => (
-          <button
-            key={b.id}
-            role="tab"
-            className={`ctt-tab${b.id === activeId ? ' ctt-tab--on' : ''}`}
-            aria-selected={b.id === activeId}
-            onClick={() => setActiveId(b.id)}
-          >
-            {b.code ? `${b.code} · ` : ''}{b.name}
-          </button>
-        ))}
-      </div>
+      <div className="ctt-body">
+        <div className="ctt-map">
+          {mapSrc ? (
+            <iframe
+              title={`Bản đồ ${branchLabel(branch)}`}
+              src={mapSrc}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="ctt-map-ph" aria-hidden="true">
+              <MapPin size={32} />
+              <span>Chưa có địa chỉ bản đồ</span>
+            </div>
+          )}
+        </div>
 
-      {branch && (
-        <div className="ctt-body">
-          {/* Map */}
-          <div className="ctt-map">
-            {mapSrc ? (
-              <iframe
-                title={`Bản đồ ${branch.name}`}
-                src={mapSrc}
-                allowFullScreen loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            ) : (
-              <div className="ctt-map-ph" aria-hidden="true">
-                <MapPin size={32} />
-                <span>Chưa có địa chỉ bản đồ</span>
+        <div className="ctt-info">
+          <p className="ctt-group-label">Các địa chỉ</p>
+          <div className="ctt-location-list" aria-label="Danh sách địa chỉ chi nhánh">
+            {data.map((item) => (
+              <div className="ctt-location-card" key={item.id}>
+                <button
+                  type="button"
+                  className={`ctt-location${item.id === branch.id ? ' ctt-location--active' : ''}`}
+                  aria-pressed={item.id === branch.id}
+                  onClick={() => setActiveId(item.id)}
+                >
+                  <span className="ctt-location-name">{branchLabel(item)}</span>
+                  <span className="ctt-location-address">{[item.address, item.city].filter(Boolean).join(', ')}</span>
+                  {item.hours?.map((hours, index) => <span className="ctt-location-hours" key={index}>{hours.days}: {hours.time}</span>)}
+                </button>
+                {item.phone && <a className="ctt-location-call" href={`tel:${item.phone.replace(/\s/g, '')}`}><Phone size={13} aria-hidden="true"/> Gọi {item.phone}</a>}
               </div>
-            )}
+            ))}
           </div>
 
-          {/* Info */}
-          <div className="ctt-info">
-            <h3 className="ctt-branch-name">{branch.name}</h3>
-            {branch.address && (
-              <p className="ctt-address">
-                <span className="ctt-gold">{branch.address}</span>
-                {branch.city ? `, ${branch.city}` : ''}
-              </p>
-            )}
+          {mapLink && (
+            <a className="ctt-link ctt-map-link" href={mapLink} target="_blank" rel="noreferrer">
+              <MapPin size={14} aria-hidden="true" /> Xem trên Google Maps
+              <ExternalLink size={13} aria-hidden="true" />
+            </a>
+          )}
 
+          {(branch.phone || branch.email) && (
             <div className="ctt-contact-links">
               <p className="ctt-group-label">Liên hệ</p>
               {branch.phone && (
@@ -85,21 +96,20 @@ export function SiteContact({ branches }: Props) {
                 </a>
               )}
             </div>
+          )}
 
-            {branch.hours && branch.hours.length > 0 && (
-              <div className="ctt-hours">
-                <p className="ctt-group-label">Giờ mở cửa</p>
-                {branch.hours.map((h, i) => (
-                  <div key={i} className="ctt-hour-row">
-                    <span>{h.days}</span>
-                    <span className="ctt-gold">{h.time}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {branch.hours && branch.hours.length > 0 && (
+            <div className="ctt-hours">
+              <p className="ctt-group-label">Giờ mở cửa</p>
+              {branch.hours.map((hours, index) => (
+                <div key={index} className="ctt-hour-row">
+                  <span>{hours.days}</span><span className="ctt-gold">{hours.time}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </section>
   )
 }

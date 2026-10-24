@@ -18,7 +18,9 @@ import { WebsiteCMS } from './pages/WebsiteCMS'
 import { SystemSettings } from './pages/SystemSettings'
 import { Owner } from './pages/Owner'
 import { AdminRoutes } from './pages/AdminPortal'
-import { BookingComingSoon, BranchMenu, PublicBranch } from './pages/PublicBranch'
+import { BranchMenu, PublicBranch } from './pages/PublicBranch'
+import { NotFound } from './pages/NotFound'
+import { BookingPage } from './pages/BookingPage'
 
 function Guard({ allow, children }: { allow: (role?: string) => boolean; children: ReactNode }) {
   const { role } = useAuth()
@@ -37,11 +39,12 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/chi-nhanh/:slug" element={<PublicBranch />} />
         <Route path="/chi-nhanh/:slug/thuc-don" element={<BranchMenu />} />
-        <Route path="/dat-ban" element={<BookingComingSoon />} />
+        <Route path="/dat-ban" element={<BookingPage />} />
         <Route path="/goi-mon/:token" element={<GuestOrder />} />
         <Route path="/mang-ve" element={<Takeaway />} />
+        <Route path="/mang-ve/:branchSlug" element={<Takeaway />} />
         <Route path="/don-mang-ve/:token" element={<TakeawayTrack />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     )
   }
@@ -94,7 +97,7 @@ function AppRoutes() {
 
         <Route path="*" element={<Navigate to={homeFor(role)} replace />} />
       </Route>
-      <Route path="*" element={<Navigate to={homeFor(role)} replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

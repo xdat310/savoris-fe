@@ -30,11 +30,11 @@ function IconTiktok() {
 
 interface Props {
   config?: FooterData | null
-  onReserveClick?: () => void
+  menuHref?: string
   onScrollTo?: (id: string) => void
 }
 
-export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
+export function SiteFooter({ config, menuHref = '/chi-nhanh/cn1/thuc-don' }: Props) {
   const year = YEAR
 
   return (
@@ -43,15 +43,15 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
         {/* Link columns */}
         <nav className="ftr-col" aria-label="Đặt món">
           <h4>ĐẶT MÓN</h4>
-          <button onClick={onReserveClick}>Đặt bàn</button>
-          <button onClick={() => onScrollTo?.('thuc-don')}>Xem thực đơn</button>
+          <Link to="/dat-ban">Đặt bàn</Link>
+          <a href={menuHref}>Xem thực đơn</a>
           <Link to="/mang-ve">Đặt mang về</Link>
         </nav>
 
         <nav className="ftr-col" aria-label="Khám phá">
           <h4>KHÁM PHÁ</h4>
-          <button onClick={() => onScrollTo?.('ve-chung-toi')}>Về chúng tôi</button>
-<button onClick={() => onScrollTo?.('lien-he')}>Chi nhánh</button>
+          <a href="#ve-chung-toi">Về chúng tôi</a>
+          <a href="#lien-he">Chi nhánh</a>
         </nav>
 
         <nav className="ftr-col" aria-label="Dịch vụ">
@@ -64,18 +64,18 @@ export function SiteFooter({ config, onReserveClick, onScrollTo }: Props) {
         <div className="ftr-social">
           <h4>KẾT NỐI</h4>
           <div className="ftr-social-links">
-            {(config?.facebook_url ?? 'https://facebook.com') && (
-              <a href={config?.facebook_url ?? 'https://facebook.com'} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+            {config?.facebook_url && (
+              <a href={config.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                 <IconFacebook />
               </a>
             )}
-            {(config?.instagram_url ?? 'https://instagram.com') && (
-              <a href={config?.instagram_url ?? 'https://instagram.com'} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            {config?.instagram_url && (
+              <a href={config.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                 <IconInstagram />
               </a>
             )}
-            {(config?.tiktok_url ?? 'https://tiktok.com') && (
-              <a href={config?.tiktok_url ?? 'https://tiktok.com'} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+            {config?.tiktok_url && (
+              <a href={config.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
                 <IconTiktok />
               </a>
             )}

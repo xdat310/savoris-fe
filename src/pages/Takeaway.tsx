@@ -1,7 +1,8 @@
 import { ArrowLeft, Banknote, Landmark, MapPin, Minus, Plus, Send, ShoppingBag, X } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, get, post } from '../api/client'
+import { branchLabel } from '../api/site'
 import type { BranchMenuItemResponse, GuestTableResponse, PublicBranchResponse, WebTakeawayResponse } from '../api/types'
 import { CategoryNav, DishBoard, groupDishes } from '../components/DishBoard'
 import { DishThumb } from '../components/DishThumb'
@@ -30,11 +31,33 @@ function savedBranch(): number | null {
   }
 }
 
+const branchSlugOf = (code?: string) => (code ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+function futurePickupLocal() {
+  const date = new Date(Date.now() + 60 * 60 * 1000)
+  date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 // Takeaway from the website: pick the branch to collect from, pick dishes, pay first (cash at the counter or bank transfer)
 export function Takeaway() {
+  const { branchSlug } = useParams()
+  const navigate = useNavigate()
   const branches = useData(() => get<PublicBranchResponse[]>('/public/branches'), [], 30000)
   const [branchId, setBranchId] = useState<number | null>(savedBranch)
-  const branch = branches.data?.find((b) => b.id === branchId)
+  const branchFromUrl = branchSlug ? branches.data?.find((b) => branchSlugOf(b.code) === branchSlug.toLowerCase()) : undefined
+  const branch = branchFromUrl ?? branches.data?.find((b) => b.id === branchId)
+  useEffect(() => {
+    if (branchSlug && branchFromUrl?.id) {
+      setBranchId(branchFromUrl.id)
+      try { sessionStorage.setItem(BRANCH_KEY, String(branchFromUrl.id)) } catch { /* session-only preference */ }
+    } else if (!branchSlug && branch) {
+      navigate(`/mang-ve/${branchSlugOf(branch.code)}`, { replace: true })
+    } else if (branchSlug && !branches.loading && branches.data && !branchFromUrl) {
+      navigate('/mang-ve', { replace: true })
+    }
+  }, [branchSlug, branchFromUrl?.id, branch?.id, branches.loading, branches.data, navigate])
   const here = useMyLocation()
   const origin = here.state.status === 'ok' ? { lat: here.state.lat, lng: here.state.lng } : null
   const sorted = byDistance(branches.data ?? [], origin)
@@ -48,6 +71,8 @@ export function Takeaway() {
     } catch {
       // only remembered for this visit
     }
+    const selected = branches.data?.find((b) => b.id === id)
+    navigate(selected ? `/mang-ve/${branchSlugOf(selected.code)}` : '/mang-ve')
   }
 
   if (branchId && branch) return <TakeawayMenu branch={branch} onChangeBranch={() => pick(null)} />
@@ -69,7 +94,7 @@ export function Takeaway() {
               <button key={b.id} className="branch-pick" disabled={!b.acceptingTakeaway} onClick={() => pick(b.id!)}>
                 <span className="bp-code">{b.code}</span>
                 <span className="bp-main">
-                  <strong>{b.name}{b.id === nearestId && <span className="nearest-tag">Gần bạn nhất</span>}</strong>
+                  <strong>{branchLabel(b)}{b.id === nearestId && <span className="nearest-tag">Gần bạn nhất</span>}</strong>
                   {b.address && b.address !== 'Chưa cập nhật' && <span className="bp-addr"><MapPin size={13} aria-hidden="true" /> {b.address}{b.city && b.city !== 'Chưa cập nhật' ? `, ${b.city}` : ''}</span>}
                   {km != null && <span className="bp-km">Cách bạn {formatKm(km)}</span>}
                 </span>
@@ -77,7 +102,7 @@ export function Takeaway() {
                   <span className="bp-status">
                     {b.acceptingTakeaway
                       ? (b.estimatedWaitMinutes ? `Nhận đơn · chờ ~${b.estimatedWaitMinutes} phút` : 'Đang nhận đơn')
-                      : 'Bếp đang kín, tạm ngưng'}
+                      : b.openNow === false ? 'Đã đóng cửa' : 'Bếp đang kín, tạm ngưng'}
                   </span>
                   {b.acceptingTakeaway && <span className="btn-oval btn-oval-sm" aria-hidden="true">Chọn</span>}
                 </span>
@@ -98,6 +123,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [pickupAt, setPickupAt] = useState(futurePickupLocal)
   const [method, setMethod] = useState<PayMethod>(branch.transferAvailable ? 'BANK_TRANSFER' : 'CASH')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -126,10 +152,11 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
     try {
       const order = await post<WebTakeawayResponse>('/public/takeaway-orders', {
         branchId: branch.id, guestName: name.trim(), guestPhone: phone.replace(/\s/g, ''), payMethod: method,
+        pickupAt,
         notes: notes.trim() || undefined,
         items: lines.map((l) => ({ menuItemId: l.dish.menuItemId, quantity: l.quantity })),
       })
-      rememberTakeaway({ token: order.token!, code: order.code!, branchName: branch.name ?? '' })
+      rememberTakeaway({ token: order.token!, code: order.code!, branchName: branchLabel(branch) })
       navigate(`/don-mang-ve/${order.token}`)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Không đặt được, thử lại')
@@ -142,7 +169,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
     <div className={`guest${count ? ' has-cart' : ''}`}>
       <header className="guest-board">
         <Link to="/" className="guest-back"><ArrowLeft size={16} aria-hidden="true" /> Trang chủ</Link>
-        <div className="guest-table">{branch.name}</div>
+        <div className="guest-table">{branchLabel(branch)}</div>
         <div className="guest-where">
           {branch.address && branch.address !== 'Chưa cập nhật' ? `${branch.address} · ` : ''}
           <button className="link-chalk" onClick={onChangeBranch}>Đổi chi nhánh</button>
@@ -173,7 +200,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
         <div className="guest-sheet-backdrop" onClick={() => !sending && setCheckout(false)}>
           <form className="guest-sheet" role="dialog" aria-modal="true" aria-label="Đặt món mang về" onClick={(e) => e.stopPropagation()} onSubmit={place}>
             <div className="panel-head">
-              <h2>Mang về · {branch.name}</h2>
+              <h2>Mang về · {branchLabel(branch)}</h2>
               <button type="button" className="icon-btn" aria-label="Đóng" onClick={() => setCheckout(false)}><X size={18} /></button>
             </div>
             <div className="guest-sheet-lines">
@@ -193,6 +220,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
               <div className="checkout-fields">
                 <label className="field">Tên của bạn<input className="input" required maxLength={100} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} /></label>
                 <label className="field">Số điện thoại<input className="input num" required inputMode="tel" autoComplete="tel" pattern="0[0-9 ]{9,12}" placeholder="0912 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
+                <label className="field">Giờ lấy món<input className="input" required type="datetime-local" min={futurePickupLocal()} value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} /></label>
                 <label className="field">Ghi chú cho bếp<input className="input" maxLength={500} placeholder="Ít cay, không hành…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
                 <fieldset className="pay-methods">
                   <legend>Thanh toán trước</legend>

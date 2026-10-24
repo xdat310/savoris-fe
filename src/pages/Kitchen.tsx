@@ -74,7 +74,7 @@ export function Kitchen() {
   const batchedPending = useMemo(() => {
     if (!batchMode) return []
     const map = new Map<string, { itemName: string; menuItemId?: number; totalQty: number; orders: string[] }>()
-    for (const t of pending) {
+    for (const t of pending.filter((ticket) => !ticket.awaitingPayment)) {
       const key = String(t.menuItemId ?? t.itemName)
       if (!map.has(key)) map.set(key, { itemName: t.itemName!, menuItemId: t.menuItemId, totalQty: 0, orders: [] })
       const entry = map.get(key)!
@@ -86,6 +86,7 @@ export function Kitchen() {
   }, [batchMode, pending])
 
   async function move(t: KitchenTicketResponse, step: 'start' | 'ready' | 'served') {
+    if (t.awaitingPayment) return
     setBusyId(t.itemId!)
     try {
       await put(`/kitchen/items/${t.itemId}/${step}`)
@@ -264,8 +265,9 @@ export function Kitchen() {
         {/* ── Chờ nấu — normal or batch view ── */}
         <Column title="Chờ nấu" count={pending.length} Icon={Flame}>
           {batchMode ? (
-            batchedPending.length === 0 ? null :
-            batchedPending.map((b) => (
+            <>
+            {pending.filter((ticket) => ticket.awaitingPayment).map((t) => <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)}>{null}</Ticket>)}
+            {batchedPending.map((b) => (
               <article key={b.menuItemId ?? b.itemName} className="kticket kticket--batch">
                 <div className="kticket-batch-qty">×{b.totalQty}</div>
                 <div className="kticket-batch-info">
@@ -276,11 +278,12 @@ export function Kitchen() {
                   <div className="kticket-batch-orders">{b.orders.join(' · ')}</div>
                 </div>
               </article>
-            ))
+            ))}
+            </>
           ) : (
             pending.map((t, i) => (
               <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)} next={i === 0}>
-                {cooks && (
+                {cooks && !t.awaitingPayment && (
                   <button className={`btn btn-xl btn-block${i === 0 ? ' btn-primary' : ''}`}
                     disabled={busyId === t.itemId} data-loading={busyId === t.itemId || undefined} onClick={() => move(t, 'start')}>
                     <Icon icon={Flame} size="touch" /> Nhận nấu
@@ -390,6 +393,7 @@ function Ticket({ t, image, tableName, next, cooking, children }: {
           {waiting} phút
         </span>
       </div>
+      {t.awaitingPayment && <span className="kticket-payment-wait">Đơn chờ thanh toán · chưa thể nhận nấu</span>}
       {children}
     </article>
   )

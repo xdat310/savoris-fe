@@ -2,7 +2,7 @@ import { CalendarDays, ChevronRight, Clock, Users, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { SlotAvailability } from '../../api/reservation'
 import { createGuestReservation, getSlots } from '../../api/reservation'
-import type { PublicBranch } from '../../api/site'
+import { branchLabel, type PublicBranch } from '../../api/site'
 
 interface Props {
   open: boolean
@@ -123,7 +123,7 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
           </h2>
           {step !== 'pick' && step !== 'done' && (
             <div className="bk-breadcrumb">
-              <span>{selectedBranch?.name}</span>
+              <span>{branchLabel(selectedBranch)}</span>
               <ChevronRight size={12} />
               <span>{new Date(date).toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' })}</span>
               {selectedSlot && <><ChevronRight size={12} /><span>{fmt(selectedSlot)}</span></>}
@@ -139,7 +139,7 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
             <label className="bk-field">
               <span><CalendarDays size={14} /> Chi nhánh</span>
               <select className="bk-input" value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value))}>
-                {branches.map((b) => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
+                {branches.map((b) => <option key={b.id} value={b.id}>{branchLabel(b)} — {b.address}</option>)}
               </select>
             </label>
 
@@ -215,7 +215,7 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
             </label>
 
             <div className="bk-summary">
-              <span>🍽️ {selectedBranch?.name}</span>
+              <span>🍽️ {branchLabel(selectedBranch)}</span>
               <span>📅 {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
               <span>🕐 {selectedSlot ? fmt(selectedSlot) : ''} · {guests} khách</span>
             </div>

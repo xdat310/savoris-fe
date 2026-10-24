@@ -13,10 +13,10 @@ const TABS = [
 const resourceNames: Record<string, string> = { offers: 'offers', gallery: 'gallery', accolades: 'accolades', testimonials: 'testimonials', hours: 'hours', menus: 'menus' }
 const valueOf = (row: Entry, camel: string, snake?: string) => row[camel] ?? (snake ? row[snake] : undefined) ?? ''
 
-export function WebsiteCMSPage() {
+export function WebsiteCMSPage({ branchOnly = false }: { branchOnly?: boolean }) {
   const toast = useToast()
   const [cms, setCms] = useState<Entry | null>(null)
-  const [tab, setTab] = useState<string>('settings')
+  const [tab, setTab] = useState<string>(branchOnly ? 'branch' : 'settings')
   const [branchId, setBranchId] = useState<number>(0)
   const [settings, setSettings] = useState<Entry>({})
   const [page, setPage] = useState<Entry>({})
@@ -31,7 +31,7 @@ export function WebsiteCMSPage() {
     setCms(data)
     setSettings(data.settings ?? {})
     const first = data.branches?.[0]
-    const chosen = branchId || first?.id || 0
+    const chosen = branchOnly ? (first?.id || 0) : (branchId || first?.id || 0)
     setBranchId(chosen)
     const pageItem = (data.branchPages ?? []).find((item: Entry) => item.branchId === chosen)
     setPage(pageItem?.payload ?? {})
@@ -117,12 +117,13 @@ export function WebsiteCMSPage() {
   }
   if (!cms) return <div className="wc-page"><p>{error || 'Đang tải CMS…'}</p></div>
   const currentBranch = cms.branches?.find((b: Entry) => Number(b.id) === branchId)
+  const tabs = branchOnly ? TABS.filter(([id]) => id !== 'settings') : TABS
   return <div className="wc-page"><div className="wc-heading"><div><span>SAVORIS · NỘI DUNG SỐ</span><h1>Website</h1></div>{currentBranch && <a href={tab === 'settings' ? '/' : `/chi-nhanh/${currentBranch.slug}`} target="_blank" rel="noreferrer">Xem trên website <ExternalLink size={15}/></a>}</div>
-    <nav className="wc-tabs" aria-label="Mục website">{TABS.map(([id, label]) => <button className={tab === id ? 'is-active' : ''} key={id} onClick={() => { if (dirty && !window.confirm('Rời trang khi chưa lưu thay đổi?')) return; setDirty(false); setTab(id); setDraft({}) }}>{label}</button>)}</nav>
+    <nav className="wc-tabs" aria-label="Mục website">{tabs.map(([id, label]) => <button className={tab === id ? 'is-active' : ''} key={id} onClick={() => { if (dirty && !window.confirm('Rời trang khi chưa lưu thay đổi?')) return; setDirty(false); setTab(id); setDraft({}) }}>{label}</button>)}</nav>
     {error && <div className="wc-error" role="alert">{error}</div>}
     {(tab === 'settings' || tab === 'branch') && <form className="wc-form" onSubmit={saveMain}>
-      {tab === 'branch' && <label>Chi nhánh<select value={branchId} onChange={e => { const id = Number(e.target.value); if (dirty && !window.confirm('Rời trang khi chưa lưu thay đổi?')) return; setBranchId(id); setPage((cms.branchPages ?? []).find((x: Entry) => x.branchId === id)?.payload ?? {}); setDirty(false) }}>{cms.branches?.map((branch: Entry) => <option key={branch.id} value={branch.id}>{branch.name} · {branch.slug}</option>)}</select></label>}
-      {tab === 'settings' ? <>{[['brandLine','Câu thương hiệu'],['facebookUrl','Facebook'],['instagramUrl','Instagram'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}<input value={settings[key] ?? ''} onChange={e => setValue(setSettings,key,e.target.value)}/></label>)}{imgField('heroImage','Ảnh hero chuỗi',String(settings.heroImage ?? ''),setSettings)}{imgField('logo','Logo',String(settings.logo ?? ''),setSettings)}</> : <>{[['heroAlt','Mô tả ảnh hero'],['introduction','Câu giới thiệu'],['brandLine','Câu thương hiệu'],['privateEvent','Nội dung sự kiện riêng'],['mapUrl','Link Google Maps'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}{key === 'introduction' || key === 'privateEvent' ? <textarea rows={4} value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/> : <input value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/>}</label>)}{imgField('heroImage','Ảnh hero chi nhánh',String(page.heroImage ?? ''),setPage)}{imgField('seoImage','Ảnh chia sẻ',String(page.seoImage ?? ''),setPage)}<label>Mô tả ảnh thay thế<input value={draft.heroAlt ?? page.heroAlt ?? ''} required onChange={e => setDraft((v: Entry) => ({ ...v, heroAlt: e.target.value }))}/></label></>}
+      {tab === 'branch' && !branchOnly && <label>Chi nhánh<select value={branchId} onChange={e => { const id = Number(e.target.value); if (dirty && !window.confirm('Rời trang khi chưa lưu thay đổi?')) return; setBranchId(id); setPage((cms.branchPages ?? []).find((x: Entry) => x.branchId === id)?.payload ?? {}); setDirty(false) }}>{cms.branches?.map((branch: Entry) => <option key={branch.id} value={branch.id}>{branch.name} · {branch.slug}</option>)}</select></label>}
+      {tab === 'settings' ? <>{[['brandLine','Câu thương hiệu'],['facebookUrl','Facebook'],['instagramUrl','Instagram'],['tiktokUrl','TikTok'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}<input value={settings[key] ?? ''} onChange={e => setValue(setSettings,key,e.target.value)}/></label>)}{imgField('heroImage','Ảnh hero chuỗi',String(settings.heroImage ?? ''),setSettings)}{imgField('logo','Logo',String(settings.logo ?? ''),setSettings)}</> : <>{[['heroAlt','Mô tả ảnh hero'],['introduction','Câu giới thiệu'],['brandLine','Câu thương hiệu'],['privateEvent','Nội dung sự kiện riêng'],['mapUrl','Link Google Maps'],['seoTitle','SEO title'],['seoDescription','SEO description']].map(([key,label]) => <label key={key}>{label}{key === 'introduction' || key === 'privateEvent' ? <textarea rows={4} value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/> : <input value={page[key] ?? ''} onChange={e => setValue(setPage,key,e.target.value)}/>}</label>)}{imgField('heroImage','Ảnh hero chi nhánh',String(page.heroImage ?? ''),setPage)}{imgField('seoImage','Ảnh chia sẻ',String(page.seoImage ?? ''),setPage)}<label>Mô tả ảnh thay thế<input value={draft.heroAlt ?? page.heroAlt ?? ''} required onChange={e => setDraft((v: Entry) => ({ ...v, heroAlt: e.target.value }))}/></label></>}
       <button className="wc-primary" disabled={busy}><Save size={16}/>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
     </form>}
     {!['settings','branch'].includes(tab) && <section className="wc-list"><div className="wc-list-head"><div><h2>{TABS.find(([id]) => id === tab)?.[1]}</h2><p>{currentBranch?.name ?? 'Toàn chuỗi'}</p></div><button onClick={() => setDraft({})}><Plus size={16}/> Thêm mới</button></div>
@@ -130,10 +131,10 @@ export function WebsiteCMSPage() {
         {tab === 'offers' && <>{field('title','Tiêu đề','text',true)}<label>Mô tả<textarea required rows={3} value={draft.description ?? ''} onChange={e => setDraft((v: Entry) => ({ ...v, description:e.target.value }))}/></label>{field('price','Giá (VND)','number',true)}{field('unit','Đơn vị (người/set)')}{field('schedule','Lịch áp dụng')}{field('menuUrl','Link thực đơn')}{uploadField()}</>}
         {tab === 'gallery' && <>{uploadField()}</>}
         {tab === 'accolades' && <>{field('year','Năm','number',true)}{field('content','Nội dung','text',true)}</>}
-        {tab === 'testimonials' && <>{field('quote','Trích dẫn','text',true)}{field('reviewer','Người đánh giá','text',true)}{field('title','Chức danh')}</>}
-        {tab === 'hours' && <>{field('weekday','Thứ trong tuần (1–7)','number',true)}{field('opensAt','Giờ mở cửa','time')}{field('closesAt','Giờ đóng cửa','time')}<label className="wc-check"><input type="checkbox" checked={!!draft.closed} onChange={e => setDraft((v: Entry) => ({ ...v, closed:e.target.checked }))}/> Nghỉ cả ngày</label></>}
+        {tab === 'testimonials' && <>{field('quote','Trích dẫn','text',true)}{field('reviewer','Người đánh giá','text',true)}{field('source','Nguồn đánh giá (Google, Facebook...)','text',true)}{field('title','Ngữ cảnh / ngày đánh giá')}</>}
+        {tab === 'hours' && <>{field('weekday','Thứ trong tuần (1–7)','number',true)}{field('opensAt','Giờ mở cửa','time',!draft.closed)}{field('closesAt','Giờ đóng cửa','time',!draft.closed)}<label className="wc-check"><input type="checkbox" checked={!!draft.closed} onChange={e => setDraft((v: Entry) => ({ ...v, closed:e.target.checked }))}/> Nghỉ cả ngày</label></>}
         {tab === 'menus' && <>{field('title','Tên thực đơn','text',true)}{field('fileUrl','Đường dẫn PDF','url',true)}{imgField('imageUrl','Ảnh bìa thực đơn',String(draft.imageUrl ?? ''),setDraft)}</>}
-        {tab === 'gallery' || tab === 'offers' ? <label className="wc-check"><input type="checkbox" checked={draft.visible ?? true} onChange={e => setDraft((v: Entry) => ({ ...v, visible:e.target.checked }))}/> Hiển thị công khai</label> : null}
+        {['gallery','offers','testimonials'].includes(tab) ? <label className="wc-check"><input type="checkbox" checked={draft.visible ?? true} onChange={e => setDraft((v: Entry) => ({ ...v, visible:e.target.checked }))}/> Hiển thị công khai</label> : null}
         <button className="wc-primary" disabled={busy || uploading}><Save size={16}/>{draft.id ? 'Lưu mục' : 'Thêm mục'}</button>
       </form>
       <div className="wc-items">{visibleItems.map((item,index) => { const label = valueOf(item,'title') || valueOf(item,'alt') || valueOf(item,'content') || valueOf(item,'quote') || valueOf(item,'weekday') || 'Thực đơn'; const shown = item.visible !== false; return <article key={item.id} draggable onDragStart={e => e.dataTransfer.setData('text/plain',String(index))} onDragOver={e => e.preventDefault()} onDrop={async e => { e.preventDefault(); const from=Number(e.dataTransfer.getData('text/plain')); const next=[...visibleItems]; const [picked]=next.splice(from,1); next.splice(index,0,picked); await reorderWebsiteItems(resourceNames[tab],next.map(row=>Number(row.id))); await load() }}>

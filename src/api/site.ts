@@ -134,6 +134,11 @@ export interface PublicBranch {
   hours?: { days: string; time: string }[]
   acceptingTakeaway?: boolean
 }
+export const branchLabel = (branch?: Partial<Pick<PublicBranch, 'code' | 'name'>> | null) => {
+  if (!branch) return ''
+  if (branch.code && branch.name) return `${branch.code} · ${branch.name}`
+  return branch.name ?? branch.code ?? ''
+}
 export const getBranches = () => get<PublicBranch[]>('/public/branches')
 
 // ── Footer ────────────────────────────────────────────────────────────────

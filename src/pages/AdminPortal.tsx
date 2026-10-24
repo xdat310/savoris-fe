@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
-import { Building2, ChefHat, LayoutDashboard, LogOut, ShieldAlert, Users, Utensils, Globe2 } from 'lucide-react'
+import { Building2, CalendarDays, ChefHat, LayoutDashboard, LogOut, ShieldAlert, Users, Utensils, Globe2, Soup } from 'lucide-react'
 import { ApiError, del, get, post, put } from '../api/client'
 import { homeFor, useAuth } from '../auth'
 import type { BranchResponse, CreateStaffRequest, StaffDetailResponse, UpdateBranchRequest } from '../api/types'
@@ -8,10 +8,14 @@ import { ErrorNotice } from '../components/Feedback'
 import logo from '../assets/savoris-logo.webp'
 import './admin-portal.css'
 import { WebsiteCMSPage } from './WebsiteCMSPage'
+import { MenuManagementPage } from './MenuManagementPage'
+import { ReservationsPage } from './ReservationsPage'
 
 const menu = [
   { to: '/admin/overview', label: 'Tổng quan', roles: ['ADMIN'], Icon: LayoutDashboard },
-  { to: '/admin/website', label: 'Website', roles: ['ADMIN'], Icon: Globe2 },
+  { to: '/admin/menu', label: 'Thực đơn', roles: ['ADMIN'], Icon: Soup },
+  { to: '/admin/reservations', label: 'Đặt bàn', roles: ['ADMIN', 'MANAGER'], Icon: CalendarDays },
+  { to: '/admin/website', label: 'Website', roles: ['ADMIN', 'MANAGER'], Icon: Globe2 },
   { to: '/admin/branch', label: 'Chi nhánh', roles: ['ADMIN', 'MANAGER'], Icon: Building2 },
   { to: '/admin/staff', label: 'Nhân viên', roles: ['ADMIN', 'MANAGER'], Icon: Users },
   { to: '/admin/floor', label: 'Sơ đồ bàn', roles: ['STAFF'], Icon: Utensils },
@@ -139,6 +143,7 @@ function Overview() {
 function BranchPage() {
   const { role, branchId, branches, reloadBranches, session } = useAuth()
   const admin = role === 'ADMIN'
+  const canEditBranch = admin || role === 'MANAGER'
   const [branch, setBranch] = useState<BranchResponse | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -153,8 +158,6 @@ function BranchPage() {
     const payload: UpdateBranchRequest = {
       name: String(data.get('name')), address: String(data.get('address')), city: String(data.get('city')),
       phone: String(data.get('phone')), email: String(data.get('email')),
-      openTime: data.get('openTime') ? `${new Date().toISOString().slice(0, 10)}T${String(data.get('openTime'))}:00` : undefined,
-      closeTime: data.get('closeTime') ? `${new Date().toISOString().slice(0, 10)}T${String(data.get('closeTime'))}:00` : undefined,
       latitude: branch?.latitude, longitude: branch?.longitude, kitchenCapacity: branch?.kitchenCapacity,
     }
     try { await put(`/branches/${branch?.id}`, payload); await reloadBranches(); setMessage('Đã lưu thông tin chi nhánh') }
@@ -162,7 +165,7 @@ function BranchPage() {
   }
   return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">VẬN HÀNH</span><h1>{admin ? 'Chi nhánh' : 'Chi nhánh của tôi'}</h1><p>{admin ? 'Thông tin và giờ hoạt động của các cơ sở.' : 'Thông tin cơ sở được phân công.'}</p></div>{admin && <select aria-label="Chọn chi nhánh" value={branch?.id ?? ''} onChange={(e) => setBranch(branches.find((b) => b.id === Number(e.target.value)) ?? null)}><option value="" disabled>Chọn chi nhánh</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select>}</div>
     {error && <ErrorNotice message={error} />}{message && <div className="ap-success" role="status">{message}</div>}
-    {branch ? <form className="ap-form ap-branch-form" onSubmit={save}><label>Mã chi nhánh<input value={branch.code ?? ''} disabled /></label><label>Tên chi nhánh<input name="name" defaultValue={branch.name ?? ''} readOnly={!admin} required /></label><label>Địa chỉ<input name="address" defaultValue={branch.address ?? ''} readOnly={!admin} required /></label><label>Thành phố<input name="city" defaultValue={branch.city ?? ''} readOnly={!admin} required /></label><label>Điện thoại<input name="phone" defaultValue={branch.phone ?? ''} readOnly={!admin} /></label><label>Email<input name="email" type="email" defaultValue={branch.email ?? ''} readOnly={!admin} /></label><label>Giờ mở cửa<input name="openTime" type="time" defaultValue={branch.openTime?.slice(11, 16) ?? ''} readOnly={!admin} /></label><label>Giờ đóng cửa<input name="closeTime" type="time" defaultValue={branch.closeTime?.slice(11, 16) ?? ''} readOnly={!admin} /></label>{admin && <button>Lưu thay đổi</button>}</form> : <div className="ap-empty">Chưa chọn chi nhánh.</div>}
+    {branch ? <form className="ap-form ap-branch-form" onSubmit={save}><label>Mã chi nhánh<input value={branch.code ?? ''} disabled /></label><label>Tên chi nhánh<input name="name" defaultValue={branch.name ?? ''} readOnly={!canEditBranch} required /></label><label>Địa chỉ đầy đủ (số nhà, phố, quận)<input name="address" defaultValue={branch.address ?? ''} readOnly={!canEditBranch} minLength={10} required /></label><label>Thành phố<input name="city" defaultValue={branch.city ?? ''} readOnly={!canEditBranch} required /></label><label>Điện thoại<input name="phone" defaultValue={branch.phone ?? ''} readOnly={!canEditBranch} required /></label><label>Email<input name="email" type="email" defaultValue={branch.email ?? ''} readOnly={!canEditBranch} required /></label>{canEditBranch && <button>Lưu thay đổi</button>}</form> : <div className="ap-empty">Chưa chọn chi nhánh.</div>}
   </div>
 }
 
@@ -238,7 +241,9 @@ export function AdminRoutes() {
   return <Routes><Route path="/admin/login" element={<AdminLogin />} /><Route element={<SignedIn />}><Route path="/admin" element={<AdminLayout />}>
     <Route index element={<Navigate to={session ? homeFor(session.staff.role) : '/admin/login'} replace />} />
     <Route path="overview" element={<Allowed roles={['ADMIN']}><Overview /></Allowed>} />
-    <Route path="website" element={<Allowed roles={['ADMIN']}><WebsiteCMSPage /></Allowed>} />
+    <Route path="menu" element={<Allowed roles={['ADMIN']}><MenuManagementPage /></Allowed>} />
+    <Route path="reservations" element={<Allowed roles={['ADMIN', 'MANAGER']}><ReservationsPage /></Allowed>} />
+    <Route path="website" element={<Allowed roles={['ADMIN', 'MANAGER']}><WebsiteCMSPage branchOnly={session?.staff.role === 'MANAGER'} /></Allowed>} />
     <Route path="branch" element={<Allowed roles={['ADMIN', 'MANAGER']}><BranchPage /></Allowed>} />
     <Route path="staff" element={<Allowed roles={['ADMIN', 'MANAGER']}><StaffPage /></Allowed>} />
     <Route path="floor" element={<Allowed roles={['STAFF']}><Placeholder title="Sơ đồ bàn" /></Allowed>} />

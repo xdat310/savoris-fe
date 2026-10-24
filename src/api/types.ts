@@ -92,6 +92,7 @@ export interface BranchMenuItemResponse {
   imageUrl?: string;
   needsKitchen?: boolean;
   outOfStock?: boolean;
+  takeawayAvailable?: boolean;
 }
 
 export interface BranchResponse {
@@ -104,8 +105,6 @@ export interface BranchResponse {
   email?: string;
   latitude?: number;
   longitude?: number;
-  openTime?: string;
-  closeTime?: string;
   managerId?: number;
   kitchenCapacity?: number;
   status?: 'ACTIVE' | 'INACTIVE' | 'CLOSED';
@@ -150,8 +149,6 @@ export interface CreateBranchRequest {
   email?: string;
   latitude?: number;
   longitude?: number;
-  openTime?: string;
-  closeTime?: string;
   managerId?: number;
 }
 
@@ -185,6 +182,7 @@ export interface CreateMenuItemRequest {
   unit?: string;
   isActive?: boolean;
   needsKitchen?: boolean;
+  takeawayAvailable?: boolean;
 }
 
 export interface CreateOrderRequest {
@@ -361,6 +359,7 @@ export interface KitchenTicketResponse {
   waitingMinutes?: number;
   voidReason?: string;
   voidResolution?: 'ACCEPT' | 'REMAKE' | 'CHARGE';
+  awaitingPayment?: boolean;
 }
 
 export interface Line {
@@ -391,6 +390,7 @@ export interface MenuItemResponse {
   unit?: string;
   isActive?: boolean;
   needsKitchen?: boolean;
+  takeawayAvailable?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -499,6 +499,7 @@ export interface PublicBranchResponse {
   name?: string;
   address?: string;
   acceptingTakeaway?: boolean;
+  openNow?: boolean;
   estimatedWaitMinutes?: number;
   transferAvailable?: boolean;
   city?: string;
@@ -596,6 +597,8 @@ export interface ReservationResponse {
   id?: number;
   branchId?: number;
   customerId?: number;
+  customerName?: string;
+  customerPhone?: string;
   tableId?: number;
   reservationDate?: string;
   numberOfGuests?: number;
@@ -738,8 +741,6 @@ export interface UpdateBranchRequest {
   email?: string;
   latitude?: number;
   longitude?: number;
-  openTime?: string;
-  closeTime?: string;
   managerId?: number;
   kitchenCapacity?: number;
 }
@@ -763,6 +764,7 @@ export interface UpdateMenuItemRequest {
   unit?: string;
   isActive?: boolean;
   needsKitchen?: boolean;
+  takeawayAvailable?: boolean;
 }
 
 export interface UpdateStaffRequest {
@@ -783,6 +785,7 @@ export interface WebTakeawayRequest {
   guestName: string;
   guestPhone: string;
   payMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'E_WALLET';
+  pickupAt: string;
   notes?: string;
   items: OrderItemRequest[];
 }
@@ -793,6 +796,7 @@ export interface WebTakeawayResponse {
   branchName?: string;
   branchAddress?: string;
   guestName?: string;
+  pickupAt?: string;
   status?: 'AWAITING_PAYMENT' | 'OPEN' | 'COMPLETED' | 'CANCELLED';
   payMethod?: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'E_WALLET';
   paid?: boolean;

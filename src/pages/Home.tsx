@@ -4,6 +4,7 @@ import type {
   SiteGalleryItem, SiteMilestone,
   SiteNavItem, SiteSection,
 } from '../api/site'
+import { getPublicSite } from '../api/site'
 import {
   getBranches, getFooterConfig,
   getGallery, getHero, getMilestones, getNav, getSections,
@@ -13,10 +14,12 @@ import { SiteFooter } from '../components/site/SiteFooter'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteGallery } from '../components/site/SiteGallery'
 import { SiteHero } from '../components/site/SiteHero'
-import { SiteOrderModal } from '../components/site/SiteOrderModal'
-import { SiteBookingModal } from '../components/site/SiteBookingModal'
 import { SiteStory } from '../components/site/SiteStory'
 import { SiteTimeline } from '../components/site/SiteTimeline'
+import { SiteCmsHighlights } from '../components/site/SiteCmsHighlights'
+import { applySeo } from '../lib/seo'
+
+type CmsContent = { settings?: Record<string, unknown>; branches?: Record<string, unknown>[]; offers?: Record<string, unknown>[]; accolades?: Record<string, unknown>[]; testimonials?: Record<string, unknown>[]; menus?: Record<string, unknown>[] }
 
 export function Home() {
   const [nav, setNav] = useState<SiteNavItem[]>([])
@@ -26,8 +29,7 @@ export function Home() {
   const [gallery, setGallery] = useState<SiteGalleryItem[]>([])
   const [milestones, setMilestones] = useState<SiteMilestone[]>([])
   const [footer, setFooter] = useState<FooterData | null>(null)
-  const [orderOpen, setOrderOpen] = useState(false)
-  const [bookingOpen, setBookingOpen] = useState(false)
+  const [publicSite, setPublicSite] = useState<CmsContent | null>(null)
 
   useEffect(() => {
     getNav().then((items) => setNav(items ?? [])).catch(() => {})
@@ -37,26 +39,37 @@ export function Home() {
     getGallery().then((items) => setGallery(items ?? [])).catch(() => {})
     getMilestones().then((items) => setMilestones(items ?? [])).catch(() => {})
     getFooterConfig().then(setFooter).catch(() => {})
+    getPublicSite().then((site) => setPublicSite(site as CmsContent)).catch(() => {})
   }, [])
 
-  function scrollTo(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-  }
+  useEffect(() => {
+    const settings = publicSite?.settings ?? {}
+    const branchSchemas = (publicSite?.branches ?? []).map((branch) => ({
+      '@type': 'Restaurant', name: `Savoris · ${String(branch.name ?? '')}`,
+      address: { '@type': 'PostalAddress', streetAddress: branch.address, addressLocality: branch.city, addressCountry: 'VN' },
+      telephone: branch.phone,
+    }))
+    applySeo({ title: String(settings.seoTitle ?? ''), description: String(settings.seoDescription ?? ''),
+      image: String(settings.heroImage ?? hero?.media?.[0]?.url ?? ''), url: window.location.href,
+      jsonLd: branchSchemas.length ? { '@context': 'https://schema.org', '@graph': branchSchemas } : undefined })
+  }, [publicSite, hero])
+
+  const menuHref = branches[0]?.slug ? `/chi-nhanh/${branches[0].slug}/thuc-don` : '#thuc-don'
 
   return (
     <div className="dc-site">
       <SiteHeader
         nav={nav}
         branches={branches}
-        onOrderClick={() => setOrderOpen(true)}
-        onBookClick={() => setBookingOpen(true)}
       />
       <SiteHero
         config={hero}
-        onCtaClick={() => setOrderOpen(true)}
-        onBookClick={() => setBookingOpen(true)}
+        menuHref={menuHref}
       />
       <SiteStory sections={sections} />
+      <SiteCmsHighlights offers={publicSite?.offers ?? []} accolades={publicSite?.accolades ?? []}
+        testimonials={publicSite?.testimonials ?? []} menus={publicSite?.menus ?? []}
+        branches={(publicSite?.branches ?? []) as { id?: number; name?: string; slug?: string }[]} />
       <SiteGallery items={gallery} excludedUrls={[
         ...(hero?.media ?? []).map((media) => media.url),
         ...sections.map((section) => section.image_url),
@@ -64,12 +77,13 @@ export function Home() {
       <SiteTimeline milestones={milestones} />
       <SiteContact branches={branches} />
       <SiteFooter
-        config={footer}
-        onReserveClick={() => setBookingOpen(true)}
-        onScrollTo={scrollTo}
+        config={{ ...footer,
+          facebook_url: publicSite ? String(publicSite.settings?.facebookUrl ?? '') : footer?.facebook_url,
+          instagram_url: publicSite ? String(publicSite.settings?.instagramUrl ?? '') : footer?.instagram_url,
+          tiktok_url: publicSite ? String(publicSite.settings?.tiktokUrl ?? '') : footer?.tiktok_url,
+        }}
+        menuHref={menuHref}
       />
-      <SiteOrderModal open={orderOpen} onClose={() => setOrderOpen(false)} onBookClick={() => { setOrderOpen(false); setBookingOpen(true) }} />
-      <SiteBookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} branches={branches} />
     </div>
   )
 }

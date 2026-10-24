@@ -95,7 +95,7 @@ export function TakeawayTrack() {
         <Link to="/" className="guest-back"><ArrowLeft size={16} aria-hidden="true" /> Trang chủ</Link>
         <div className="guest-table">Đơn mang về</div>
         <div className="guest-code"><Counter value={o.code!.split('-').pop()!} label={`Mã đơn ${o.code}`} size="lg" /></div>
-        <div className="guest-where">{o.code} · {o.branchName}{o.branchAddress && o.branchAddress !== 'Chưa cập nhật' ? ` · ${o.branchAddress}` : ''}</div>
+        <div className="guest-where">{o.code} · {o.branchName}{o.branchAddress && o.branchAddress !== 'Chưa cập nhật' ? ` · ${o.branchAddress}` : ''}{o.pickupAt ? ` · Lấy món lúc ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(o.pickupAt))}` : ''}</div>
       </header>
 
       <main className="guest-body">
