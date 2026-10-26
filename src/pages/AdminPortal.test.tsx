@@ -59,4 +59,20 @@ describe('Admin branch editor', () => {
 
     await waitFor(() => expect(put).toHaveBeenCalledWith('/staff/10', expect.objectContaining({ role: 'MANAGER', branchId: 1 })))
   })
+
+  it('allows an admin to reactivate an inactive staff account', async () => {
+    vi.mocked(get).mockImplementation(async (path: string) => {
+      if (path === '/staff/search?q=') return [{ id: 7, fullName: 'Nhân viên thử', username: 'nhanvien1', email: 'nv@savoris.vn', role: 'STAFF', status: 'RESIGNED', branchId: 1 }] as never
+      return [] as never
+    })
+    vi.mocked(put).mockResolvedValue({} as never)
+    vi.stubGlobal('confirm', vi.fn(() => true))
+
+    render(<MemoryRouter initialEntries={['/admin/staff']}><AdminRoutes /></MemoryRouter>)
+    await screen.findByText('Nhân viên thử')
+    fireEvent.click(screen.getByRole('button', { name: 'Mở khóa' }))
+
+    await waitFor(() => expect(put).toHaveBeenCalledWith('/staff/7/activate'))
+    expect(await screen.findByText('Đang hoạt động')).toBeTruthy()
+  })
 })
