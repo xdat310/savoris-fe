@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
-import { Building2, CalendarDays, ChefHat, LayoutDashboard, LogOut, ShieldAlert, Users, Utensils, Globe2, Soup } from 'lucide-react'
+import { Building2, CalendarDays, ChefHat, CircleCheck, ClipboardList, Gauge, LayoutDashboard, LogOut, ShieldAlert, TriangleAlert, Users, Utensils, WalletCards, Globe2, Soup } from 'lucide-react'
 import { ApiError, del, get, post, put } from '../api/client'
 import { homeFor, useAuth } from '../auth'
 import type { BranchResponse, CreateStaffRequest, StaffDetailResponse, UpdateBranchRequest } from '../api/types'
@@ -105,21 +105,25 @@ function Overview() {
       .finally(() => setLoading(false))
   }, [])
   const vnd = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n)
+  const updatedAt = data?.generatedAt ? new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(new Date(data.generatedAt)) : ''
   return (
-    <div className="ap-page">
-      <div className="ap-heading">
-        <div><span className="ap-kicker">SAVORIS · TOÀN CHUỖI</span><h1>Tổng quan</h1><p>Dữ liệu vận hành hôm nay theo thời gian thực.</p></div>
+    <div className="ap-page ap-overview">
+      <div className="ap-heading ap-overview-heading">
+        <div><span className="ap-kicker">SAVORIS · TOÀN CHUỖI</span><h1>Tổng quan</h1><p>Theo dõi tình trạng vận hành của toàn bộ hệ thống Savoris hôm nay.</p></div>
+        <div className="ap-overview-scope"><Building2 size={16} aria-hidden="true"/><span>Toàn chuỗi</span></div>
       </div>
       {error && <ErrorNotice message={error} />}
       {loading && !error && <div className="ap-empty">Đang tải…</div>}
       {data && <>
         <div className="ap-stat-grid">
-          <div className="ap-stat-card"><span>Đơn đang mở</span><strong>{data.openOrders}</strong></div>
-          <div className="ap-stat-card"><span>Hoàn thành hôm nay</span><strong>{data.completedOrdersToday}</strong></div>
-          <div className="ap-stat-card"><span>Doanh thu hôm nay</span><strong>{vnd(data.revenueToday)}</strong></div>
-          <div className={`ap-stat-card${data.overloadedBranches > 0 ? ' ap-stat-card--warn' : ''}`}><span>Chi nhánh quá tải</span><strong>{data.overloadedBranches}</strong></div>
+          <div className="ap-stat-card"><div className="ap-stat-label"><ClipboardList size={16} aria-hidden="true"/><span>Đơn đang mở</span></div><strong>{data.openOrders}</strong><small>Đơn đang được xử lý</small></div>
+          <div className="ap-stat-card"><div className="ap-stat-label"><CircleCheck size={16} aria-hidden="true"/><span>Hoàn thành hôm nay</span></div><strong>{data.completedOrdersToday}</strong><small>Đơn đã hoàn thành</small></div>
+          <div className="ap-stat-card"><div className="ap-stat-label"><WalletCards size={16} aria-hidden="true"/><span>Doanh thu hôm nay</span></div><strong>{vnd(data.revenueToday)}</strong><small>Tổng doanh thu toàn chuỗi</small></div>
+          <div className={`ap-stat-card${data.overloadedBranches > 0 ? ' ap-stat-card--warn' : ''}`}><div className="ap-stat-label"><TriangleAlert size={16} aria-hidden="true"/><span>Chi nhánh quá tải</span></div><strong>{data.overloadedBranches}</strong><small>{data.overloadedBranches > 0 ? 'Cần theo dõi tải bếp' : 'Tất cả đang hoạt động ổn định'}</small></div>
         </div>
-        <div className="ap-table-wrap">
+        <section className="ap-branch-overview" aria-labelledby="ap-branch-overview-title">
+          <div className="ap-branch-overview-head"><div><h2 id="ap-branch-overview-title">Trạng thái chi nhánh</h2><p>Đơn hàng, doanh thu và tải bếp trong hôm nay</p></div><span>{data.branches.length} chi nhánh</span></div>
+          <div className="ap-table-wrap">
           <table className="ap-table">
             <thead><tr><th>Chi nhánh</th><th>Đơn đang mở</th><th>Hoàn thành</th><th>Doanh thu</th><th>Bếp</th><th>Tải bếp</th><th>Takeaway</th></tr></thead>
             <tbody>{data.branches.map((b) => (
@@ -129,12 +133,14 @@ function Overview() {
                 <td>{b.completedOrdersToday}</td>
                 <td>{vnd(b.revenueToday)}</td>
                 <td><span className={`ap-status${b.kitchen.status === 'NORMAL' ? ' active' : ''}`}>{b.kitchen.status === 'NORMAL' ? 'Bình thường' : 'Quá tải'}</span></td>
-                <td>{b.kitchen.loadPercent}%</td>
+                <td><div className={`ap-kitchen-load${b.kitchen.loadPercent >= 80 ? ' is-high' : ''}`}><span>{b.kitchen.loadPercent}%</span><div role="meter" aria-label={`Tải bếp ${b.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={b.kitchen.loadPercent}><i style={{ width: `${Math.min(100, Math.max(0, b.kitchen.loadPercent))}%` }}/></div></div></td>
                 <td><span className={`ap-status${b.kitchen.acceptingTakeaway ? ' active' : ''}`}>{b.kitchen.acceptingTakeaway ? 'Có' : 'Không'}</span></td>
               </tr>
-            ))}</tbody>
+            ))}{data.branches.length === 0 && <tr><td className="ap-branch-empty" colSpan={7}>Chưa có dữ liệu chi nhánh.</td></tr>}</tbody>
           </table>
-        </div>
+          </div>
+          <div className="ap-branch-overview-foot"><span><Gauge size={14} aria-hidden="true"/> Tải bếp được cập nhật theo dữ liệu vận hành</span>{updatedAt && <span>Cập nhật lúc {updatedAt}</span>}</div>
+        </section>
       </>}
     </div>
   )
