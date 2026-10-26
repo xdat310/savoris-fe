@@ -17,6 +17,29 @@ export const mediaUrl = (url?: string) => {
   return url.startsWith('/api/v1/') ? `${API_BASE}${url.slice('/api/v1'.length)}` : url
 }
 
+export function formatBranchCity(city?: string) {
+  const value = city?.trim() ?? ''
+  return /^(ha\s*noi|hanoi)$/i.test(value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')) ? 'Hà Nội' : value
+}
+
+export function formatBranchAddress(address?: string, city?: string) {
+  const parts = (address ?? '').split(',').map(part => part.trim()).filter(Boolean)
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi').replace(/\s+/g, ' ')
+  if (parts.length && ['ha noi', 'hanoi'].includes(normalize(parts[parts.length - 1]))) parts.pop()
+  const cleanAddress = parts.join(', ')
+  const cleanCity = formatBranchCity(city)
+  if (!cleanAddress) return cleanCity
+  if (!cleanCity || normalize(cleanAddress).includes(normalize(cleanCity))) return cleanAddress
+  return `${cleanAddress}, ${cleanCity}`
+}
+
+export function formatBranchPhone(phone?: string) {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  if (digits.length === 11) return `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}`
+  if (digits.length === 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
+  return phone ?? ''
+}
+
 export interface SiteBranchPage {
   branch: PublicBranch
   page: Record<string, string>

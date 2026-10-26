@@ -1,7 +1,7 @@
 import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { branchLabel, type PublicBranch } from '../../api/site'
+import { branchLabel, formatBranchAddress, formatBranchPhone, type PublicBranch } from '../../api/site'
 
 interface Props { branches?: PublicBranch[] }
 
@@ -106,10 +106,10 @@ export function SiteContact({ branches }: Props) {
                   onClick={() => setActiveId(item.id)}
                 >
                   <span className="ctt-location-name">{branchLabel(item)}</span>
-                  <span className="ctt-location-address">{[item.address, item.city].filter(Boolean).join(', ')}</span>
+                  <span className="ctt-location-address">{formatBranchAddress(item.address, item.city)}</span>
                   {item.hours && compactHours(item.hours).map((hours, index) => <span className="ctt-location-hours" key={index}>{hours.days}: {hours.time}</span>)}
                 </button>
-                {item.phone && <a className="ctt-location-call" href={`tel:${item.phone.replace(/\s/g, '')}`}><Phone size={13} aria-hidden="true"/> Gọi {item.phone}</a>}
+                {item.phone && <a className="ctt-location-call" href={`tel:${item.phone.replace(/\D/g, '')}`}><Phone size={13} aria-hidden="true"/> Gọi {formatBranchPhone(item.phone)}</a>}
                 {item.slug && <Link className="ctt-location-call" to={`/chi-nhanh/${item.slug}`}>Xem chi nhánh</Link>}
               </div>
             ))}
@@ -126,7 +126,7 @@ export function SiteContact({ branches }: Props) {
             <div className="ctt-contact-links">
               {branch.phone && (
                 <a className="ctt-link" href={`tel:${branch.phone.replace(/\s/g, '')}`}>
-                  <Phone size={14} aria-hidden="true" /> {branch.phone}
+                  <Phone size={14} aria-hidden="true" /> {formatBranchPhone(branch.phone)}
                 </a>
               )}
               {branch.email && (

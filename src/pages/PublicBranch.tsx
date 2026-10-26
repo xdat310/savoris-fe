@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowDown, ArrowUpRight, MapPin, Phone } from 'lucide-react'
 import { get } from '../api/client'
 import type { BranchMenuItemResponse, GuestTableResponse } from '../api/types'
-import { branchLabel, getBranches, getPublicBranchPage, getPublicSite, type PublicBranch, type SiteBranchPage } from '../api/site'
+import { branchLabel, formatBranchAddress, formatBranchPhone, getBranches, getPublicBranchPage, getPublicSite, type PublicBranch, type SiteBranchPage } from '../api/site'
 import { groupDishes } from '../components/DishBoard'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { StorySections, type StorySectionItem } from '../components/site/StorySections'
@@ -50,6 +50,7 @@ function branchMapEmbedUrl(configuredUrl: unknown, branch: PublicBranch) {
 
 export function PublicBranch() {
   const { slug = '' } = useParams()
+  const navigate = useNavigate()
   const [data, setData] = useState<SiteBranchPage | null>(null)
   const [error, setError] = useState(false)
   const [activeImage, setActiveImage] = useState<string | null>(null)
@@ -59,6 +60,10 @@ export function PublicBranch() {
   const [menuPreview, setMenuPreview] = useState<GuestTableResponse | null>(null)
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }) }, [slug])
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => setError(true)) }, [slug])
+  useEffect(() => {
+    const canonical = data?.branch.slug
+    if (canonical && canonical !== slug) navigate(`/chi-nhanh/${canonical}`, { replace: true })
+  }, [data?.branch.slug, slug, navigate])
   useEffect(() => { Promise.all([getPublicSite(), getBranches().catch(() => [])]).then(async ([site, statuses]) => {
     const settings = site.settings && typeof site.settings === 'object' ? site.settings as Record<string,unknown> : {}
     setBrandLogo(String(settings.logo ?? ''))
@@ -119,7 +124,7 @@ export function PublicBranch() {
     {featuredDishes.length>0&&<section className="venue-featured-menu" id="thuc-don"><header><span>{String(page.featuredEyebrow || `ĐƯỢC YÊU THÍCH TẠI ${branch.name.toLocaleUpperCase('vi')}`)}</span><h2>{String(page.featuredTitle || 'Hương vị đặc sắc')}</h2></header><div>{featuredDishes.map(dish=><article key={dish.menuItemId}>{dish.imageUrl&&<img src={dish.imageUrl} alt={dish.imageAlt ?? dish.name ?? ''} loading="lazy"/>}<h3>{dish.name}</h3></article>)}</div><nav><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Xem thực đơn</Link><Link to={`/mang-ve/${branch.slug}`}>Đặt mang về</Link></nav></section>}
     {page.privateEvent&&<section className="venue-event" id="su-kien" style={{backgroundImage:`linear-gradient(90deg,#000c,#0008),url("${String(page.privateEventImage||hero)}")`}} data-reveal><div><span>SAVORIS · PRIVATE EVENTS</span><h2>{String(page.privateEventTitle ?? 'Sự kiện riêng,\ndấu ấn của bạn.').split('\n').map((line,index)=><span key={index}>{index>0&&<br/>}{line}</span>)}</h2></div><div><p>{String(page.privateEvent)}</p><a className="venue-button" href={`mailto:${branch.email ?? ''}?subject=${encodeURIComponent('Tổ chức sự kiện tại Savoris')}`}>Liên hệ tổ chức <ArrowUpRight size={16}/></a></div></section>}
     {gallery.length > 0 && <section className="venue-gallery" id="thu-vien"><div className="venue-section-heading" data-reveal><span>KHÔNG GIAN SAVORIS</span><h2>Khoảnh khắc tại bàn.</h2></div><div className="venue-gallery-grid">{gallery.map((item,index) => <button className={`venue-gallery-cell venue-gallery-cell--${index%5}`} key={String(item.id)} onClick={() => setActiveImage(imageUrl(item.image_url))} aria-label={`Mở ảnh ${String(item.alt)}`} data-reveal><img src={imageUrl(item.image_url)} alt={String(item.alt)} loading="lazy"/><span>{String(item.alt)}</span></button>)}</div>{!showAllGallery&&allGallery.length>5&&<button className="venue-gallery-more" onClick={()=>setShowAllGallery(true)}>Xem thêm ảnh</button>}</section>}
-    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><span className="venue-live-status"><i/>{liveStatus}</span>{branch.address&&<p><MapPin size={15}/>{branch.address}, {branch.city}</p>}{branch.phone&&<a href={`tel:${branch.phone}`}><Phone size={15}/>{branch.phone}</a>}{openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{compactHours.map(hour => <p className={hour.startDay<=today && hour.endDay>=today?'is-today':''} key={hour.startDay}><span>{shortDay(hour.startDay)}{hour.endDay>hour.startDay?`–${shortDay(hour.endDay)}`:''}{hour.startDay<=today && hour.endDay>=today?' · Hôm nay':''}</span><span>{hour.closed ? 'Nghỉ' : `${shortTime(hour.opens_at)}–${shortTime(hour.closes_at)}h`}</span></p>)}</div>}</div>{branch.address&&<iframe title={`Bản đồ ${branch.name}`} src={branchMapEmbedUrl(page.mapUrl, branch)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/>}</section>
+    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><span className="venue-live-status"><i/>{liveStatus}</span>{branch.address&&<p><MapPin size={15}/>{formatBranchAddress(branch.address, branch.city)}</p>}{branch.phone&&<a href={`tel:${branch.phone.replace(/\D/g, '')}`}><Phone size={15}/>{formatBranchPhone(branch.phone)}</a>}{openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{compactHours.map(hour => <p className={hour.startDay<=today && hour.endDay>=today?'is-today':''} key={hour.startDay}><span>{shortDay(hour.startDay)}{hour.endDay>hour.startDay?`–${shortDay(hour.endDay)}`:''}{hour.startDay<=today && hour.endDay>=today?' · Hôm nay':''}</span><span>{hour.closed ? 'Nghỉ' : `${shortTime(hour.opens_at)}–${shortTime(hour.closes_at)}h`}</span></p>)}</div>}</div>{branch.address&&<iframe title={`Bản đồ ${branch.name}`} src={branchMapEmbedUrl(page.mapUrl, branch)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/>}</section>
     <footer className="venue-footer"><Link to="/">SAVORIS</Link><span>Ẩm thực Việt đương đại, tinh tế trong từng khoảnh khắc.</span><Link to={booking}>Đặt bàn <ArrowUpRight size={14}/></Link></footer>
     {activeImage && <button className="venue-lightbox" onClick={() => setActiveImage(null)} aria-label="Đóng ảnh"><img src={activeImage} alt="Ảnh phóng lớn"/><span>Đóng ×</span></button>}
   </main>
@@ -127,9 +132,14 @@ export function PublicBranch() {
 
 export function BranchMenu() {
   const { slug = '' } = useParams()
+  const navigate = useNavigate()
   const [data, setData] = useState<SiteBranchPage | null>(null)
   const [menuData, setMenuData] = useState<GuestTableResponse | null>(null)
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => {}) }, [slug])
+  useEffect(() => {
+    const canonical = data?.branch.slug
+    if (canonical && canonical !== slug) navigate(`/chi-nhanh/${canonical}/thuc-don`, { replace: true })
+  }, [data?.branch.slug, slug, navigate])
   useEffect(() => {
     if (!data?.branch.id) return
     get<Partial<GuestTableResponse>>(`/public/branches/${data.branch.id}/menu`).then(menu => setMenuData({ ...menu, categories: Array.isArray(menu.categories)?menu.categories:[], menu: Array.isArray(menu.menu)?menu.menu:[] } as GuestTableResponse)).catch(() => {})

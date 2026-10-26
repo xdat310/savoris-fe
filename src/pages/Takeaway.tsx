@@ -2,7 +2,7 @@ import { ArrowLeft, Banknote, Landmark, MapPin, Minus, Plus, Send, ShoppingBag, 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, get, post } from '../api/client'
-import { branchLabel } from '../api/site'
+import { branchLabel, formatBranchAddress } from '../api/site'
 import type { BranchMenuItemResponse, GuestTableResponse, PublicBranchResponse, TakeawayEstimateResponse, WebTakeawayResponse } from '../api/types'
 import { CategoryNav, DishBoard, groupDishes } from '../components/DishBoard'
 import { DishThumb } from '../components/DishThumb'
@@ -39,14 +39,18 @@ export function Takeaway() {
   const navigate = useNavigate()
   const branches = useData(() => get<PublicBranchResponse[]>('/public/branches'), [], 30000)
   const [branchId, setBranchId] = useState<number | null>(savedBranch)
-  const branchFromUrl = branchSlug ? branches.data?.find((b) => branchSlugOf(b.code) === branchSlug.toLowerCase()) : undefined
+  const legacySlug = branchSlug?.toLowerCase() === 'tay-ho' ? 'hang-giay' : branchSlug?.toLowerCase() === 'long-bien' ? 'hang-ma' : branchSlug?.toLowerCase()
+  const branchFromUrl = branchSlug ? branches.data?.find((b) => b.slug?.toLowerCase() === legacySlug || branchSlugOf(b.code) === branchSlug.toLowerCase()) : undefined
   const branch = branchFromUrl ?? branches.data?.find((b) => b.id === branchId)
   useEffect(() => {
     if (branchSlug && branchFromUrl?.id) {
       setBranchId(branchFromUrl.id)
+      if (branchFromUrl.slug && branchFromUrl.slug !== branchSlug) {
+        navigate(`/mang-ve/${branchFromUrl.slug}`, { replace: true })
+      }
       try { sessionStorage.setItem(BRANCH_KEY, String(branchFromUrl.id)) } catch { /* session-only preference */ }
     } else if (!branchSlug && branch) {
-      navigate(`/mang-ve/${branchSlugOf(branch.code)}`, { replace: true })
+      navigate(`/mang-ve/${branch.slug || branchSlugOf(branch.code)}`, { replace: true })
     } else if (branchSlug && !branches.loading && branches.data && !branchFromUrl) {
       navigate('/mang-ve', { replace: true })
     }
@@ -65,7 +69,7 @@ export function Takeaway() {
       // only remembered for this visit
     }
     const selected = branches.data?.find((b) => b.id === id)
-    navigate(selected ? `/mang-ve/${branchSlugOf(selected.code)}` : '/mang-ve')
+    navigate(selected ? `/mang-ve/${selected.slug || branchSlugOf(selected.code)}` : '/mang-ve')
   }
 
   if (branchId && branch) return <TakeawayMenu branch={branch} onChangeBranch={() => pick(null)} />
@@ -88,7 +92,7 @@ export function Takeaway() {
                 <span className="bp-code">{b.code}</span>
                 <span className="bp-main">
                   <strong>{branchLabel(b)}{b.id === nearestId && <span className="nearest-tag">Gần bạn nhất</span>}</strong>
-                  {b.address && b.address !== 'Chưa cập nhật' && <span className="bp-addr"><MapPin size={13} aria-hidden="true" /> {b.address}{b.city && b.city !== 'Chưa cập nhật' ? `, ${b.city}` : ''}</span>}
+                  {b.address && b.address !== 'Chưa cập nhật' && <span className="bp-addr"><MapPin size={13} aria-hidden="true" /> {formatBranchAddress(b.address, b.city)}</span>}
                   {km != null && <span className="bp-km">Cách bạn {formatKm(km)}</span>}
                 </span>
                 <span className="bp-side">
@@ -202,7 +206,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
         <Link to="/" className="guest-back"><ArrowLeft size={16} aria-hidden="true" /> Trang chủ</Link>
         <div className="guest-table">{branchLabel(branch)}</div>
         <div className="guest-where">
-          {branch.address && branch.address !== 'Chưa cập nhật' ? `${branch.address} · ` : ''}
+          {branch.address && branch.address !== 'Chưa cập nhật' ? `${formatBranchAddress(branch.address, branch.city)} · ` : ''}
           <button className="link-chalk" onClick={onChangeBranch}>Đổi chi nhánh</button>
         </div>
       </header>

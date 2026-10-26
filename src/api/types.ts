@@ -513,6 +513,7 @@ export interface PublicBranchResponse {
   id?: number;
   code?: string;
   name?: string;
+  slug?: string;
   address?: string;
   acceptingTakeaway?: boolean;
   openNow?: boolean;
