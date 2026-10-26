@@ -142,6 +142,8 @@ export interface PublicBranch {
   email?: string
   lat?: number
   lng?: number
+  latitude?: number
+  longitude?: number
   google_maps_embed?: string
   hours?: { days: string; time: string }[]
   acceptingTakeaway?: boolean

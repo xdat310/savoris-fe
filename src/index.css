@@ -1435,10 +1435,6 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .sh-nav-item:hover::after, .sh-nav-item:focus-visible::after, .sh-nav-item[aria-expanded="true"]::after { left: 0; right: 0; }
 .sh-nav-item:focus-visible, .sh-cta:focus-visible, .sh-lang:focus-visible { outline: 1px solid var(--dc-gold); outline-offset: 4px; }
 .sh-nav-item--branch { display: inline-flex; align-items: center; gap: 4px; appearance:none; -webkit-appearance:none; }
-.sh-nav-item--branch::after { left:0; right:0; transform:scaleX(0); transform-origin:center; }
-.sh-nav-item--branch:hover::after,
-.sh-nav-item--branch:focus-visible::after,
-.sh-nav-item--branch[aria-expanded="true"]::after { transform:scaleX(1); }
 
 .sh-chevron {
   transition: transform 220ms ease;

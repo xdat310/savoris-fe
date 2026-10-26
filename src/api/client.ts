@@ -112,12 +112,13 @@ async function refresh(): Promise<boolean> {
   return refreshing
 }
 
-export async function api<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
+export async function api<T>(method: string, path: string, body?: unknown, retry = true, extraHeaders: Record<string, string> = {}): Promise<T> {
   const headers: Record<string, string> = {}
   const form = body instanceof FormData
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json'
   const token = current?.accessToken
   if (token) headers['Authorization'] = `Bearer ${token}`
+  Object.assign(headers, extraHeaders)
 
   let res: Response
   try {
@@ -127,7 +128,7 @@ export async function api<T>(method: string, path: string, body?: unknown, retry
   }
 
   if (res.status === 401 && retry && !path.startsWith('/auth/login') && !path.startsWith('/auth/refresh')) {
-    if (await refresh()) return api<T>(method, path, body, false)
+    if (await refresh()) return api<T>(method, path, body, false, extraHeaders)
     saveSession(null)
   }
   if (!res.ok) {
@@ -141,6 +142,8 @@ export async function api<T>(method: string, path: string, body?: unknown, retry
 
 export const get = <T,>(path: string) => api<T>('GET', path)
 export const post = <T,>(path: string, body?: unknown) => api<T>('POST', path, body ?? {})
+export const getWithHeaders = <T,>(path: string, headers: Record<string, string>) => api<T>('GET', path, undefined, true, headers)
+export const postWithHeaders = <T,>(path: string, body: unknown, headers: Record<string, string>) => api<T>('POST', path, body, true, headers)
 export const put = <T,>(path: string, body?: unknown) => api<T>('PUT', path, body)
 export const del = <T,>(path: string) => api<T>('DELETE', path)
 export function upload<T>(path: string, file: File, method = 'PUT') {

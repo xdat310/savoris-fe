@@ -54,3 +54,21 @@
 .wc-story-grid small,.wc-week-form>header p{color:#ccc}
 .wc-error{background:#321d1d;color:#ffcaca;border-color:#704040}
 .wc-page input::placeholder,.wc-page textarea::placeholder{color:#aaa}
+.wc-favorite-count{align-self:center;color:#d8c7a5;font-size:12px;letter-spacing:.08em}
+.wc-favorite-hint{color:#c4c4c4;font-size:13px}
+.wc-favorite-picker{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px;padding:18px;background:#141414;border:1px solid #383838}
+.wc-favorite-picker label,.wc-favorite-card__body>label{display:grid;gap:7px;color:#dedede;font-size:12px}
+.wc-favorite-picker select,.wc-favorite-card__body input{width:100%;min-height:40px;padding:9px 11px;background:#191919;border:1px solid #484848;border-radius:3px;color:#f2f2f2}
+.wc-favorite-picker>button,.wc-favorite-card__actions>button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 12px;background:#252525;border:1px solid #4a4a4a;color:#eee;border-radius:3px;cursor:pointer}
+.wc-favorite-picker>button:disabled,.wc-favorite-card__actions>button:disabled{opacity:.45;cursor:not-allowed}
+.wc-favorite-list{display:grid;gap:12px;margin:18px 0}
+.wc-favorite-card{display:grid;grid-template-columns:minmax(180px,250px) minmax(0,1fr);gap:18px;padding:14px;background:#171717;border:1px solid #383838;color:#eee}
+.wc-favorite-card__photo{aspect-ratio:16/10;overflow:hidden;background:#101010;display:grid;place-items:center;color:#a89066}
+.wc-favorite-card__photo img{width:100%;height:100%;object-fit:cover}
+.wc-favorite-card__body{display:grid;align-content:start;gap:10px;min-width:0}
+.wc-favorite-card__number{color:#c7aa78;font-size:10px;letter-spacing:.14em}
+.wc-favorite-card__body>strong{font-size:16px;font-weight:500;color:#f3eee5}
+.wc-favorite-card__actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:4px}
+.wc-favorite-card__actions .wc-file{min-height:36px!important;padding:7px 10px}
+.wc-favorite-card__actions>button{width:36px;min-height:36px;padding:7px}
+@media(max-width:650px){.wc-favorite-picker{grid-template-columns:1fr}.wc-favorite-picker>button{justify-self:start}.wc-favorite-card{grid-template-columns:1fr}.wc-favorite-card__photo{max-width:100%}}

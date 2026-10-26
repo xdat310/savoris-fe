@@ -12,9 +12,45 @@ function locationKey(branch: PublicBranch) {
 }
 
 function mapQuery(branch: PublicBranch) {
-  return branch.lat != null && branch.lng != null
-    ? `${branch.lat},${branch.lng}`
+  const latitude = branch.latitude ?? branch.lat
+  const longitude = branch.longitude ?? branch.lng
+  return latitude != null && longitude != null
+    ? `${latitude},${longitude}`
     : [branch.address, branch.city].filter(Boolean).join(', ')
+}
+
+const weekdayOrder: Record<string, number> = {
+  'Thứ Hai': 1, 'Thứ Ba': 2, 'Thứ Tư': 3, 'Thứ Năm': 4,
+  'Thứ Sáu': 5, 'Thứ Bảy': 6, 'Chủ Nhật': 7,
+}
+
+function shortDay(day: number) {
+  return day === 7 ? 'CN' : `T${day + 1}`
+}
+
+function shortTime(time: string) {
+  return time.replace(/\b(\d{1,2}):00\s*[–-]\s*(\d{1,2}):00\b/, '$1–$2h')
+}
+
+function compactHours(hours: NonNullable<PublicBranch['hours']>) {
+  const sorted = hours.map((item, index) => ({ ...item, index, day: weekdayOrder[item.days] }))
+    .sort((a, b) => (a.day ?? 99) - (b.day ?? 99) || a.index - b.index)
+
+  return sorted.reduce<{ days: string; time: string; startDay?: number; endDay?: number }[]>((ranges, item) => {
+    const previous = ranges[ranges.length - 1]
+    if (item.day && previous?.endDay === item.day - 1 && previous.time === item.time) {
+      previous.endDay = item.day
+      previous.days = `${shortDay(previous.startDay!)}–${shortDay(item.day)}`
+    } else {
+      ranges.push({
+        days: item.day ? shortDay(item.day) : item.days,
+        time: item.time,
+        startDay: item.day,
+        endDay: item.day,
+      })
+    }
+    return ranges
+  }, []).map(range => ({ ...range, time: shortTime(range.time) }))
 }
 
 export function SiteContact({ branches }: Props) {
@@ -31,8 +67,9 @@ export function SiteContact({ branches }: Props) {
   if (data.length === 0 || !branch) return null
 
   const query = mapQuery(branch)
-  const mapSrc = branch.google_maps_embed?.trim() ||
-    (query ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed` : '')
+  const hasCoordinates = (branch.latitude ?? branch.lat) != null && (branch.longitude ?? branch.lng) != null
+  const mapSrc = (!hasCoordinates ? branch.google_maps_embed?.trim() : '') ||
+    (query ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed` : '')
   const mapLink = query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : ''
 
   return (
@@ -70,7 +107,7 @@ export function SiteContact({ branches }: Props) {
                 >
                   <span className="ctt-location-name">{branchLabel(item)}</span>
                   <span className="ctt-location-address">{[item.address, item.city].filter(Boolean).join(', ')}</span>
-                  {item.hours?.map((hours, index) => <span className="ctt-location-hours" key={index}>{hours.days}: {hours.time}</span>)}
+                  {item.hours && compactHours(item.hours).map((hours, index) => <span className="ctt-location-hours" key={index}>{hours.days}: {hours.time}</span>)}
                 </button>
                 {item.phone && <a className="ctt-location-call" href={`tel:${item.phone.replace(/\s/g, '')}`}><Phone size={13} aria-hidden="true"/> Gọi {item.phone}</a>}
                 {item.slug && <Link className="ctt-location-call" to={`/chi-nhanh/${item.slug}`}>Xem chi nhánh</Link>}
@@ -103,7 +140,7 @@ export function SiteContact({ branches }: Props) {
           {branch.hours && branch.hours.length > 0 && (
             <div className="ctt-hours">
               <p className="ctt-group-label">Giờ mở cửa</p>
-              {branch.hours.map((hours, index) => (
+              {compactHours(branch.hours).map((hours, index) => (
                 <div key={index} className="ctt-hour-row">
                   <span>{hours.days}</span><span className="ctt-gold">{hours.time}</span>
                 </div>

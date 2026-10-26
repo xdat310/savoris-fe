@@ -1,4 +1,4 @@
-import { Bot, LoaderCircle, MessageCircle, Send, Sparkles, X } from 'lucide-react'
+import { LoaderCircle, Send, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError, post } from '../../api/client'
@@ -7,23 +7,30 @@ import './site-assistant.css'
 type Turn = { role: 'user' | 'assistant'; content: string }
 type ChatResponse = { reply: string }
 
-const GREETING = 'Xin chào, mình có thể giúp bạn xem chi nhánh, thực đơn hoặc đặt bàn.'
-const QUICK_PROMPTS = ['Chi nhánh nào đang mở?', 'Cho tôi xem thực đơn', 'Tôi muốn đặt bàn']
+const GREETING = 'Xin chào, tôi có thể giúp gì cho bạn?'
+const FAQ_TOPICS = [
+  { label: 'Đặt bàn', message: 'Cách đặt bàn như thế nào?' },
+  { label: 'Chi nhánh & giờ mở cửa', message: 'Thông tin chi nhánh và giờ mở cửa' },
+  { label: 'Thực đơn', message: 'Cho tôi xem thực đơn' },
+  { label: 'Mang về & thanh toán', message: 'Cách đặt món mang về và thanh toán' },
+]
 
 export function SiteAssistant() {
   const [open, setOpen] = useState(false)
   const [turns, setTurns] = useState<Turn[]>([{ role: 'assistant', content: GREETING }])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   const [resolved, setResolved] = useState<number[]>([])
+  const [unresolved, setUnresolved] = useState<number[]>([])
+  const [answerIndexes, setAnswerIndexes] = useState<number[]>([])
+  const [otherQuestion, setOtherQuestion] = useState(false)
   const navigate = useNavigate()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open) inputRef.current?.focus()
-  }, [open])
+    if (open && (turns.length > 1 || otherQuestion)) inputRef.current?.focus()
+  }, [open, otherQuestion, turns.length])
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === 'function') endRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [turns, open])
@@ -40,10 +47,10 @@ export function SiteAssistant() {
     const previous = turns.slice(-10)
     setTurns(current => [...current, { role: 'user', content: message }])
     setDraft('')
-    setError('')
     setBusy(true)
     try {
-      const result = await post<ChatResponse>('/public/ai/chat', { message, history: previous })
+      const result = await post<ChatResponse>('/public/ai/chat', { message, history: previous, agentMode: otherQuestion })
+      setAnswerIndexes(current => [...current, turns.length + 1])
       setTurns(current => [...current, { role: 'assistant', content: result.reply }])
     } catch (cause) {
       const note = cause instanceof ApiError && cause.code === 'AI_PROVIDER_FAILED'
@@ -55,7 +62,7 @@ export function SiteAssistant() {
             : cause instanceof ApiError
               ? 'Trợ lý chưa xử lý được câu hỏi này. Bạn thử gửi lại sau nhé.'
               : 'Mình chưa kết nối được lúc này. Kiểm tra mạng rồi thử gửi lại nhé.'
-      setError(note)
+      setTurns(current => [...current, { role: 'assistant', content: note }])
     } finally {
       setBusy(false)
     }
@@ -66,13 +73,21 @@ export function SiteAssistant() {
     void sendMessage(draft)
   }
 
+  function chooseOtherQuestion() {
+    setOtherQuestion(true)
+    setTurns(current => [...current,
+      { role: 'user', content: 'Vấn đề khác' },
+      { role: 'assistant', content: 'Được nhé. Bạn mô tả vấn đề cần hỗ trợ cho mình.' },
+    ])
+  }
+
   return (
     <div className="site-assistant">
       {open && (
-        <section className="site-assistant__panel" aria-label="Trợ lý Savoris">
+        <section className="site-assistant__panel" aria-label="Trợ lí alibibee">
           <header className="site-assistant__head">
-            <span className="site-assistant__mark"><Bot aria-hidden="true" /></span>
-            <div><strong>Trợ lý Savoris</strong><span>Chi nhánh · thực đơn · đặt bàn</span></div>
+            <img className="site-assistant__mark" src="/images/alibibee-chat-avatar.jpg" alt="Ảnh đại diện Trợ lí alibibee" />
+            <div><strong>Trợ lí alibibee</strong><span>Trợ lý hỗ trợ khách hàng</span></div>
             <button className="site-assistant__close" type="button" aria-label="Đóng trợ lý" onClick={() => setOpen(false)}><X aria-hidden="true" /></button>
           </header>
           <div className="site-assistant__messages" aria-live="polite" aria-relevant="additions text">
@@ -81,45 +96,52 @@ export function SiteAssistant() {
               <p className={`site-assistant__bubble site-assistant__bubble--${turn.role}`} key={`${index}-${turn.role}`}>
                 {turn.content}
               </p>
-              {turn.role === 'assistant' && index > 0 && !resolved.includes(index) && (
+              {turn.role === 'assistant' && !otherQuestion && answerIndexes.includes(index) && !resolved.includes(index) && !unresolved.includes(index) && (
                 <div className="site-assistant__resolution" key={`resolution-${index}`}>
                   <span>Câu trả lời này đã giải quyết được vấn đề của bạn chưa?</span>
                   <button type="button" onClick={() => setResolved(current => [...current, index])}>Đã giải quyết</button>
+                  <button type="button" onClick={() => setUnresolved(current => [...current, index])}>Chưa, vẫn cần hỗ trợ</button>
+                </div>
+              )}
+              {turn.role === 'assistant' && !otherQuestion && answerIndexes.includes(index) && unresolved.includes(index) && (
+                <div className="site-assistant__resolution" key={`handoff-${index}`}>
+                  <span>Mình hiểu rồi. Bạn muốn chuyển cuộc trò chuyện này cho nhân viên Savoris chứ?</span>
                   <button type="button" onClick={() => {
                     const question = [...turns.slice(0, index)].reverse().find(item => item.role === 'user')?.content ?? ''
                     navigate('/ho-tro', { state: { question, answer: turn.content } })
-                  }}>Chưa, cần hỗ trợ</button>
+                  }}>Kết nối nhân viên hỗ trợ</button>
                 </div>
               )}
               {turn.role === 'assistant' && resolved.includes(index) && <small className="site-assistant__thanks" key={`thanks-${index}`}>Cảm ơn bạn đã xác nhận. Savoris luôn sẵn sàng hỗ trợ!</small>}
               </div>
             ))}
+            {turns.length === 1 && !otherQuestion && <div className="site-assistant__topics" aria-label="Câu hỏi thường gặp">
+              <span>Câu hỏi thường gặp</span>
+              {FAQ_TOPICS.map(topic => <button key={topic.label} type="button" onClick={() => void sendMessage(topic.message)}>{topic.label}</button>)}
+              <button type="button" onClick={chooseOtherQuestion}>Vấn đề khác</button>
+            </div>}
             {busy && <p className="site-assistant__typing"><LoaderCircle aria-hidden="true" /> Đang tìm thông tin…</p>}
-            {error && <div className="site-assistant__error" role="alert"><p>{error}</p><button type="button" onClick={() => {
-              const question = [...turns].reverse().find(item => item.role === 'user')?.content ?? ''
-              navigate('/ho-tro', { state: { question, answer: error } })
-            }}>Liên hệ chuyên gia hỗ trợ</button></div>}
             <div ref={endRef} />
           </div>
-          {turns.length === 1 && (
-            <div className="site-assistant__quick" aria-label="Gợi ý câu hỏi">
-              {QUICK_PROMPTS.map(prompt => <button key={prompt} type="button" disabled={busy} onClick={() => void sendMessage(prompt)}>{prompt}</button>)}
-            </div>
-          )}
-          <form className="site-assistant__form" onSubmit={submit}>
+          {(turns.length > 1 || otherQuestion) && <form className="site-assistant__form" onSubmit={submit}>
             <label className="sr-only" htmlFor="site-assistant-message">Tin nhắn</label>
             <textarea id="site-assistant-message" ref={inputRef} aria-label="Tin nhắn" rows={1} maxLength={1500}
-              placeholder="Bạn cần tìm gì?" value={draft} onChange={event => setDraft(event.target.value)}
-              onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendMessage(draft) } }} />
+              placeholder="Nhập tin nhắn của bạn…" value={draft} onChange={event => setDraft(event.target.value)}
+              onKeyDown={event => {
+                if (event.key !== 'Enter' || event.shiftKey) return
+                if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
+                event.preventDefault()
+                void sendMessage(draft)
+              }} />
             <button type="submit" aria-label="Gửi tin nhắn" disabled={!draft.trim() || busy}>
               {busy ? <LoaderCircle aria-hidden="true" /> : <Send aria-hidden="true" />}
             </button>
-          </form>
-          <p className="site-assistant__privacy"><Sparkles aria-hidden="true" /> Trợ lý có thể nhầm; xác nhận lại thông tin đặt bàn với nhà hàng.</p>
+          </form>}
+          <p className="site-assistant__privacy"><Sparkles aria-hidden="true" /> Trợ lí alibibee có thể nhầm; xác nhận lại thông tin đặt bàn với nhà hàng.</p>
         </section>
       )}
-      {!open && <button className="site-assistant__launcher" type="button" aria-label="Mở trợ lý Savoris" aria-expanded={false} onClick={() => setOpen(true)}>
-        <MessageCircle aria-hidden="true" /><span>Hỏi Savoris</span>
+      {!open && <button className="site-assistant__launcher" type="button" aria-label="Mở Trợ lí alibibee" aria-expanded={false} onClick={() => setOpen(true)}>
+        <img src="/images/alibibee-chat-avatar.jpg" alt="" /><span>Trợ lí alibibee</span>
       </button>}
     </div>
   )

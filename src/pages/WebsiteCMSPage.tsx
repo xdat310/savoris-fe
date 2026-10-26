@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff, ImagePlus, Pencil, Plus, Save, Send, Trash2 } from 'lucide-react'
-import { ApiError, post } from '../api/client'
+import { ApiError, get, post } from '../api/client'
+import type { BranchMenuItemResponse, GuestTableResponse } from '../api/types'
 import { createWebsiteItem, deleteWebsiteItem, getWebsiteCms, reorderWebsiteItems, saveBranchPage, saveWebsiteHoursWeek, saveWebsiteSettings, updateWebsiteItem, uploadWebsiteMedia } from '../api/site'
 import { useToast } from '../components/Toast'
 import './website-cms-page.css'
 
 type Entry = Record<string, any>
 const TABS = [
-  ['settings', 'Thông tin trang'], ['sections', 'Khối nội dung'], ['gallery', 'Thư viện ảnh'], ['hours', 'Giờ mở cửa'],
+  ['settings', 'Thông tin trang'], ['sections', 'Khối nội dung'], ['favorites', 'Món yêu thích'], ['gallery', 'Thư viện ảnh'], ['hours', 'Giờ mở cửa'],
 ] as const
 const resourceNames: Record<string, string> = { gallery: 'gallery', hours: 'hours' }
 const valueOf = (row: Entry, camel: string, snake?: string) => row[camel] ?? (snake ? row[snake] : undefined) ?? ''
@@ -21,6 +22,10 @@ export function WebsiteCMSPage({ branchOnly = false }: { branchOnly?: boolean })
   const [settings, setSettings] = useState<Entry>({})
   const [page, setPage] = useState<Entry>({})
   const [storyItems, setStoryItems] = useState<Entry[]>([])
+  const [favoriteDishes, setFavoriteDishes] = useState<Entry[]>([])
+  const [branchMenu, setBranchMenu] = useState<BranchMenuItemResponse[]>([])
+  const [menuLoading, setMenuLoading] = useState(false)
+  const [favoriteChoice, setFavoriteChoice] = useState('')
   const [weekHours, setWeekHours] = useState<Entry[]>([])
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -49,6 +54,26 @@ export function WebsiteCMSPage({ branchOnly = false }: { branchOnly?: boolean })
     setDirty(false)
   }
   useEffect(() => { void load().catch(e => setError(e instanceof ApiError ? e.message : 'Không tải được nội dung website')) }, [])
+  useEffect(() => {
+    if (!branchId) { setBranchMenu([]); return }
+    let active = true
+    setMenuLoading(true)
+    setBranchMenu([])
+    get<Partial<GuestTableResponse>>(`/public/branches/${branchId}/menu`)
+      .then(result => { if (active) setBranchMenu(Array.isArray(result.menu) ? result.menu : []) })
+      .catch(() => { if (active) setBranchMenu([]) })
+      .finally(() => { if (active) setMenuLoading(false) })
+    return () => { active = false }
+  }, [branchId])
+  useEffect(() => {
+    if (Array.isArray(page.featuredDishes)) {
+      setFavoriteDishes(page.featuredDishes)
+      return
+    }
+    setFavoriteDishes(branchMenu.filter(dish => dish.menuItemId && dish.imageUrl).slice(0, 6).map(dish => ({
+      menuItemId: dish.menuItemId, imageUrl: dish.imageUrl, imageAlt: dish.name ?? '', visible: true,
+    })))
+  }, [page.featuredDishes, branchMenu])
   useEffect(() => {
     if (!dirty) return
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
@@ -102,6 +127,34 @@ export function WebsiteCMSPage({ branchOnly = false }: { branchOnly?: boolean })
     try { const result = await uploadWebsiteMedia(file, String(storyItems[index]?.imageAlt ?? 'Ảnh nội dung Savoris')); setStoryItems(old => old.map((item, i) => i === index ? { ...item, imageUrl: result.url } : item)); setDirty(true) }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Tải ảnh thất bại') }
     finally { setUploading(false) }
+  }
+  function addFavoriteDish() {
+    const dish = branchMenu.find(item => Number(item.menuItemId) === Number(favoriteChoice))
+    if (!dish?.menuItemId || favoriteDishes.length >= 6 || favoriteDishes.some(item => Number(item.menuItemId) === Number(dish.menuItemId))) return
+    setFavoriteDishes(old => [...old, { menuItemId: dish.menuItemId, imageUrl: dish.imageUrl ?? '', imageAlt: dish.name ?? '', visible: true }])
+    setFavoriteChoice('')
+    setDirty(true)
+  }
+  async function uploadFavoriteImage(index: number, file?: File) {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Dùng ảnh JPG, PNG hoặc WebP nhỏ hơn 5 MB'); return }
+    const dish = branchMenu.find(item => Number(item.menuItemId) === Number(favoriteDishes[index]?.menuItemId))
+    setUploading(true); setError('')
+    try {
+      const result = await uploadWebsiteMedia(file, String(favoriteDishes[index]?.imageAlt || dish?.name || 'Món ăn Savoris'))
+      setFavoriteDishes(old => old.map((item, i) => i === index ? { ...item, imageUrl: result.url } : item))
+      setDirty(true)
+    } catch (e) { setError(e instanceof ApiError ? e.message : 'Tải ảnh món ăn thất bại') }
+    finally { setUploading(false) }
+  }
+  async function saveFavorites(event: FormEvent) {
+    event.preventDefault()
+    if (!branchId || (!branchOnly && scope === 'chain')) { setError('Chọn một chi nhánh để chỉnh món yêu thích'); return }
+    const payload = { ...page, featuredDishes: favoriteDishes.map((item, index) => ({ ...item, sortOrder: index + 1 })) }
+    setBusy(true); setError('')
+    try { await saveBranchPage(branchId, payload); setPage(payload); setDirty(false); toast('Đã lưu món ăn yêu thích'); await load() }
+    catch (e) { setError(e instanceof ApiError && e.status === 403 ? 'Bạn chỉ có thể chỉnh nội dung chi nhánh của mình.' : e instanceof ApiError ? e.message : 'Không lưu được món yêu thích') }
+    finally { setBusy(false) }
   }
   async function upload(file?: File) {
     if (!file) return
@@ -196,6 +249,15 @@ export function WebsiteCMSPage({ branchOnly = false }: { branchOnly?: boolean })
     {tab === 'sections' && <section className="wc-list"><div className="wc-list-head"><div><h2>Khối nội dung</h2><p>{scope === 'chain' && !branchOnly ? 'Trang chủ chuỗi' : currentBranch?.name}</p></div><button type="button" disabled={!branchOnly&&scope==='chain'&&storyItems.length>=4} onClick={() => { setStoryItems(old => [...old, { kicker: '', title: '', body: '', imageUrl: '', imageAlt: '', imageStyle: 'FEATHERED', visible: true, sortOrder: old.length + 1 }]); setDirty(true) }}><Plus size={16}/> Thêm khối</button></div>
       <form className="wc-story-editor" onSubmit={saveStories}>{storyItems.map((item,index) => <article className="wc-story-card" key={index}><header><strong>{String(index + 1).padStart(2,'0')}</strong><div><button type="button" aria-label="Chuyển khối lên" disabled={index===0} onClick={() => setStoryItems(old => { const rows=[...old]; [rows[index-1],rows[index]]=[rows[index],rows[index-1]]; return rows })}><ArrowUp size={15}/></button><button type="button" aria-label="Chuyển khối xuống" disabled={index===storyItems.length-1} onClick={() => setStoryItems(old => { const rows=[...old]; [rows[index+1],rows[index]]=[rows[index],rows[index+1]]; return rows })}><ArrowDown size={15}/></button><button type="button" aria-label="Xóa khối" onClick={() => { setStoryItems(old => old.filter((_,i)=>i!==index)); setDirty(true) }}><Trash2 size={15}/></button></div></header><div className="wc-story-grid">{item.imageUrl && <img src={String(item.imageUrl)} alt={String(item.imageAlt ?? '')}/>}<label>Nhãn nhỏ<input value={item.kicker ?? ''} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,kicker:e.target.value}:row)); setDirty(true) }}/></label><label>Tiêu đề<input value={item.title ?? ''} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,title:e.target.value}:row)); setDirty(true) }}/></label><label>Mô tả<textarea rows={4} value={item.body ?? ''} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,body:e.target.value}:row)); setDirty(true) }}/><small>{String(item.body ?? '').length} / 800</small></label><label>Alt ảnh<input value={item.imageAlt ?? ''} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,imageAlt:e.target.value}:row)); setDirty(true) }}/></label><label>Kiểu ảnh<select value={item.imageStyle ?? 'FEATHERED'} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,imageStyle:e.target.value}:row)); setDirty(true) }}><option value="FEATHERED">Mờ vào nền tối</option><option value="ON_BLACK">Ảnh nền đen</option></select><small>Ảnh món ăn nên chụp trên nền đen và chọn kiểu “Nền đen”.</small></label><label className="wc-file"><ImagePlus size={16}/>Thay ảnh<input aria-label={`Thay ảnh khối ${index+1}`} type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { void uploadStoryImage(index,e.target.files?.[0]); e.target.value='' }}/></label><label className="wc-check"><input type="checkbox" checked={item.visible !== false} onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,visible:e.target.checked}:row)); setDirty(true) }}/> Hiển thị trên website</label><label>Liên kết<input value={item.linkText ?? ''} placeholder="Nhãn liên kết" onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,linkText:e.target.value}:row)); setDirty(true) }}/><input value={item.linkUrl ?? ''} placeholder="URL" onChange={e => { setStoryItems(old=>old.map((row,i)=>i===index?{...row,linkUrl:e.target.value}:row)); setDirty(true) }}/></label></div></article>)}<button className="wc-primary" disabled={busy||uploading}><Save size={16}/>Lưu khối nội dung</button></form>
     </section>}
+    {tab === 'favorites' && (!branchOnly && scope === 'chain' ? <section className="wc-list"><div className="wc-list-head"><div><h2>Món ăn yêu thích</h2><p>Chọn một chi nhánh ở phía trên để quản lý món và ảnh nổi bật.</p></div></div></section> : <section className="wc-list">
+      <div className="wc-list-head"><div><h2>Món ăn yêu thích</h2><p>{currentBranch?.name} · chọn tối đa 6 món từ thực đơn của chi nhánh</p></div><span className="wc-favorite-count">{favoriteDishes.length} / 6</span></div>
+      {menuLoading ? <p className="wc-favorite-hint">Đang tải thực đơn chi nhánh…</p> : branchMenu.length === 0 ? <p className="wc-favorite-hint">Chưa tải được thực đơn. Kiểm tra kết nối rồi tải lại trang.</p> : <div className="wc-favorite-picker"><label>Chọn món từ thực đơn<select value={favoriteChoice} onChange={e => setFavoriteChoice(e.target.value)}><option value="">Chọn món muốn giới thiệu</option>{branchMenu.filter(dish => dish.menuItemId && !favoriteDishes.some(item => Number(item.menuItemId) === Number(dish.menuItemId))).map(dish => <option key={dish.menuItemId} value={dish.menuItemId}>{dish.name}</option>)}</select></label><button type="button" disabled={!favoriteChoice || favoriteDishes.length >= 6} onClick={addFavoriteDish}><Plus size={16}/> Thêm món</button></div>}
+      <div className="wc-favorite-list">{favoriteDishes.map((item,index) => { const dish = branchMenu.find(row => Number(row.menuItemId) === Number(item.menuItemId)); return <article className="wc-favorite-card" key={item.menuItemId}>
+        <div className="wc-favorite-card__photo">{item.imageUrl ? <img src={String(item.imageUrl)} alt={String(item.imageAlt || dish?.name || '')}/> : <ImagePlus size={22}/>}</div>
+        <div className="wc-favorite-card__body"><span className="wc-favorite-card__number">{String(index + 1).padStart(2,'0')}</span><strong>{dish?.name ?? 'Món không còn trong thực đơn'}</strong><label>Alt ảnh<input value={item.imageAlt ?? ''} onChange={e => { setFavoriteDishes(old => old.map((row,i) => i === index ? { ...row, imageAlt:e.target.value } : row)); setDirty(true) }}/></label><div className="wc-favorite-card__actions"><label className="wc-file"><ImagePlus size={15}/>{uploading ? 'Đang tải…' : item.imageUrl ? 'Thay ảnh món' : 'Tải ảnh món'}<input aria-label={`Tải ảnh cho ${dish?.name ?? 'món ăn'}`} type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e => { void uploadFavoriteImage(index,e.target.files?.[0]); e.target.value='' }}/></label><button type="button" aria-label={`Chuyển ${dish?.name ?? 'món'} lên`} disabled={index===0} onClick={() => { setFavoriteDishes(old => { const next=[...old]; [next[index-1],next[index]]=[next[index],next[index-1]]; return next }); setDirty(true) }}><ArrowUp size={15}/></button><button type="button" aria-label={`Chuyển ${dish?.name ?? 'món'} xuống`} disabled={index===favoriteDishes.length-1} onClick={() => { setFavoriteDishes(old => { const next=[...old]; [next[index+1],next[index]]=[next[index],next[index+1]]; return next }); setDirty(true) }}><ArrowDown size={15}/></button><button type="button" aria-label={`Ẩn ${dish?.name ?? 'món'}`} aria-pressed={item.visible === false} onClick={() => { setFavoriteDishes(old => old.map((row,i) => i === index ? { ...row, visible:row.visible === false } : row)); setDirty(true) }}>{item.visible === false ? <EyeOff size={15}/> : <Eye size={15}/>}</button><button type="button" aria-label={`Xóa ${dish?.name ?? 'món'}`} onClick={() => { setFavoriteDishes(old => old.filter((_,i) => i !== index)); setDirty(true) }}><Trash2 size={15}/></button></div></div>
+      </article>})}</div>
+      <form onSubmit={saveFavorites}><button className="wc-primary" disabled={busy||uploading}><Save size={16}/>{busy ? 'Đang lưu…' : 'Lưu món yêu thích'}</button></form>
+    </section>)}
     {tab === 'hours' && <form className="wc-week-form" onSubmit={saveHours}><header><div><h2>Giờ mở cửa</h2><p>{scope === 'chain' && !branchOnly ? 'Chọn một chi nhánh ở phía trên để chỉnh giờ.' : currentBranch?.name}</p></div><button type="button" onClick={() => { const first=weekHours[0]; if(first) setWeekHours(old=>old.map(day=>({...day,opensAt:first.opensAt,closesAt:first.closesAt,closed:first.closed}))); setDirty(true) }}>Áp dụng cả tuần</button></header>{weekHours.map((day,index)=><div className="wc-week-row" key={day.weekday}><strong>{['','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy','Chủ Nhật'][day.weekday]}</strong><label> Mở cửa<input aria-label="Giờ mở cửa" type="time" required={!day.closed} disabled={day.closed} value={day.opensAt ?? ''} onChange={e=>{setWeekHours(old=>old.map((row,i)=>i===index?{...row,opensAt:e.target.value}:row));setDirty(true)}}/></label><label>Đóng cửa<input aria-label="Giờ đóng cửa" type="time" required={!day.closed} disabled={day.closed} value={day.closesAt ?? ''} onChange={e=>{setWeekHours(old=>old.map((row,i)=>i===index?{...row,closesAt:e.target.value}:row));setDirty(true)}}/></label><label className="wc-check"><input aria-label="Nghỉ cả ngày" type="checkbox" checked={Boolean(day.closed)} onChange={e=>{setWeekHours(old=>old.map((row,i)=>i===index?{...row,closed:e.target.checked}:row));setDirty(true)}}/> Nghỉ cả ngày</label></div>)}<button className="wc-primary" disabled={busy||(!branchOnly&&scope==='chain')}><Save size={16}/>Lưu giờ mở cửa</button></form>}
     {tab === 'gallery' && <section className="wc-list"><div className="wc-list-head"><div><h2>Thư viện ảnh</h2><p>{currentBranch?.name ?? 'Toàn chuỗi'}</p></div><label className="wc-file"><Plus size={16}/>{uploading?'Đang tải…':'Tải nhiều ảnh'}<input type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e=>{void uploadGalleryFiles(e.target.files);e.target.value=''}}/></label></div>
       <form className="wc-editor" onSubmit={saveItem}>

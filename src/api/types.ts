@@ -521,6 +521,7 @@ export interface PublicBranchResponse {
   city?: string;
   latitude?: number;
   longitude?: number;
+  hours?: { days: string; time: string }[];
 }
 
 export interface PublicMenuDish {
@@ -825,4 +826,12 @@ export interface WebTakeawayResponse {
   cancelReason?: string;
   bankAccount?: BankAccount;
   autoConfirm?: boolean;
+}
+
+export interface TakeawayEstimateResponse {
+  estimatedMinutes: number;
+  pickupAt: string | null;
+  closingTime: string | null;
+  canAccept: boolean;
+  message: string;
 }

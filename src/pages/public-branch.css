@@ -25,5 +25,6 @@
 .venue-gallery-grid .venue-gallery-cell,.venue-gallery-grid .venue-gallery-cell--0,.venue-gallery-grid .venue-gallery-cell--1,.venue-gallery-grid .venue-gallery-cell--2,.venue-gallery-grid .venue-gallery-cell--3,.venue-gallery-grid .venue-gallery-cell--4{grid-column:auto;grid-row:auto;aspect-ratio:16/10;height:auto;min-height:0;margin:0}
 .venue-gallery-grid .venue-gallery-cell img{display:block;aspect-ratio:16/10}
 .venue-contact{position:relative;z-index:1;margin-top:0;clear:both}
+.venue-page .sh-nav .sh-nav-item,.venue-page .sh-nav .sh-cta{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:850px){.venue-gallery{padding-bottom:88px}.venue-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
 @media(max-width:560px){.venue-gallery{padding-bottom:72px}.venue-gallery-grid{display:grid;grid-template-columns:1fr;gap:18px}.venue-gallery-grid .venue-gallery-cell,.venue-gallery-grid .venue-gallery-cell--0,.venue-gallery-grid .venue-gallery-cell--1,.venue-gallery-grid .venue-gallery-cell--2,.venue-gallery-grid .venue-gallery-cell--3,.venue-gallery-grid .venue-gallery-cell--4{width:100%;align-self:stretch;aspect-ratio:16/10;height:auto;min-height:0;margin:0}.venue-gallery-grid .venue-gallery-cell img{aspect-ratio:16/10}.venue-contact{margin-top:0}}

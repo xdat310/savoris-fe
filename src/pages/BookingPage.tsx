@@ -3,11 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { get, post, ApiError } from '../api/client'
 import type { PublicBranchResponse, ReservationResponse } from '../api/types'
 import type { SlotAvailability } from '../api/reservation'
-import { branchLabel } from '../api/site'
+import { branchLabel, getBranches, type PublicBranch } from '../api/site'
 import { ErrorNotice, Loading } from '../components/Feedback'
 import './booking-page.css'
 
-type Branch = PublicBranchResponse & { slug?: string }
+type Branch = PublicBranchResponse & PublicBranch & { slug?: string }
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 const slugKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '')
 
@@ -21,13 +21,15 @@ export function BookingPage() {
   const [slot, setSlot] = useState('')
   const [guests, setGuests] = useState(2)
   const [loading, setLoading] = useState(true)
+  const [slotsLoading, setSlotsLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [confirmed, setConfirmed] = useState<ReservationResponse | null>(null)
 
   useEffect(() => {
-    get<Record<string, unknown>>('/public/site').then((site) => {
-      const rows = Array.isArray(site.branches) ? site.branches as Branch[] : []
+    Promise.all([get<Record<string, unknown>>('/public/site'), getBranches().catch(() => [])]).then(([site, branchStatus]) => {
+      const publicRows = Array.isArray(site.branches) ? site.branches as Branch[] : []
+      const rows = publicRows.map(branch => ({ ...branch, ...branchStatus.find(item => Number(item.id) === Number(branch.id)) }))
       setBranches(rows)
       const match = rows.find((b) => slugKey(b.slug ?? '') === slugKey(requestedBranch) || slugKey(b.code ?? '') === slugKey(requestedBranch))
       setBranchId(match?.id ?? rows[0]?.id ?? null)
@@ -36,10 +38,17 @@ export function BookingPage() {
   }, [requestedBranch])
 
   useEffect(() => {
-    if (!branchId || !date) { setSlots([]); return }
+    if (!branchId || !date) { setSlots([]); setSlotsLoading(false); return }
+    let active = true
     setSlot('')
+    setSlots([])
+    setSlotsLoading(true)
+    setError('')
     get<SlotAvailability[]>(`/reservations/guest/slots?branchId=${branchId}&date=${date}`)
-      .then(setSlots).catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được giờ đặt bàn'))
+      .then((rows) => { if (active) setSlots(Array.isArray(rows) ? rows : []) })
+      .catch((e) => { if (active) setError(e instanceof ApiError ? e.message : 'Không tải được giờ đặt bàn') })
+      .finally(() => { if (active) setSlotsLoading(false) })
+    return () => { active = false }
   }, [branchId, date])
 
   const branch = useMemo(() => branches.find((b) => b.id === branchId), [branches, branchId])
@@ -70,7 +79,7 @@ export function BookingPage() {
         <label>Chi nhánh<select value={branchId ?? ''} onChange={(e) => setBranchId(Number(e.target.value))} required>{branches.map((b) => <option key={b.id} value={b.id}>{branchLabel(b)}</option>)}</select></label>
         {branch?.address && <p className="booking-address">{branch.address}{branch.city ? `, ${branch.city}` : ''}</p>}
         <label>Ngày<input type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} required /></label>
-        <fieldset><legend>Giờ · chọn một khung 30 phút</legend><div className="booking-slots">{slots.filter((s) => s.available).map((s) => <button type="button" key={s.slotTime} className={slot === s.slotTime ? 'is-selected' : ''} onClick={() => setSlot(s.slotTime ?? '')}>{s.slotTime?.slice(11, 16)}</button>)}</div>{slots.length === 0 && <p className="booking-address">Chi nhánh chưa cập nhật giờ mở cửa.</p>}{slots.length > 0 && !slots.some((s) => s.available) && <p className="booking-address">Đã hết khung giờ cho ngày này. Hãy chọn ngày khác.</p>}</fieldset>
+        <fieldset><legend>Giờ · chọn một khung 30 phút</legend>{slotsLoading ? <p className="booking-address" role="status">Đang tìm khung giờ…</p> : <><div className="booking-slots">{slots.filter((s) => s.available).map((s) => <button type="button" key={s.slotTime} className={slot === s.slotTime ? 'is-selected' : ''} onClick={() => setSlot(s.slotTime ?? '')}>{s.slotTime?.slice(11, 16)}</button>)}</div>{slots.length === 0 && <p className="booking-address">{branch?.hours?.length ? (date === today() ? 'Hôm nay không còn khung giờ phù hợp. Vui lòng chọn ngày khác.' : 'Chưa có khung giờ đặt bàn cho ngày này. Vui lòng chọn ngày khác.') : 'Chi nhánh chưa cập nhật giờ mở cửa.'}</p>}{slots.length > 0 && !slots.some((s) => s.available) && <p className="booking-address">{date === today() ? 'Hôm nay không còn khung giờ phù hợp. Vui lòng chọn ngày khác.' : 'Đã hết khung giờ trống cho ngày này. Hãy chọn ngày khác.'}</p>}</>}</fieldset>
         <label>Số khách<input type="number" min="1" max="40" value={guests} onChange={(e) => setGuests(Number(e.target.value))} required /></label>
         <label>Họ tên<input name="guestName" autoComplete="name" required maxLength={100} /></label>
         <label>Số điện thoại<input name="guestPhone" autoComplete="tel" inputMode="tel" pattern="0[0-9 ]{9,12}" placeholder="0912 345 678" required /></label>

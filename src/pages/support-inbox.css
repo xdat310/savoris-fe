@@ -1,0 +1,12 @@
+.support-inbox__conversation{margin-top:1rem;border-top:1px solid #ded8cc;padding-top:.8rem}
+.support-inbox__conversation h3{margin:.2rem 0 .65rem;font-size:1rem}
+.support-inbox__messages{display:flex;flex-direction:column;gap:.5rem;max-height:260px;overflow-y:auto;padding:.6rem;background:#faf8f3;border-radius:10px}
+.support-inbox__message{max-width:85%;align-self:flex-start;padding:.3rem .7rem;border-radius:12px;background:#ebe8e0}
+.support-inbox__message--staff{align-self:flex-end;background:#ead7ae}
+.support-inbox__message--assistant{border:1px solid #ded0b4;background:#fff}
+.support-inbox__message small{font-size:.72rem;color:#756d5e}
+.support-inbox__message p{margin:.2rem 0 .45rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.support-inbox__reply{display:flex;gap:.5rem;margin-top:.6rem}
+.support-inbox__reply textarea{flex:1;resize:vertical;min-height:42px;padding:.6rem;border:1px solid #d2c8b7;border-radius:9px;font:inherit}
+.support-inbox__reply button{align-self:flex-end;border:0;border-radius:9px;padding:.7rem .9rem;background:#b9985e;color:white;cursor:pointer}
+.support-inbox__reply button:disabled{opacity:.5;cursor:not-allowed}

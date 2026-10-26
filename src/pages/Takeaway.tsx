@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, get, post } from '../api/client'
 import { branchLabel } from '../api/site'
-import type { BranchMenuItemResponse, GuestTableResponse, PublicBranchResponse, WebTakeawayResponse } from '../api/types'
+import type { BranchMenuItemResponse, GuestTableResponse, PublicBranchResponse, TakeawayEstimateResponse, WebTakeawayResponse } from '../api/types'
 import { CategoryNav, DishBoard, groupDishes } from '../components/DishBoard'
 import { DishThumb } from '../components/DishThumb'
 import { Empty, ErrorNotice, Loading } from '../components/Feedback'
@@ -32,13 +32,6 @@ function savedBranch(): number | null {
 }
 
 const branchSlugOf = (code?: string) => (code ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
-
-function futurePickupLocal() {
-  const date = new Date(Date.now() + 60 * 60 * 1000)
-  date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
 
 // Takeaway from the website: pick the branch to collect from, pick dishes, pay first (cash at the counter or bank transfer)
 export function Takeaway() {
@@ -123,16 +116,50 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
-  const [pickupAt, setPickupAt] = useState(futurePickupLocal)
   const [method, setMethod] = useState<PayMethod>(branch.transferAvailable ? 'BANK_TRANSFER' : 'CASH')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pickupEstimate, setPickupEstimate] = useState<TakeawayEstimateResponse | null>(null)
+  const [estimateLoading, setEstimateLoading] = useState(false)
+  const [estimateError, setEstimateError] = useState<string | null>(null)
 
   const groups = useMemo(() => groupDishes(menu.data?.categories, menu.data?.menu), [menu.data])
   const lines = Object.values(cart)
+  const estimateItems = useMemo(() => Object.values(cart).map((line) => ({ menuItemId: line.dish.menuItemId!, quantity: line.quantity })), [cart])
   const count = lines.reduce((n, l) => n + l.quantity, 0)
   const subtotal = lines.reduce((n, l) => n + l.quantity * (l.dish.price ?? 0), 0)
   const vat = Math.round(subtotal * (menu.data?.vatPercent ?? 0) / 100)
+
+  useEffect(() => {
+    if (estimateItems.length === 0) {
+      setPickupEstimate(null)
+      setEstimateError(null)
+      setEstimateLoading(false)
+      return
+    }
+    let active = true
+    const refreshEstimate = async () => {
+      setEstimateLoading(true)
+      setEstimateError(null)
+      try {
+        const result = await post<TakeawayEstimateResponse>('/public/takeaway-orders/estimate', {
+          branchId: branch.id,
+          items: estimateItems,
+        })
+        if (active) setPickupEstimate(result)
+      } catch (err) {
+        if (active) {
+          setPickupEstimate(null)
+          setEstimateError(err instanceof ApiError ? err.message : 'Chưa tính được thời gian nhận món.')
+        }
+      } finally {
+        if (active) setEstimateLoading(false)
+      }
+    }
+    void refreshEstimate()
+    const timer = window.setInterval(refreshEstimate, 30_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [branch.id, estimateItems])
 
   function change(dish: BranchMenuItemResponse, delta: number) {
     setCart((c) => {
@@ -147,12 +174,16 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
 
   async function place(e: FormEvent) {
     e.preventDefault()
+    if (!pickupEstimate?.canAccept || !pickupEstimate.pickupAt) {
+      setError(pickupEstimate?.message || estimateError || 'Đang kiểm tra thời gian nhận món, vui lòng chờ một chút.')
+      return
+    }
     setSending(true)
     setError(null)
     try {
       const order = await post<WebTakeawayResponse>('/public/takeaway-orders', {
         branchId: branch.id, guestName: name.trim(), guestPhone: phone.replace(/\s/g, ''), payMethod: method,
-        pickupAt,
+        pickupAt: pickupEstimate.pickupAt,
         notes: notes.trim() || undefined,
         items: lines.map((l) => ({ menuItemId: l.dish.menuItemId, quantity: l.quantity })),
       })
@@ -188,7 +219,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
 
       {count > 0 && !checkout && (
         <div className="guest-bar">
-          <button className="btn btn-accent btn-lg btn-block" onClick={() => setCheckout(true)}>
+            <button className="btn btn-accent btn-lg btn-block" onClick={() => setCheckout(true)}>
             <ShoppingBag size={20} aria-hidden="true" />
             <span>{count} món · {money(subtotal)}</span>
             <span style={{ marginLeft: 'auto' }}>Đặt &amp; thanh toán</span>
@@ -220,7 +251,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
               <div className="checkout-fields">
                 <label className="field">Tên của bạn<input className="input" required maxLength={100} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} /></label>
                 <label className="field">Số điện thoại<input className="input num" required inputMode="tel" autoComplete="tel" pattern="0[0-9 ]{9,12}" placeholder="0912 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
-                <label className="field">Giờ lấy món<input className="input" required type="datetime-local" min={futurePickupLocal()} value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} /></label>
+                <div className="field" aria-live="polite"><span>Thời gian nhận món dự kiến</span>{estimateLoading && <small className="muted">Trợ lý bếp đang tính theo món trong giỏ và hàng đợi hiện tại…</small>}{pickupEstimate?.pickupAt && <strong>{new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(pickupEstimate.pickupAt))} · khoảng {pickupEstimate.estimatedMinutes} phút</strong>}{pickupEstimate?.message && <small className={pickupEstimate.canAccept ? 'muted' : 'feedback-error'}>{pickupEstimate.message}</small>}{estimateError && <small className="feedback-error">{estimateError}</small>}</div>
                 <label className="field">Ghi chú cho bếp<input className="input" maxLength={500} placeholder="Ít cay, không hành…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
                 <fieldset className="pay-methods">
                   <legend>Thanh toán trước</legend>
@@ -244,7 +275,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
                 {vat > 0 && <div className="mrow"><span>VAT {menu.data?.vatPercent}%</span><span>{money(vat)}</span></div>}
                 <div className="total"><span>Cần trả</span><strong className="num">{money(subtotal + vat)}</strong></div>
               </div>
-              <button className="btn btn-primary btn-lg btn-block" disabled={sending || count === 0}>
+              <button className="btn btn-primary btn-lg btn-block" disabled={sending || count === 0 || estimateLoading || !pickupEstimate?.canAccept}>
                 {sending ? <span className="spinner" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
                 {method === 'BANK_TRANSFER' ? 'Đặt món & chuyển khoản' : 'Đặt món'}
               </button>
