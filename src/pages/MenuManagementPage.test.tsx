@@ -30,7 +30,9 @@ describe('MenuManagementPage', () => {
     fireEvent.change(screen.getByLabelText('Mã món'), { target: { value: 'M01' } })
     fireEvent.change(screen.getByLabelText('Tên món'), { target: { value: 'Phở cuốn' } })
     fireEvent.change(screen.getByLabelText('Danh mục'), { target: { value: '3' } })
-    fireEvent.change(screen.getByLabelText('Giá (VND)'), { target: { value: '95000' } })
+    const priceInput = screen.getByLabelText('Giá (VND)') as HTMLInputElement
+    fireEvent.change(priceInput, { target: { value: '95000' } })
+    expect(priceInput.checkValidity()).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Lưu món' }))
 
     await waitFor(() => expect(post).toHaveBeenCalledWith('/menu-items', expect.objectContaining({

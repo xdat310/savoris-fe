@@ -158,6 +158,12 @@ function BranchPage() {
     if (!id) { setBranch(null); return }
     get<BranchResponse>(`/branches/${id}`).then(setBranch).catch((e) => setError(e instanceof ApiError ? e.message : 'Không tải được chi nhánh'))
   }, [admin, branchId, session?.staff.branchId])
+  async function selectBranch(id: number) {
+    setError('')
+    setBranch(null)
+    try { setBranch(await get<BranchResponse>(`/branches/${id}`)) }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Không tải được chi nhánh') }
+  }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setMessage('')
     const data = new FormData(event.currentTarget)
@@ -169,9 +175,9 @@ function BranchPage() {
     try { await put(`/branches/${branch?.id}`, payload); await reloadBranches(); setMessage('Đã lưu thông tin chi nhánh') }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Không lưu được thay đổi') }
   }
-  return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">VẬN HÀNH</span><h1>{admin ? 'Chi nhánh' : 'Chi nhánh của tôi'}</h1><p>{admin ? 'Thông tin và giờ hoạt động của các cơ sở.' : 'Thông tin cơ sở được phân công.'}</p></div>{admin && <select aria-label="Chọn chi nhánh" value={branch?.id ?? ''} onChange={(e) => setBranch(branches.find((b) => b.id === Number(e.target.value)) ?? null)}><option value="" disabled>Chọn chi nhánh</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select>}</div>
+  return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">VẬN HÀNH</span><h1>{admin ? 'Chi nhánh' : 'Chi nhánh của tôi'}</h1><p>{admin ? 'Thông tin và giờ hoạt động của các cơ sở.' : 'Thông tin cơ sở được phân công.'}</p></div>{admin && <select aria-label="Chọn chi nhánh" value={branch?.id ?? ''} onChange={(e) => void selectBranch(Number(e.target.value))}><option value="" disabled>Chọn chi nhánh</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select>}</div>
     {error && <ErrorNotice message={error} />}{message && <div className="ap-success" role="status">{message}</div>}
-    {branch ? <form className="ap-form ap-branch-form" onSubmit={save}><label>Mã chi nhánh<input value={branch.code ?? ''} disabled /></label><label>Tên chi nhánh<input name="name" defaultValue={branch.name ?? ''} readOnly={!canEditBranch} required /></label><label>Địa chỉ đầy đủ (số nhà, phố, quận)<input name="address" defaultValue={branch.address ?? ''} readOnly={!canEditBranch} minLength={10} required /></label><label>Thành phố<input name="city" defaultValue={branch.city ?? ''} readOnly={!canEditBranch} required /></label><label>Điện thoại<input name="phone" defaultValue={branch.phone ?? ''} readOnly={!canEditBranch} required /></label><label>Email<input name="email" type="email" defaultValue={branch.email ?? ''} readOnly={!canEditBranch} required /></label>{canEditBranch && <button>Lưu thay đổi</button>}</form> : <div className="ap-empty">Chưa chọn chi nhánh.</div>}
+    {branch ? <form key={branch.id} className="ap-form ap-branch-form" onSubmit={save}><label>Mã chi nhánh<input value={branch.code ?? ''} disabled /></label><label>Tên chi nhánh<input name="name" defaultValue={branch.name ?? ''} readOnly={!canEditBranch} required /></label><label>Địa chỉ đầy đủ (số nhà, phố, quận)<input name="address" defaultValue={branch.address ?? ''} readOnly={!canEditBranch} minLength={10} required /></label><label>Thành phố<input name="city" defaultValue={branch.city ?? ''} readOnly={!canEditBranch} required /></label><label>Điện thoại<input name="phone" defaultValue={branch.phone ?? ''} readOnly={!canEditBranch} required /></label><label>Email<input name="email" type="email" defaultValue={branch.email ?? ''} readOnly={!canEditBranch} required /></label>{canEditBranch && <button>Lưu thay đổi</button>}</form> : <div className="ap-empty">Chưa chọn chi nhánh.</div>}
   </div>
 }
 
