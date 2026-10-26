@@ -121,6 +121,7 @@ export function SiteHero({ config }: Props) {
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
           <Link className="sh-hero-cta" to="/dat-ban">Đặt bàn</Link>
+          <Link className="sh-hero-cta sh-hero-cta--ghost" to="/mang-ve">Mang về</Link>
           <div className="sh-hero-rule" aria-hidden="true" />
         </div>
       </div>

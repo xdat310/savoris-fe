@@ -87,7 +87,6 @@ export function SiteContact({ branches }: Props) {
 
           {(branch.phone || branch.email) && (
             <div className="ctt-contact-links">
-              <p className="ctt-group-label">Liên hệ</p>
               {branch.phone && (
                 <a className="ctt-link" href={`tel:${branch.phone.replace(/\s/g, '')}`}>
                   <Phone size={14} aria-hidden="true" /> {branch.phone}

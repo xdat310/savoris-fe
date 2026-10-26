@@ -24,6 +24,7 @@ export function PublicBranch() {
   const [branchList, setBranchList] = useState<PublicBranch[]>([])
   const [brandLogo, setBrandLogo] = useState('')
   const [menuPreview, setMenuPreview] = useState<GuestTableResponse | null>(null)
+  useEffect(() => { window.scrollTo({ top: 0, left: 0 }) }, [slug])
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => setError(true)) }, [slug])
   useEffect(() => { Promise.all([getPublicSite(), getBranches().catch(() => [])]).then(async ([site, statuses]) => {
     const settings = site.settings && typeof site.settings === 'object' ? site.settings as Record<string,unknown> : {}

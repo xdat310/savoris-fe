@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { HeroConfig, PublicBranch } from '../api/site'
 import { getBranches, getMilestones, getPublicBranchPage, getPublicSite, type SiteMilestone } from '../api/site'
 import { SiteFooter } from '../components/site/SiteFooter'
 import { SiteAssistant } from '../components/site/SiteAssistant'
 import { SiteHeader } from '../components/site/SiteHeader'
+import { SiteContact } from '../components/site/SiteContact'
 import { SiteHero } from '../components/site/SiteHero'
 import { SiteTimeline } from '../components/site/SiteTimeline'
 import { StorySections, type StorySectionItem } from '../components/site/StorySections'
@@ -17,6 +19,8 @@ type CmsContent = {
 }
 
 export function Home() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [publicSite, setPublicSite] = useState<CmsContent | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [directory, setDirectory] = useState<(PublicBranch & { imageUrl?: string; openNow?: boolean; estimatedWaitMinutes?: number })[]>([])
@@ -36,8 +40,28 @@ export function Home() {
   useEffect(() => { getMilestones().then(setMilestones).catch(() => setMilestones([])) }, [])
 
   useEffect(() => {
+    const state = location.state as { homeScrollTarget?: string } | null
+    const target = state?.homeScrollTarget ?? location.hash.slice(1)
+    if (!target) return
+    if (target === 'top') {
+      window.scrollTo({ top: 0, left: 0 })
+      navigate('/', { replace: true, state: null })
+      return
+    }
+    const element = document.getElementById(target)
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    navigate('/', { replace: true, state: null })
+  }, [location.hash, location.key, location.state, navigate, directory.length])
+
+  useEffect(() => {
     if (!publicSite) return
     const listed = Array.isArray(publicSite.branches) ? publicSite.branches : []
+    setDirectory(listed.map(branch => ({
+      ...branch,
+      slug: String(branch.slug ?? ''),
+      name: String(branch.name ?? ''),
+    })).filter(branch => branch.slug) as (PublicBranch & { imageUrl?: string; openNow?: boolean; estimatedWaitMinutes?: number })[])
     Promise.all([getBranches().catch(() => []), ...listed.map(branch => branch.slug ? getPublicBranchPage(String(branch.slug)).catch(() => null) : Promise.resolve(null))]).then(([statuses, ...pages]) => {
       const statusRows = Array.isArray(statuses) ? statuses as PublicBranch[] : []
       setDirectory(listed.map((branch, index) => {
@@ -86,7 +110,7 @@ export function Home() {
         <SiteTimeline milestones={milestones} />
       </div>
       {branches.length > 0 && <section className="home-branches" id="chi-nhanh"><header><p>GẶP GỠ SAVORIS</p><h2>Các chi nhánh</h2><span>Những điểm hẹn ẩm thực trong lòng Hà Nội.</span></header><div className="home-branches__grid">{branches.slice(0,4).map(branch=><a className="home-branch-card" href={`/chi-nhanh/${branch.slug}`} key={branch.id}><div>{'imageUrl' in branch && branch.imageUrl && <img src={branch.imageUrl} alt={branch.name} loading="lazy"/>}<span className="home-branch-card__status">{branch.openNow === true ? 'Đang mở' : branch.openNow === false ? 'Đã đóng cửa' : 'Thông tin giờ mở cửa'}</span></div><h3>{branch.code} · {branch.name}</h3><p>{branch.city ?? branch.address}</p><span className="home-branch-card__link">Xem chi nhánh →</span></a>)}</div></section>}
-      <section className="home-booking-cta"><p>{String(settings.ctaEyebrow ?? 'HẸN GẶP BẠN TẠI SAVORIS')}</p><h2>{String(settings.ctaTitle ?? 'Một buổi tối\nđáng để nhớ.').split('\n').map((line,index)=><span key={index}>{index>0&&<br/>}{line}</span>)}</h2>{Boolean(settings.ctaDescription)&&<span>{String(settings.ctaDescription)}</span>}<div><a href={String(settings.reservationUrl ?? '/dat-ban')}>Đặt bàn</a><a href={String(settings.takeawayUrl ?? '/mang-ve')}>Đặt mang về</a></div></section>
+      <SiteContact branches={branches} />
       <SiteFooter
         config={{
           facebook_url: String(settings.facebookUrl || 'https://www.facebook.com/savoris.vn'),

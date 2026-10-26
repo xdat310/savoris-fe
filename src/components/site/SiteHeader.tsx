@@ -1,6 +1,6 @@
 import { ArrowUpRight, Menu, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import type { PublicBranch, SiteNavItem } from '../../api/site'
 
 interface Props { nav?: SiteNavItem[]; branches?: PublicBranch[]; currentBranchSlug?: string; currentBranchName?: string; logoUrl?: string }
@@ -13,6 +13,7 @@ function branchStatus(branch: PublicBranch) {
 }
 
 export function SiteHeader({ nav = [], branches = [], currentBranchSlug, currentBranchName, logoUrl }: Props) {
+  const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [branchOpen, setBranchOpen] = useState(false)
@@ -26,6 +27,19 @@ export function SiteHeader({ nav = [], branches = [], currentBranchSlug, current
     { label: 'Giới thiệu', link: '#ve-chung-toi' },
     { label: 'Liên hệ', link: '#lien-he' },
   ]
+  const takeawayHref = currentBranchSlug ? `/mang-ve/${currentBranchSlug}` : '/mang-ve'
+
+  function followSiteLink(event: MouseEvent<HTMLAnchorElement>, item: { label: string; link: string }) {
+    let destination: URL
+    try { destination = new URL(item.link, window.location.origin) } catch { return }
+    if (destination.origin !== window.location.origin || destination.pathname !== '/' || !destination.hash) return
+
+    event.preventDefault()
+    setMobileOpen(false)
+    const anchor = destination.hash.slice(1)
+    const target = anchor === 've-chung-toi' || item.label.toLocaleLowerCase('vi').includes('giới thiệu') ? 'top' : anchor
+    navigate('/', { state: { homeScrollTarget: target } })
+  }
 
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 40)
@@ -55,26 +69,28 @@ export function SiteHeader({ nav = [], branches = [], currentBranchSlug, current
   return <>
     <header className={`sh${scrolled ? ' sh--solid' : ''}`} role="banner"><div className="sh-inner">
       <Link to="/" className="sh-logo" aria-label="Savoris — trang chủ">{logoUrl?<img className="sh-logo-img" src={logoUrl} alt="Savoris"/>:<span className="sh-logo-text">SAVORIS</span>}{currentBranchSlug && <span className="sh-current-branch">{currentBranchName||branchList.find(b=>b.slug===currentBranchSlug)?.name}</span>}</Link>
-      <nav className="sh-nav" aria-label="Điều hướng chính">{visibleLinks.slice(0,2).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link}>{item.label}</a>)}
-        {branchList.length>0 && <button ref={trigger} className="sh-nav-item sh-nav-item--branch" aria-haspopup="dialog" aria-expanded={branchOpen} onClick={()=>setBranchOpen(true)}>Chi nhánh</button>}
-        {visibleLinks.slice(2,3).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link}>{item.label}</a>)}
+      <nav className="sh-nav" aria-label="Điều hướng chính">{visibleLinks.slice(0,2).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link} onClick={event=>followSiteLink(event,item)}>{item.label}</a>)}
+        <button ref={trigger} className="sh-nav-item sh-nav-item--branch" aria-haspopup="dialog" aria-expanded={branchOpen} onClick={()=>setBranchOpen(true)}>Chi nhánh</button>
+        {visibleLinks.slice(2,3).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link} onClick={event=>followSiteLink(event,item)}>{item.label}</a>)}
+        <Link className="sh-nav-item" to={takeawayHref}>Mang về</Link>
         <Link className="sh-cta" to={currentBranchSlug?`/dat-ban?chi-nhanh=${currentBranchSlug}`:'/dat-ban'}>Đặt bàn</Link>
       </nav>
-      {branchList.length>0&&<button className="sh-mobile-branches" aria-label="Chọn chi nhánh" onClick={()=>setBranchOpen(true)}>Chi nhánh</button>}
+      <button className="sh-mobile-branches" aria-label="Chọn chi nhánh" onClick={()=>setBranchOpen(true)}>Chi nhánh</button>
       <button className="sh-hamburger" aria-label={mobileOpen?'Đóng menu':'Mở menu'} aria-expanded={mobileOpen} onClick={()=>setMobileOpen(value=>!value)}>{mobileOpen?<X size={22}/>:<Menu size={22}/>}</button>
     </div></header>
     <div className={`sh-overlay${mobileOpen?' sh-overlay--open':''}`} aria-hidden={!mobileOpen}><nav className="sh-overlay-nav" aria-label="Menu di động">
-      {visibleLinks.map((item,index)=><a key={`${item.link}-${index}`} className="sh-overlay-item" href={item.link} onClick={()=>setMobileOpen(false)} tabIndex={mobileOpen?0:-1}>{item.label}</a>)}
-      {branchList.length>0&&<button className="sh-overlay-item" onClick={()=>{setMobileOpen(false);setBranchOpen(true)}} tabIndex={mobileOpen?0:-1}>Chi nhánh</button>}
+      {visibleLinks.map((item,index)=><a key={`${item.link}-${index}`} className="sh-overlay-item" href={item.link} onClick={event=>followSiteLink(event,item)} tabIndex={mobileOpen?0:-1}>{item.label}</a>)}
+      <button className="sh-overlay-item" onClick={()=>{setMobileOpen(false);setBranchOpen(true)}} tabIndex={mobileOpen?0:-1}>Chi nhánh</button>
+      <Link className="sh-overlay-item" to={takeawayHref} onClick={()=>setMobileOpen(false)} tabIndex={mobileOpen?0:-1}>Mang về</Link>
       <Link className="sh-overlay-cta" to={currentBranchSlug?`/dat-ban?chi-nhanh=${currentBranchSlug}`:'/dat-ban'} onClick={()=>setMobileOpen(false)} tabIndex={mobileOpen?0:-1}>Đặt bàn</Link>
     </nav></div>
     {branchOpen&&<div className="sh-branch-overlay" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget){setBranchOpen(false);trigger.current?.focus()}}}>
       <section className="sh-branch-dialog" role="dialog" aria-modal="true" aria-label="Chọn chi nhánh" ref={dialog}>
         <header><div><span>SAVORIS · HÀ NỘI</span><h2>Chọn chi nhánh</h2><p>Mỗi điểm hẹn mang một sắc thái riêng.</p></div><button aria-label="Đóng danh sách chi nhánh" onClick={()=>{setBranchOpen(false);trigger.current?.focus()}}><X size={22}/></button></header>
-        <div className="sh-branch-grid">{branchList.map((branch,index)=><Link key={branch.id??branch.slug} className={`sh-branch-card${branch.slug===currentBranchSlug?' is-current':''}`} to={`/chi-nhanh/${branch.slug}`} onClick={()=>setBranchOpen(false)}>
+        {branchList.length > 0 ? <div className="sh-branch-grid">{branchList.map((branch,index)=><Link key={branch.id??branch.slug} className={`sh-branch-card${branch.slug===currentBranchSlug?' is-current':''}`} to={`/chi-nhanh/${branch.slug}`} onClick={()=>setBranchOpen(false)}>
           <div className="sh-branch-photo">{branch.imageUrl&&<img src={branch.imageUrl} alt="" loading={index===0?'eager':'lazy'}/>}<span>{branch.code||`CN0${index+1}`} · {branch.name}</span></div>
           <p className="sh-branch-district">{branch.city||branch.address||'Hà Nội'}</p><span className="sh-branch-status"><i/>{branchStatus(branch)}</span><span className="sh-branch-link">Xem chi nhánh <ArrowUpRight size={14}/></span>
-        </Link>)}</div>
+        </Link>)}</div> : <p className="sh-branch-empty">Đang tải danh sách chi nhánh…</p>}
       </section>
     </div>}
   </>
