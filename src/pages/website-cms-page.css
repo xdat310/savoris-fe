@@ -19,9 +19,38 @@
 .wc-story-grid small,.wc-week-form>header p{color:#b8b5ac}
 @media(max-width:920px){.wc-week-row{grid-template-columns:repeat(2,minmax(0,1fr))}.wc-week-row>strong{grid-column:1/-1}}
 @media(max-width:700px){.wc-heading>div:first-child{flex-basis:100%}.wc-heading>label{flex:1 1 100%}.wc-heading>a{margin-left:auto}.wc-story-grid{grid-template-columns:minmax(0,1fr)}.wc-week-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.wc-heading>div>span,.wc-heading>a,.wc-tabs button.is-active,.wc-story-card>header>strong,.wc-week-form>header button{color:#555}
-.wc-tabs button.is-active{border-color:#777}
-.wc-primary,.wc-list-head>button{background:#333;color:#e2e2e2}
-.wc-story-card>header button{color:#c8c8c8}
-.wc-week-form>header button{border-color:#777}
-.wc-image-remove{color:#777}
+.wc-page{color:#e5e5e5}
+.wc-heading>label,.wc-story-grid>label,.wc-week-row>label,.wc-image-field small{color:#dedede}
+.wc-heading>div>span,.wc-heading>a,.wc-tabs button,.wc-tabs button.is-active,.wc-story-card>header>strong,.wc-week-form>header button{color:#ededed}
+.wc-tabs button.is-active{border-color:#bdbdbd}
+.wc-form>label,.wc-editor>label,.wc-current-image>label,.wc-upload>label,.wc-image-label,.wc-list-head p{color:#dedede}
+.wc-list-head h2,.wc-heading h1{color:#f2f2f2}
+.wc-primary,.wc-list-head>button{background:#333;color:#f2f2f2}
+.wc-story-card>header button{color:#ededed}
+.wc-week-form>header button{border-color:#aaa}
+.wc-story-grid small,.wc-week-form>header p{color:#d0d0d0}
+.wc-image-remove{color:#ededed}
+/* Use the staff app's dark surfaces consistently across Website CMS. */
+.wc-page{color:#ededed}
+.wc-heading>div>span,.wc-heading>a,.wc-heading>label,.wc-tabs button,.wc-tabs button.is-active,
+.wc-form>label,.wc-editor>label,.wc-current-image>label,.wc-upload>label,.wc-image-label,
+.wc-list-head p,.wc-story-grid>label,.wc-week-row>label,.wc-image-field small{color:#dedede}
+.wc-heading h1,.wc-list-head h2{color:#f5f5f5}
+.wc-tabs{border-bottom-color:#3d3d3d}
+.wc-tabs button.is-active{color:#fff;border-color:#bbb}
+.wc-heading>label select,.wc-form input,.wc-form textarea,.wc-form select,
+.wc-editor input,.wc-editor textarea,.wc-story-grid input,.wc-story-grid textarea,.wc-story-grid select,
+.wc-week-row input{background:#191919;color:#f2f2f2;border-color:#484848}
+.wc-editor{background:#141414;border-color:#383838}
+.wc-list-head{border-bottom-color:#3a3a3a}
+.wc-primary,.wc-list-head>button{background:#353535;color:#fff}
+.wc-file,.wc-story-grid .wc-file{background:#1b1b1b;color:#e8e8e8!important;border-color:#666}
+.wc-items article{background:#171717;border-color:#383838;color:#e5e5e5}
+.wc-item-copy strong{color:#f0f0f0}
+.wc-item-copy span{color:#c4c4c4}
+.wc-items article>button{color:#dedede}
+.wc-items article>button:hover{background:#292929;color:#fff}
+.wc-image-remove{color:#ededed;background:transparent}
+.wc-story-grid small,.wc-week-form>header p{color:#ccc}
+.wc-error{background:#321d1d;color:#ffcaca;border-color:#704040}
+.wc-page input::placeholder,.wc-page textarea::placeholder{color:#aaa}
