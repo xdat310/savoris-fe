@@ -21,6 +21,7 @@ import { AdminRoutes } from './pages/AdminPortal'
 import { BranchMenu, PublicBranch } from './pages/PublicBranch'
 import { NotFound } from './pages/NotFound'
 import { BookingPage } from './pages/BookingPage'
+import { PublicErrorBoundary } from './components/PublicErrorBoundary'
 
 function Guard({ allow, children }: { allow: (role?: string) => boolean; children: ReactNode }) {
   const { role } = useAuth()
@@ -36,14 +37,14 @@ function AppRoutes() {
   if (!pathname.startsWith(STAFF)) {
     return (
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/chi-nhanh/:slug" element={<PublicBranch />} />
-        <Route path="/chi-nhanh/:slug/thuc-don" element={<BranchMenu />} />
-        <Route path="/dat-ban" element={<BookingPage />} />
-        <Route path="/goi-mon/:token" element={<GuestOrder />} />
-        <Route path="/mang-ve" element={<Takeaway />} />
-        <Route path="/mang-ve/:branchSlug" element={<Takeaway />} />
-        <Route path="/don-mang-ve/:token" element={<TakeawayTrack />} />
+        <Route path="/" element={<PublicErrorBoundary><Home /></PublicErrorBoundary>} />
+        <Route path="/chi-nhanh/:slug" element={<PublicErrorBoundary><PublicBranch /></PublicErrorBoundary>} />
+        <Route path="/chi-nhanh/:slug/thuc-don" element={<PublicErrorBoundary><BranchMenu /></PublicErrorBoundary>} />
+        <Route path="/dat-ban" element={<PublicErrorBoundary><BookingPage /></PublicErrorBoundary>} />
+        <Route path="/goi-mon/:token" element={<PublicErrorBoundary><GuestOrder /></PublicErrorBoundary>} />
+        <Route path="/mang-ve" element={<PublicErrorBoundary><Takeaway /></PublicErrorBoundary>} />
+        <Route path="/mang-ve/:branchSlug" element={<PublicErrorBoundary><Takeaway /></PublicErrorBoundary>} />
+        <Route path="/don-mang-ve/:token" element={<PublicErrorBoundary><TakeawayTrack /></PublicErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     )

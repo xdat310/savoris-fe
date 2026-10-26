@@ -1,36 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowDown, ArrowUpRight, Clock3, MapPin, Phone } from 'lucide-react'
+import { ArrowDown, ArrowUpRight, MapPin, Phone } from 'lucide-react'
 import { get } from '../api/client'
 import type { GuestTableResponse } from '../api/types'
-import { branchLabel, getPublicBranchPage, getPublicSite, type SiteBranchPage } from '../api/site'
+import { branchLabel, getBranches, getPublicBranchPage, getPublicSite, type PublicBranch, type SiteBranchPage } from '../api/site'
 import { groupDishes } from '../components/DishBoard'
-import interior from '../assets/photos/restaurant-interior.webp'
-import meal from '../assets/photos/gourmet-dishes.webp'
-import steak from '../assets/photos/steak-plate.webp'
+import { SiteHeader } from '../components/site/SiteHeader'
+import { StorySections, type StorySectionItem } from '../components/site/StorySections'
 import './public-branch.css'
 import { applySeo } from '../lib/seo'
 
-const seededImages: Record<string, string> = {
-  '/images/restaurant-interior.webp': interior,
-  '/images/gourmet-dishes.webp': meal,
-  '/images/steak-plate.webp': steak,
-}
 function imageUrl(url?: unknown) {
-  if (typeof url !== 'string' || !url) return meal
-  return seededImages[url] ?? url
+  return typeof url === 'string' ? url : ''
 }
 const dayNames = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
-const money = (value: unknown) => typeof value === 'number' ? `${new Intl.NumberFormat('vi-VN').format(value)} ₫` : ''
 
 export function PublicBranch() {
   const { slug = '' } = useParams()
   const [data, setData] = useState<SiteBranchPage | null>(null)
   const [error, setError] = useState(false)
   const [activeImage, setActiveImage] = useState<string | null>(null)
-  const [branchList, setBranchList] = useState<{ id?: number; code?: string; name?: string; slug?: string }[]>([])
+  const [showAllGallery, setShowAllGallery] = useState(false)
+  const [branchList, setBranchList] = useState<PublicBranch[]>([])
+  const [brandLogo, setBrandLogo] = useState('')
+  const [menuPreview, setMenuPreview] = useState<GuestTableResponse | null>(null)
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => setError(true)) }, [slug])
-  useEffect(() => { getPublicSite().then((site) => setBranchList(Array.isArray(site.branches) ? site.branches as typeof branchList : [])).catch(() => {}) }, [])
+  useEffect(() => { Promise.all([getPublicSite(), getBranches().catch(() => [])]).then(async ([site, statuses]) => {
+    const settings = site.settings && typeof site.settings === 'object' ? site.settings as Record<string,unknown> : {}
+    setBrandLogo(String(settings.logo ?? ''))
+    const rows = Array.isArray(site.branches) ? site.branches as unknown as PublicBranch[] : []
+    const statusRows = Array.isArray(statuses) ? statuses : []
+    const merged = rows.map(row => ({ ...row, ...statusRows.find(status => Number(status.id) === Number(row.id)) }))
+    const withImages = await Promise.all(merged.map(async row => { if (!row.slug) return row; const result = await getPublicBranchPage(row.slug).catch(() => null); return { ...row, imageUrl: result?.page?.heroImage } }))
+    setBranchList(withImages)
+  }).catch(() => {}) }, [])
+  useEffect(() => { if (!data?.branch.id) return; get<Partial<GuestTableResponse>>(`/public/branches/${data.branch.id}/menu`).then(menu => setMenuPreview({ ...menu, categories: Array.isArray(menu.categories)?menu.categories:[], menu: Array.isArray(menu.menu)?menu.menu:[] } as GuestTableResponse)).catch(() => setMenuPreview(null)) }, [data?.branch.id])
   useEffect(() => {
     if (!data) return
     const { branch, page } = data
@@ -43,7 +47,7 @@ export function PublicBranch() {
   }, [data])
   useEffect(() => {
     const nodes = document.querySelectorAll<HTMLElement>('[data-reveal]')
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { nodes.forEach(n => n.classList.add('is-visible')); return }
+    if ((typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) || typeof window.IntersectionObserver === 'undefined') { nodes.forEach(n => n.classList.add('is-visible')); return }
     const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target) } }), { threshold: .12 })
     nodes.forEach(node => observer.observe(node))
     return () => observer.disconnect()
@@ -54,22 +58,25 @@ export function PublicBranch() {
   const { branch, page } = data
   const hero = imageUrl(page.heroImage)
   const booking = `/dat-ban?chi-nhanh=${branch.slug}`
-  const gallery = data.gallery as Record<string, unknown>[]
+  const today = new Date().getDay() || 7
+  const liveBranch = branchList.find(item => Number(item.id) === Number(branch.id))
+  const liveStatus = liveBranch?.openNow === false ? 'Đã đóng cửa' : liveBranch?.acceptingTakeaway === false ? 'Tạm dừng mang về' : Number(liveBranch?.estimatedWaitMinutes ?? 0) >= 20 ? 'Đang đông' : liveBranch?.openNow === true ? 'Đang mở' : 'Đang cập nhật'
+  const allGallery = (Array.isArray(data.gallery) ? data.gallery : []).filter(item => typeof item.image_url === 'string' && item.image_url) as Record<string, unknown>[]
+  const openingHours = Array.isArray(data.openingHours) ? data.openingHours : []
+  const gallery = showAllGallery ? allGallery : allGallery.slice(0, 5)
+  const storySections = Array.isArray((page as Record<string, unknown>).storySections) ? (page as Record<string, unknown>).storySections as StorySectionItem[] : []
+  const featuredDishes = groupDishes(menuPreview?.categories, menuPreview?.menu).flatMap(group => group.dishes).filter(dish => dish.imageUrl).slice(0, 6)
   return <main className="venue-page">
-    <header className="venue-nav"><Link to="/" className="venue-brand">SAVORIS</Link><nav><a href="#uu-dai">Trải nghiệm</a><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Thực đơn</Link><a href="#su-kien">Sự kiện riêng</a><a href="#thu-vien">Thư viện ảnh</a><a href="#lien-he">Liên hệ</a></nav><div className="venue-nav-actions"><details><summary>Chi nhánh <ArrowDown size={13}/></summary><div>{branchList.filter(item => item.slug !== branch.slug).map(item => <Link key={item.id ?? item.slug} to={`/chi-nhanh/${item.slug}`}>{item.code} · {item.name}</Link>)}</div></details><Link className="venue-button venue-button--small" to={booking}>Đặt bàn</Link></div></header>
-    <section className="venue-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(10,10,9,.72),rgba(10,10,9,.12)),url("${hero}")` }}>
-      <div className="venue-hero-copy" data-reveal><span>SAVORIS · HÀ NỘI</span><h1>{branchLabel(branch)}</h1><p>{page.introduction}</p><Link className="venue-button" to={booking}>Đặt bàn <ArrowUpRight size={16}/></Link></div>
-      <a className="venue-scroll" href="#uu-dai">Khám phá <ArrowDown size={14}/></a>
+    <SiteHeader nav={[]} branches={branchList} currentBranchSlug={branch.slug} currentBranchName={branch.name} logoUrl={brandLogo||undefined}/>
+    <section className="venue-hero" style={{ backgroundImage: hero ? `linear-gradient(90deg,rgba(10,10,9,.72),rgba(10,10,9,.12)),radial-gradient(ellipse at center,transparent 35%,rgba(0,0,0,.68) 100%),url("${hero}")` : 'radial-gradient(ellipse at center,#181715 0%,#000 76%)' }}>
+      <div className="venue-hero-copy" data-reveal>{page.heroEyebrow&&<span>{String(page.heroEyebrow)}</span>}<h1>{String(page.heroTitle ?? branchLabel(branch))}</h1>{page.introduction && <p>{String(page.introduction)}</p>}<Link className="venue-button" to={booking}>Đặt bàn <ArrowUpRight size={16}/></Link></div>
+      <a className="venue-scroll" href="#cau-chuyen">Khám phá <ArrowDown size={14}/></a>
     </section>
-    {data.offers.length > 0 && <section className="venue-offers" id="uu-dai"><div className="venue-section-heading" data-reveal><span>HƯƠNG VỊ & TRẢI NGHIỆM</span><h2>Những cuộc gặp<br/>đáng nhớ hơn.</h2></div>
-      {data.offers.map((offer, index) => <article className={`venue-offer${index % 2 ? ' is-reversed' : ''}`} key={String(offer.id)} data-reveal><img src={imageUrl(offer.image_url)} alt={String(offer.image_alt ?? offer.title ?? 'Món ăn Savoris')} loading="lazy"/><div className="venue-offer-copy"><span>TRẢI NGHIỆM SAVORIS · 0{index + 1}</span><h3>{String(offer.title)}</h3><p>{String(offer.description)}</p><strong>{money(offer.price)}{offer.price != null ? `/${String(offer.unit ?? 'người')}` : ''}</strong><small><Clock3 size={14}/>{String(offer.schedule ?? '')}</small><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Xem thực đơn <ArrowUpRight size={14}/></Link></div></article>)}
-    </section>}
-    <section className="venue-brand-story" data-reveal><span>SAVORIS</span><h2>{page.brandLine}</h2><p>{page.introduction}</p></section>
-    <section className="venue-event" id="su-kien" data-reveal><div><span>DẤU MỐC ĐÁNG NHỚ</span><h2>Sự kiện riêng,<br/>dấu ấn của bạn.</h2></div><div><p>{page.privateEvent}</p><a className="venue-button" href={`mailto:${branch.email ?? ''}?subject=${encodeURIComponent('Tổ chức sự kiện tại Savoris')}`}>Liên hệ tổ chức <ArrowUpRight size={16}/></a></div></section>
-    {data.accolades.length > 0 && <section className="venue-awards" data-reveal><span>GHI NHẬN</span><h2>Giải thưởng</h2><div>{data.accolades.map(a => <article key={String(a.id)}><b>{String(a.award_year)}</b><p>{String(a.content)}</p></article>)}</div></section>}
-    {gallery.length > 1 && <section className="venue-gallery" id="thu-vien"><div className="venue-section-heading" data-reveal><span>KHÔNG GIAN SAVORIS</span><h2>Khoảnh khắc tại bàn.</h2></div><div className="venue-gallery-grid">{gallery.map(item => <button key={String(item.id)} onClick={() => setActiveImage(imageUrl(item.image_url))} aria-label={`Mở ảnh ${String(item.alt)}`} data-reveal><img src={imageUrl(item.image_url)} alt={String(item.alt)} loading="lazy"/><span>{String(item.alt)}</span></button>)}</div></section>}
-    {data.testimonials.filter(item => Boolean(item.source)).map(item => <blockquote className="venue-quote" key={String(item.id)} data-reveal><p>"{String(item.quote)}"</p><footer>{String(item.reviewer)} <span>{String(item.source)}{item.title ? ` · ${String(item.title)}` : ''}</span></footer></blockquote>)}
-    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><p><MapPin size={15}/>{branch.address}, {branch.city}</p><a href={`tel:${branch.phone ?? ''}`}><Phone size={15}/>{branch.phone ?? 'Đang cập nhật'}</a>{data.openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{data.openingHours.map(hour => <p key={hour.weekday}><span>{dayNames[hour.weekday]}</span><span>{hour.closed ? 'Nghỉ' : `${String(hour.opens_at ?? '').slice(0,5)} – ${String(hour.closes_at ?? '').slice(0,5)}`}</span></p>)}</div>}</div><iframe title={`Bản đồ ${branch.name}`} src={String(page.mapUrl ?? `https://maps.google.com/maps?q=${encodeURIComponent(`${branch.address} ${branch.city}`)}&output=embed`)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/></section>
+    <StorySections items={storySections} id="cau-chuyen"/>
+    {featuredDishes.length>0&&<section className="venue-featured-menu" id="thuc-don"><header><span>ĐƯỢC YÊU THÍCH TẠI {branch.name.toLocaleUpperCase('vi')}</span><h2>Hương vị đặc sắc</h2></header><div>{featuredDishes.map(dish=><article key={dish.menuItemId}>{dish.imageUrl&&<img src={dish.imageUrl} alt={dish.name??''} loading="lazy"/>}<h3>{dish.name}</h3></article>)}</div><nav><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Xem thực đơn</Link><Link to={`/mang-ve/${branch.slug}`}>Đặt mang về</Link></nav></section>}
+    {page.privateEvent&&<section className="venue-event" id="su-kien" style={{backgroundImage:`linear-gradient(90deg,#000c,#0008),url("${String(page.privateEventImage||hero)}")`}} data-reveal><div><span>SAVORIS · PRIVATE EVENTS</span><h2>{String(page.privateEventTitle ?? 'Sự kiện riêng,\ndấu ấn của bạn.').split('\n').map((line,index)=><span key={index}>{index>0&&<br/>}{line}</span>)}</h2></div><div><p>{String(page.privateEvent)}</p><a className="venue-button" href={`mailto:${branch.email ?? ''}?subject=${encodeURIComponent('Tổ chức sự kiện tại Savoris')}`}>Liên hệ tổ chức <ArrowUpRight size={16}/></a></div></section>}
+    {gallery.length > 0 && <section className="venue-gallery" id="thu-vien"><div className="venue-section-heading" data-reveal><span>KHÔNG GIAN SAVORIS</span><h2>Khoảnh khắc tại bàn.</h2></div><div className="venue-gallery-grid">{gallery.map((item,index) => <button className={`venue-gallery-cell venue-gallery-cell--${index%5}`} key={String(item.id)} onClick={() => setActiveImage(imageUrl(item.image_url))} aria-label={`Mở ảnh ${String(item.alt)}`} data-reveal><img src={imageUrl(item.image_url)} alt={String(item.alt)} loading="lazy"/><span>{String(item.alt)}</span></button>)}</div>{!showAllGallery&&allGallery.length>5&&<button className="venue-gallery-more" onClick={()=>setShowAllGallery(true)}>Xem thêm ảnh</button>}</section>}
+    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><span className="venue-live-status"><i/>{liveStatus}</span>{branch.address&&<p><MapPin size={15}/>{branch.address}, {branch.city}</p>}{branch.phone&&<a href={`tel:${branch.phone}`}><Phone size={15}/>{branch.phone}</a>}{openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{openingHours.map(hour => <p className={hour.weekday===today?'is-today':''} key={hour.weekday}><span>{dayNames[hour.weekday]}{hour.weekday===today?' · Hôm nay':''}</span><span>{hour.closed ? 'Nghỉ' : `${String(hour.opens_at ?? '').slice(0,5)} – ${String(hour.closes_at ?? '').slice(0,5)}`}</span></p>)}</div>}</div>{branch.address&&<iframe title={`Bản đồ ${branch.name}`} src={String(page.mapUrl ?? `https://maps.google.com/maps?q=${encodeURIComponent(`${branch.address} ${branch.city}`)}&output=embed`)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/>}</section>
     <footer className="venue-footer"><Link to="/">SAVORIS</Link><span>Ẩm thực Việt đương đại, tinh tế trong từng khoảnh khắc.</span><Link to={booking}>Đặt bàn <ArrowUpRight size={14}/></Link></footer>
     {activeImage && <button className="venue-lightbox" onClick={() => setActiveImage(null)} aria-label="Đóng ảnh"><img src={activeImage} alt="Ảnh phóng lớn"/><span>Đóng ×</span></button>}
   </main>
@@ -82,10 +89,9 @@ export function BranchMenu() {
   useEffect(() => { getPublicBranchPage(slug).then(setData).catch(() => {}) }, [slug])
   useEffect(() => {
     if (!data?.branch.id) return
-    get<GuestTableResponse>(`/public/branches/${data.branch.id}/menu`).then(setMenuData).catch(() => {})
+    get<Partial<GuestTableResponse>>(`/public/branches/${data.branch.id}/menu`).then(menu => setMenuData({ ...menu, categories: Array.isArray(menu.categories)?menu.categories:[], menu: Array.isArray(menu.menu)?menu.menu:[] } as GuestTableResponse)).catch(() => {})
   }, [data?.branch.id])
   const groups = useMemo(() => groupDishes(menuData?.categories, menuData?.menu), [menuData])
-  const pdfMenus = (data?.menus ?? []).filter(m => m.visible !== false && m.file_url)
   return (
     <main className="venue-menu-page">
       <Link to={`/chi-nhanh/${slug}`} className="venue-brand">SAVORIS</Link>
@@ -111,7 +117,6 @@ export function BranchMenu() {
       ) : (
         <p>Thực đơn đang được cập nhật. Hãy ghé Savoris để khám phá các món trong ngày.</p>
       )}
-      {pdfMenus.length > 0 && <a className="venue-button" href={String(pdfMenus[0].file_url)} target="_blank" rel="noreferrer">Tải thực đơn PDF <ArrowUpRight size={16}/></a>}
       <Link to={`/dat-ban?chi-nhanh=${slug}`}>Đặt bàn <ArrowUpRight size={14}/></Link>
     </main>
   )

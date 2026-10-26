@@ -17,7 +17,7 @@ describe('branchLabel', () => {
 })
 
 describe('getPublicBranchPage', () => {
-  it('defaults optional CMS lists omitted by the public API to empty arrays', async () => {
+  it('defaults optional public lists omitted by the API to empty arrays', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       branch: { id: 1, code: 'CN01', name: 'Hoàn Kiếm', slug: 'hoan-kiem' },
       page: { introduction: 'Ẩm thực Việt đương đại' },
@@ -27,10 +27,6 @@ describe('getPublicBranchPage', () => {
 
     const result = await getPublicBranchPage('hoan-kiem')
 
-    expect(result.offers).toEqual([])
-    expect(result.accolades).toEqual([])
-    expect(result.testimonials).toEqual([])
-    expect(result.menus).toEqual([])
     expect(result.gallery).toEqual([])
     expect(result.openingHours).toEqual([])
   })

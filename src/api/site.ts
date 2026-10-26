@@ -20,30 +20,31 @@ export const mediaUrl = (url?: string) => {
 export interface SiteBranchPage {
   branch: PublicBranch
   page: Record<string, string>
-  offers: Record<string, unknown>[]
   gallery: Record<string, unknown>[]
-  accolades: Record<string, unknown>[]
-  testimonials: Record<string, unknown>[]
-  menus: Record<string, unknown>[]
   openingHours: { weekday: number; opens_at?: string; closes_at?: string; closed: boolean }[]
 }
 
-export const getPublicSite = () => get<Record<string, unknown>>('/public/site')
+export async function getPublicSite(): Promise<Record<string, unknown> & { settings: Record<string, unknown>; branches: Record<string, unknown>[]; gallery: Record<string, unknown>[] }> {
+  const result = await get<Record<string, unknown>>('/public/site')
+  const settings = result.settings && typeof result.settings === 'object' ? result.settings as Record<string, unknown> : {}
+  return { ...result,
+    settings,
+    branches: Array.isArray(result.branches) ? result.branches as Record<string, unknown>[] : [],
+    gallery: Array.isArray(result.gallery) ? result.gallery as Record<string, unknown>[] : [],
+  }
+}
 export async function getPublicBranchPage(slug: string): Promise<SiteBranchPage> {
   const result = await get<Partial<SiteBranchPage>>(`/public/branches/${slug}`)
-  return {
-    ...result,
-    offers: Array.isArray(result.offers) ? result.offers : [],
+  return { ...result,
     gallery: Array.isArray(result.gallery) ? result.gallery : [],
-    accolades: Array.isArray(result.accolades) ? result.accolades : [],
-    testimonials: Array.isArray(result.testimonials) ? result.testimonials : [],
-    menus: Array.isArray(result.menus) ? result.menus : [],
     openingHours: Array.isArray(result.openingHours) ? result.openingHours : [],
   } as SiteBranchPage
 }
 export const getWebsiteCms = () => get<Record<string, any>>('/admin/website')
 export const saveWebsiteSettings = (payload: Record<string, unknown>) => put('/admin/website/settings', payload)
 export const saveBranchPage = (branchId: number, payload: Record<string, unknown>) => put(`/admin/website/branches/${branchId}`, payload)
+export const saveWebsiteHoursWeek = (branchId: number, days: Record<string, unknown>[]) =>
+  put('/admin/website/hours/week', { branchId, days })
 export const createWebsiteItem = (resource: string, payload: Record<string, unknown>) => post<Record<string, any>>(`/admin/website/${resource}`, payload)
 export const updateWebsiteItem = (resource: string, id: number, payload: Record<string, unknown>) => put(`/admin/website/${resource}/${id}`, payload)
 export const deleteWebsiteItem = (resource: string, id: number) => del(`/admin/website/${resource}/${id}`)
@@ -62,7 +63,7 @@ export interface SiteNavItem {
   order: number
   visible: boolean
 }
-export const getNav = () => get<SiteNavItem[]>('/site/nav')
+export async function getNav() { const rows = await get<SiteNavItem[]>('/site/nav'); return Array.isArray(rows) ? rows : [] }
 
 // ── Hero ─────────────────────────────────────────────────────────────────
 export type HeroMediaType = 'image' | 'slideshow' | 'video'
@@ -79,7 +80,7 @@ export interface HeroConfig {
   cta_text: string
   cta_link: string
 }
-export const getHero = () => get<HeroConfig>('/site/hero')
+export async function getHero() { const result = await get<Partial<HeroConfig>>('/site/hero'); return { ...result, media: Array.isArray(result.media) ? result.media : [] } as HeroConfig }
 
 // ── Story sections ────────────────────────────────────────────────────────
 export interface SiteSection {
@@ -95,7 +96,7 @@ export interface SiteSection {
   order: number
   visible: boolean
 }
-export const getSections = () => get<SiteSection[]>('/site/sections')
+export async function getSections() { const rows = await get<SiteSection[]>('/site/sections'); return Array.isArray(rows) ? rows : [] }
 
 // ── Milestones ────────────────────────────────────────────────────────────
 export interface SiteMilestone {
@@ -105,7 +106,7 @@ export interface SiteMilestone {
   description: string
   order: number
 }
-export const getMilestones = () => get<SiteMilestone[]>('/site/milestones')
+export async function getMilestones() { const rows = await get<SiteMilestone[]>('/site/milestones'); return Array.isArray(rows) ? rows : [] }
 
 // ── Gallery ───────────────────────────────────────────────────────────────
 export interface SiteGalleryItem {
@@ -115,7 +116,7 @@ export interface SiteGalleryItem {
   caption?: string
   order: number
 }
-export const getGallery = () => get<SiteGalleryItem[]>('/site/gallery')
+export async function getGallery() { const rows = await get<SiteGalleryItem[]>('/site/gallery'); return Array.isArray(rows) ? rows : [] }
 
 // ── Order modal (service-type cards) ─────────────────────────────────────
 export interface SiteOrderCard {
@@ -144,13 +145,16 @@ export interface PublicBranch {
   google_maps_embed?: string
   hours?: { days: string; time: string }[]
   acceptingTakeaway?: boolean
+  openNow?: boolean
+  estimatedWaitMinutes?: number
+  imageUrl?: string
 }
 export const branchLabel = (branch?: Partial<Pick<PublicBranch, 'code' | 'name'>> | null) => {
   if (!branch) return ''
   if (branch.code && branch.name) return `${branch.code} · ${branch.name}`
   return branch.name ?? branch.code ?? ''
 }
-export const getBranches = () => get<PublicBranch[]>('/public/branches')
+export async function getBranches() { const rows = await get<PublicBranch[]>('/public/branches'); return Array.isArray(rows) ? rows : [] }
 
 // ── Footer ────────────────────────────────────────────────────────────────
 export interface SiteFooter {
@@ -178,8 +182,10 @@ export interface PublicMenu {
   dishes: PublicDish[]
   vatPercent?: number
 }
-export const getPublicMenu = (branchSlug?: string) =>
-  get<PublicMenu>(`/public/menu${branchSlug ? `?branch=${branchSlug}` : ''}`)
+export async function getPublicMenu(branchSlug?: string) {
+  const result = await get<Partial<PublicMenu>>(`/public/menu${branchSlug ? `?branch=${branchSlug}` : ''}`)
+  return { ...result, categories: Array.isArray(result.categories) ? result.categories : [], dishes: Array.isArray(result.dishes) ? result.dishes : [] } as PublicMenu
+}
 
 // ── Site-wide config fetch (admin CMS bulk load) ──────────────────────────
 export const getAllSiteConfig = () => get<Record<string, unknown>>('/site/all')
