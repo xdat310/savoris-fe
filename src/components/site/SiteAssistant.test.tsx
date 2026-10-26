@@ -44,6 +44,22 @@ describe('SiteAssistant', () => {
     expect(send).toHaveBeenCalledWith('/public/ai/chat', expect.objectContaining({ message: 'Chi nhánh nào đang mở?', agentMode: true }))
   })
 
+  it('answers a greeting immediately without calling the sleeping backend', async () => {
+    render(<MemoryRouter><SiteAssistant /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Mở Trợ lí alibibee' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vấn đề khác' }))
+    const input = screen.getByRole('textbox', { name: 'Tin nhắn' })
+    fireEvent.change(input, { target: { value: 'hello' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi tin nhắn' }))
+
+    expect(await screen.findByText('Xin chào, mình là trợ lí alibibee. Bạn cần mình hỗ trợ gì?')).toBeInTheDocument()
+    expect(screen.getByText('hello')).toBeInTheDocument()
+    expect(input).toHaveValue('')
+    expect(send).not.toHaveBeenCalled()
+    expect(screen.queryByText('Đang tìm thông tin…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Câu trả lời này đã giải quyết được vấn đề của bạn chưa?')).not.toBeInTheDocument()
+  })
+
   it('shows a waiting state while the backend is answering', async () => {
     let finish: (value: unknown) => void = () => undefined
     send.mockReturnValue(new Promise(resolve => { finish = resolve }) as never)

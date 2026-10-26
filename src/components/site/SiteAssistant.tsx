@@ -15,6 +15,12 @@ const FAQ_TOPICS = [
   { label: 'Mang về & thanh toán', message: 'Cách đặt món mang về và thanh toán' },
 ]
 
+function isGreeting(message: string) {
+  const normalized = message.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, ' ').trim()
+  return /^(hi|hello|hey|alo|chao( ban)?|xin chao( ban)?)$/.test(normalized)
+}
+
 export function SiteAssistant() {
   const [open, setOpen] = useState(false)
   const [turns, setTurns] = useState<Turn[]>([{ role: 'assistant', content: GREETING }])
@@ -44,6 +50,14 @@ export function SiteAssistant() {
   async function sendMessage(text: string) {
     const message = text.trim()
     if (!message || busy) return
+    if (isGreeting(message)) {
+      setDraft('')
+      setTurns(current => [...current,
+        { role: 'user', content: message },
+        { role: 'assistant', content: 'Xin chào, mình là trợ lí alibibee. Bạn cần mình hỗ trợ gì?' },
+      ])
+      return
+    }
     const previous = turns.slice(-10)
     setTurns(current => [...current, { role: 'user', content: message }])
     setDraft('')
