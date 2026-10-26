@@ -95,7 +95,7 @@ function Staff({ branchId }: { branchId: number }) {
   }
 
   async function resetPassword(s: StaffDetailResponse) {
-    const pw = await promptDialog({ title: `Đặt lại mật khẩu cho ${s.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, confirmLabel: 'Đặt lại' })
+    const pw = await promptDialog({ title: `Đặt lại mật khẩu cho ${s.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, type: 'password', confirmLabel: 'Đặt lại' })
     if (!pw) return
     run(() => put(`/staff/${s.id}/password`, { newPassword: pw }), `Đã đặt lại mật khẩu cho ${s.fullName}`)
   }

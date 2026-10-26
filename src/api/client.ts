@@ -1,6 +1,9 @@
 import type { AuthResponse, ErrorResponse, StaffResponse } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
+export function apiOrigin() {
+  return new URL(BASE, window.location.origin).origin
+}
 export interface Session {
   staff: StaffResponse
   accessToken?: string

@@ -1,4 +1,4 @@
-import { AlertTriangle, Banknote, Check, CheckCircle2, Clock, Flame, Gauge, HandPlatter, Layers, RotateCcw, ShoppingBag, TriangleAlert, UtensilsCrossed, Zap } from 'lucide-react'
+import { AlertTriangle, Banknote, Check, CheckCircle2, Clock, Flame, Gauge, Layers, RotateCcw, ShoppingBag, TriangleAlert, UtensilsCrossed, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError, get, put } from '../api/client'
 import type { BranchLoadResponse, BranchMenuItemResponse, KitchenTicketResponse, OrderResponse, TableResponse } from '../api/types'
@@ -68,7 +68,6 @@ export function Kitchen() {
 
   const pending = applyFilter(allTickets.filter((t) => t.status === 'PENDING'))
   const cooking = applyFilter(allTickets.filter((t) => t.status === 'COOKING'))
-  const ready   = applyFilter(allTickets.filter((t) => t.status === 'READY'))
 
   // Smart Batch: group pending by itemName, show aggregate
   const batchedPending = useMemo(() => {
@@ -307,13 +306,6 @@ export function Kitchen() {
           ))}
         </Column>
 
-        <Column title="Món đã hoàn thành" count={ready.length} Icon={HandPlatter}>
-          {ready.map((t) => (
-            <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)}>
-              <span className="kds-ready-note"><Check size={15} aria-hidden="true" /> Chờ nhân viên xác nhận đã bưng</span>
-            </Ticket>
-          ))}
-        </Column>
       </div>
 
       {cooks && menu.data && (

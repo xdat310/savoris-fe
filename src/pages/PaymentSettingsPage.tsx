@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Building2, CheckCircle2, Copy, Landmark, Upload, WalletCards } from 'lucide-react'
-import { ApiError, get, put, upload } from '../api/client'
+import { ApiError, apiOrigin, get, put, upload } from '../api/client'
 import type { BankAccountSetting, TransferQrSetting } from '../api/types'
 import { useAuth } from '../auth'
 import { ErrorNotice } from '../components/Feedback'
@@ -84,12 +84,13 @@ export function PaymentSettingsPage() {
 
   async function copyWebhook() {
     if (!bank?.webhookPath) return
-    try { await navigator.clipboard.writeText(`${window.location.origin}${bank.webhookPath}`); toast('Đã chép địa chỉ webhook') }
+    try { await navigator.clipboard.writeText(webhookUrl); toast('Đã chép địa chỉ webhook') }
     catch { toast('Không chép được địa chỉ webhook', true) }
   }
 
   const sepayReady = Boolean(bank?.autoConfirm && bank.accountNumber)
   const qrSrc = mediaUrl(qr.url)
+  const webhookUrl = bank?.webhookPath ? `${apiOrigin()}${bank.webhookPath}` : ''
 
   return <div className="ap-page ap-payment-page">
     <div className="ap-heading"><div><span className="ap-kicker">THANH TOÁN · MANG VỀ</span><h1>QR &amp; SePay</h1><p>Cấu hình tài khoản nhận tiền và mã QR riêng cho từng chi nhánh.</p></div>
@@ -122,7 +123,7 @@ export function PaymentSettingsPage() {
         <section className="ap-payment-card ap-payment-sepay">
           <div className="ap-payment-card-head"><span><CheckCircle2 size={18}/></span><div><h2>Tự xác nhận qua SePay</h2><p>Đơn chỉ được đưa vào bếp sau khi hệ thống xác nhận đã nhận đủ tiền.</p></div></div>
           <div className={`ap-sepay-state${sepayReady ? ' is-ready' : ''}`}><i/>{sepayReady ? 'SePay đã bật cho chi nhánh này' : bank.autoConfirm ? 'Cần lưu thông tin tài khoản chi nhánh' : 'Backend chưa bật SEPAY_API_KEY'}</div>
-          {bank.webhookPath && <div className="ap-webhook-copy"><code>{window.location.origin}{bank.webhookPath}</code><button onClick={() => void copyWebhook()} aria-label="Chép địa chỉ webhook"><Copy size={15}/></button></div>}
+          {webhookUrl && <div className="ap-webhook-copy"><code>{webhookUrl}</code><button onClick={() => void copyWebhook()} aria-label="Chép địa chỉ webhook"><Copy size={15}/></button></div>}
           <p className="ap-payment-note">Trong SePay, tạo webhook nhận giao dịch tiền vào với xác thực API Key và dán địa chỉ trên. Đặt cùng khóa API vào biến môi trường <code>SEPAY_API_KEY</code> của backend. Nội dung chuyển khoản phải giữ nguyên mã đơn để hệ thống đối chiếu.</p>
         </section>
       </div>}

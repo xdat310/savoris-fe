@@ -12,6 +12,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [showForgotHelp, setShowForgotHelp] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -71,7 +72,10 @@ export function Login() {
             </button>
           </form>
 
-          <p className="al-foot">Quên mật khẩu? Liên hệ quản lý chi nhánh để đặt lại.</p>
+          <div className="al-foot">
+            <button type="button" className="al-forgot" onClick={() => setShowForgotHelp((visible) => !visible)}>Quên mật khẩu?</button>
+            {showForgotHelp && <p role="status">Vui lòng liên hệ quản lý cơ sở của bạn để đặt lại mật khẩu.</p>}
+          </div>
         </div>
       </main>
     </div>

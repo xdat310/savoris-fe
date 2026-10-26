@@ -251,7 +251,7 @@ function StaffPage() {
   }
   async function resetPassword(staff: StaffDetailResponse) {
     if (!staff.id) return
-    const password = await promptDialog({ title: `Đặt lại mật khẩu cho ${staff.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, confirmLabel: 'Đặt lại' })
+    const password = await promptDialog({ title: `Đặt lại mật khẩu cho ${staff.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, type: 'password', confirmLabel: 'Đặt lại' })
     if (!password) return
     try {
       await put(`/staff/${staff.id}/password`, { newPassword: password })
