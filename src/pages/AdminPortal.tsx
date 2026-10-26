@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom'
-import { Building2, CalendarDays, ChefHat, CircleCheck, ClipboardList, Gauge, LayoutDashboard, LogOut, ShieldAlert, TriangleAlert, Users, Utensils, WalletCards, Globe2, Soup } from 'lucide-react'
+import { Building2, CalendarDays, ChefHat, CircleCheck, ClipboardList, Gauge, LayoutDashboard, LogOut, ShieldAlert, TriangleAlert, Users, Utensils, WalletCards, Globe2, Soup, TrendingUp, QrCode } from 'lucide-react'
 import { ApiError, del, get, post, put } from '../api/client'
 import { STAFF, homeFor, useAuth } from '../auth'
 import type { BranchResponse, CreateStaffRequest, StaffDetailResponse, UpdateBranchRequest } from '../api/types'
@@ -10,6 +10,9 @@ import './admin-portal.css'
 import { WebsiteCMSPage } from './WebsiteCMSPage'
 import { MenuManagementPage } from './MenuManagementPage'
 import { ReservationsPage } from './ReservationsPage'
+import { KitchenForecast } from '../components/KitchenForecast'
+import { PaymentSettingsPage } from './PaymentSettingsPage'
+import { promptDialog } from '../components/ui/Dialog'
 
 const menu = [
   { to: '/admin/overview', label: 'Tổng quan', roles: ['ADMIN'], Icon: LayoutDashboard },
@@ -20,6 +23,8 @@ const menu = [
   { to: '/admin/staff', label: 'Nhân viên', roles: ['ADMIN', 'MANAGER'], Icon: Users },
   { to: '/admin/floor', label: 'Sơ đồ bàn', roles: ['ADMIN', 'MANAGER', 'STAFF'], Icon: Utensils },
   { to: '/admin/kitchen', label: 'Màn hình bếp', roles: ['ADMIN', 'MANAGER', 'CHEF'], Icon: ChefHat },
+  { to: '/admin/forecast', label: 'Dự báo giờ cao điểm', roles: ['ADMIN', 'MANAGER'], Icon: TrendingUp },
+  { to: '/admin/payments', label: 'QR & thanh toán', roles: ['ADMIN', 'MANAGER'], Icon: QrCode },
 ]
 
 function SignedIn() {
@@ -49,6 +54,25 @@ function AdminLayout() {
       <div className="ap-side-user"><div className="ap-avatar">{session?.staff.fullName?.slice(0, 1) ?? 'S'}</div><div className="ap-user-copy"><strong>{session?.staff.fullName}</strong><span>{roleLabel(role)}</span></div><button aria-label="Đăng xuất" title="Đăng xuất" onClick={() => void logout()}><LogOut size={17} /></button></div>
     </aside>
     <main className="ap-content"><header className="ap-top"><span>QUẢN TRỊ / {current.toLocaleUpperCase('vi')}</span><b>{session?.staff.branchName ?? (role === 'ADMIN' ? 'Toàn chuỗi' : '')}</b></header><Outlet /></main>
+  </div>
+}
+
+function PeakHoursPage() {
+  const { role, branches, branchId, setBranchId } = useAuth()
+  const isAdmin = role === 'ADMIN'
+  const selectedBranchId = branchId && branches.some(branch => branch.id === branchId) ? branchId : undefined
+  const selectedBranch = branches.find(branch => branch.id === selectedBranchId)
+
+  return <div className="ap-page ap-forecast-page">
+    <div className="ap-heading">
+      <div><span className="ap-kicker">SAVORIS · PHÂN TÍCH VẬN HÀNH</span><h1>Dự báo giờ cao điểm</h1><p>AI phân tích tải bếp hiện tại và lịch sử vận hành để dự báo hai giờ tiếp theo.</p></div>
+      {isAdmin
+        ? <label>Chi nhánh<select aria-label="Chi nhánh dự báo" value={selectedBranchId ?? ''} onChange={event => setBranchId(event.target.value ? Number(event.target.value) : null)}><option value="">Chọn chi nhánh</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
+        : <span className="ap-forecast-branch">{selectedBranch ? `${selectedBranch.code} · ${selectedBranch.name}` : 'Chi nhánh của bạn'}</span>}
+    </div>
+    {selectedBranchId
+      ? <KitchenForecast key={selectedBranchId} branchId={selectedBranchId} />
+      : <div className="ap-empty ap-forecast-empty"><TrendingUp size={30} /><h2>Chọn chi nhánh để xem dự báo</h2><p>Dữ liệu dự báo được tính riêng cho từng bếp.</p></div>}
   </div>
 }
 
@@ -166,6 +190,7 @@ function StaffPage() {
   const scopedBranch = isAdmin ? undefined : session?.staff.branchId
   const [rows, setRows] = useState<StaffDetailResponse[]>([])
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<StaffDetailResponse | null>(null)
@@ -224,11 +249,21 @@ function StaffPage() {
       setRows((old) => old.map((item) => item.id === staff.id ? { ...item, status: 'ACTIVE' } : item))
     } catch (e) { setError(e instanceof ApiError ? e.message : 'Không mở khóa được tài khoản') }
   }
+  async function resetPassword(staff: StaffDetailResponse) {
+    if (!staff.id) return
+    const password = await promptDialog({ title: `Đặt lại mật khẩu cho ${staff.fullName}`, label: 'Mật khẩu mới (ít nhất 5 ký tự)', minLength: 5, confirmLabel: 'Đặt lại' })
+    if (!password) return
+    try {
+      await put(`/staff/${staff.id}/password`, { newPassword: password })
+      setError('')
+      setNotice(`Đã đặt lại mật khẩu cho ${staff.fullName}. Các phiên đăng nhập cũ đã bị đăng xuất.`)
+    } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Không đặt lại được mật khẩu') }
+  }
   return <div className="ap-page"><div className="ap-heading"><div><span className="ap-kicker">TÀI KHOẢN</span><h1>Nhân viên</h1><p>Quản lý tài khoản và trạng thái làm việc.</p></div><div className="ap-heading-actions">{isAdmin && <select aria-label="Chi nhánh nhân viên" value={branchChoice ?? ''} onChange={(e) => setBranchChoice(e.target.value ? Number(e.target.value) : undefined)}><option value="">Toàn bộ chi nhánh</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select>}<button onClick={() => setShowForm((v) => !v)}>{showForm ? 'Đóng' : 'Thêm nhân viên'}</button></div></div>
-    {error && <ErrorNotice message={error} />}
-    {showForm && <form className="ap-form ap-staff-form" onSubmit={create}><label>Họ và tên<input name="fullName" required /></label><label>Tên đăng nhập<input name="username" minLength={3} required /></label><label>Email<input name="email" type="email" required /></label><label>Số điện thoại<input name="phone" required /></label><label>Mật khẩu khởi tạo<input name="password" type="password" minLength={5} required /></label><label>Vai trò<select name="role" value={newRole} onChange={(e) => setNewRole(e.target.value as CreateStaffRequest['role'])}>{(isAdmin ? ['ADMIN', 'MANAGER', 'STAFF', 'CHEF'] : ['STAFF', 'CHEF']).map((item) => <option key={item} value={item}>{roleLabel(item)}</option>)}</select></label>{newRole !== 'ADMIN' && <label>Chi nhánh<select name="branchId" value={branchChoice ?? scopedBranch ?? ''} onChange={(e) => setBranchChoice(Number(e.target.value))} disabled={!isAdmin}><option value="" disabled>Chọn chi nhánh</option>{(isAdmin ? branches : branches.filter((b) => b.id === scopedBranch)).map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select></label>}<label>Lương theo giờ<input name="hourlyRate" type="number" min="0" defaultValue="30000" required /></label><button disabled={busy}>{busy ? 'Đang tạo…' : 'Tạo tài khoản'}</button></form>}
+    {error && <ErrorNotice message={error} />}{notice && <div className="ap-success" role="status">{notice}</div>}
+    {showForm && <form className="ap-form ap-staff-form" onSubmit={create}><label>Tên nhân viên<input name="fullName" autoComplete="name" placeholder="Nguyễn Văn An" required /></label><label>Tên đăng nhập<input name="username" minLength={3} required /></label><label>Email<input name="email" type="email" required /></label><label>Số điện thoại<input name="phone" required /></label><label>Mật khẩu khởi tạo<input name="password" type="password" minLength={5} required /></label><label>Vai trò<select name="role" value={newRole} onChange={(e) => setNewRole(e.target.value as CreateStaffRequest['role'])}>{(isAdmin ? ['ADMIN', 'MANAGER', 'STAFF', 'CHEF'] : ['STAFF', 'CHEF']).map((item) => <option key={item} value={item}>{roleLabel(item)}</option>)}</select></label>{newRole !== 'ADMIN' && <label>Chi nhánh<select name="branchId" value={branchChoice ?? scopedBranch ?? ''} onChange={(e) => setBranchChoice(Number(e.target.value))} disabled={!isAdmin}><option value="" disabled>Chọn chi nhánh</option>{(isAdmin ? branches : branches.filter((b) => b.id === scopedBranch)).map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select></label>}<label>Lương theo giờ<input name="hourlyRate" type="number" min="0" defaultValue="30000" required /></label><button disabled={busy}>{busy ? 'Đang tạo…' : 'Tạo tài khoản'}</button></form>}
     {editing && <form className="ap-form ap-staff-form" onSubmit={updateStaff}><label>Họ và tên<input name="fullName" defaultValue={editing.fullName} required /></label><label>Email<input name="email" type="email" defaultValue={editing.email} required /></label><label>Số điện thoại<input name="phone" defaultValue={editing.phone} required /></label><label>Vai trò{!isAdmin && !['STAFF', 'CHEF'].includes(editing.role ?? '') ? <><span>{roleLabel(editing.role)}</span><input type="hidden" name="role" value={editing.role ?? ''} /></> : <select name="role" defaultValue={editing.role}>{(isAdmin ? ['ADMIN', 'MANAGER', 'STAFF', 'CHEF'] : ['STAFF', 'CHEF']).map((item) => <option key={item} value={item}>{roleLabel(item)}</option>)}</select>}</label>{editing.role !== 'ADMIN' && <label>Chi nhánh<select name="branchId" defaultValue={editing.branchId} disabled={!isAdmin}>{(isAdmin ? branches : branches.filter((b) => b.id === scopedBranch)).map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select></label>}<label>Lương theo giờ<input name="hourlyRate" type="number" min="0" defaultValue={editing.hourlyRate ?? 0} required /></label><button>Lưu tài khoản</button><button type="button" className="ap-secondary" onClick={() => setEditing(null)}>Hủy</button></form>}
-    <div className="ap-table-wrap"><table className="ap-table"><thead><tr><th>Nhân viên</th><th>Tên đăng nhập</th>{isAdmin && <th>Chi nhánh</th>}<th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead><tbody>{rows.map((staff) => <tr key={staff.id}><td><strong>{staff.fullName}</strong><small>{staff.code}</small></td><td>{staff.username}</td>{isAdmin && <td>{branches.find((b) => b.id === staff.branchId)?.name ?? 'Toàn chuỗi'}</td>}<td>{staff.email}</td><td>{roleLabel(staff.role)}</td><td><span className={`ap-status ${staff.status === 'ACTIVE' ? 'active' : ''}`}>{staff.status === 'ACTIVE' ? 'Đang hoạt động' : staff.status === 'LOCKED' ? 'Đã khóa' : staff.status === 'RESIGNED' ? 'Đã nghỉ việc' : staff.status}</span></td><td className="ap-row-actions"><button className="ap-text-button" onClick={() => { setEditing(staff); setShowForm(false) }}>Sửa</button>{staff.status === 'ACTIVE' ? <button className="ap-text-button" onClick={() => void lockStaff(staff)}>Khóa</button> : <button className="ap-text-button" onClick={() => void activateStaff(staff)}>Mở khóa</button>}</td></tr>)}</tbody></table>{rows.length === 0 && <div className="ap-empty">Chưa có tài khoản nhân viên.</div>}</div>
+    <div className="ap-table-wrap"><table className="ap-table"><thead><tr><th>Nhân viên</th><th>Tên đăng nhập</th>{isAdmin && <th>Chi nhánh</th>}<th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead><tbody>{rows.map((staff) => <tr key={staff.id}><td><strong>{staff.fullName}</strong><small>{staff.code}</small></td><td>{staff.username}</td>{isAdmin && <td>{branches.find((b) => b.id === staff.branchId)?.name ?? 'Toàn chuỗi'}</td>}<td>{staff.email}</td><td>{roleLabel(staff.role)}</td><td><span className={`ap-status ${staff.status === 'ACTIVE' ? 'active' : ''}`}>{staff.status === 'ACTIVE' ? 'Đang hoạt động' : staff.status === 'LOCKED' ? 'Đã khóa' : staff.status === 'RESIGNED' ? 'Đã nghỉ việc' : staff.status}</span></td><td className="ap-row-actions"><button className="ap-text-button" onClick={() => { setEditing(staff); setShowForm(false) }}>Sửa</button><button className="ap-text-button" onClick={() => void resetPassword(staff)}>Đổi mật khẩu</button>{staff.status === 'ACTIVE' ? <button className="ap-text-button" onClick={() => void lockStaff(staff)}>Khóa</button> : <button className="ap-text-button" onClick={() => void activateStaff(staff)}>Mở khóa</button>}</td></tr>)}</tbody></table>{rows.length === 0 && <div className="ap-empty">Chưa có tài khoản nhân viên.</div>}</div>
   </div>
 }
 
@@ -265,6 +300,8 @@ export function AdminRoutes() {
     <Route path="staff" element={<Allowed roles={['ADMIN', 'MANAGER']}><StaffPage /></Allowed>} />
     <Route path="floor" element={<Allowed roles={['ADMIN', 'MANAGER', 'STAFF']}><OperationalPage title="Sơ đồ bàn" staffPath="/nha-hang/ban-hang" /></Allowed>} />
     <Route path="kitchen" element={<Allowed roles={['ADMIN', 'MANAGER', 'CHEF']}><OperationalPage title="Màn hình bếp" staffPath="/nha-hang/bep" /></Allowed>} />
+    <Route path="forecast" element={<Allowed roles={['ADMIN', 'MANAGER']}><PeakHoursPage /></Allowed>} />
+    <Route path="payments" element={<Allowed roles={['ADMIN', 'MANAGER']}><PaymentSettingsPage /></Allowed>} />
     <Route path="*" element={<NoAccess />} />
   </Route></Route><Route path="*" element={<Navigate to={`${STAFF}/dang-nhap`} replace />} /></Routes>
 }

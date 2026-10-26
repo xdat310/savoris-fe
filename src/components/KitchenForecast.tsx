@@ -25,7 +25,7 @@ export function KitchenForecast({ branchId }: { branchId: number }) {
   return (
     <section className="panel kitchen-forecast" aria-labelledby="kitchen-forecast-title">
       <div className="panel-head kitchen-forecast__head">
-        <div><h2 id="kitchen-forecast-title">Dự báo tải bếp</h2><p>Phân tích hai giờ tới từ tình trạng bếp và lịch sử cùng thứ trong 4 tuần.</p></div>
+        <div><h2 id="kitchen-forecast-title">Dự báo giờ cao điểm</h2><p>AI phân tích tải bếp hiện tại và lịch sử cùng thứ trong bốn tuần để dự báo hai giờ tới.</p></div>
         <button type="button" className="btn btn-primary" onClick={() => void analyze()} disabled={loading}>
           {loading ? <><LoaderCircle aria-hidden="true" className="kitchen-forecast__spin" /> Đang phân tích</> : <><RefreshCw aria-hidden="true" /> Phân tích tải bếp</>}
         </button>

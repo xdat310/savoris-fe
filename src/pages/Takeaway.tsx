@@ -1,4 +1,4 @@
-import { ArrowLeft, Banknote, Landmark, MapPin, Minus, Plus, Send, ShoppingBag, X } from 'lucide-react'
+import { ArrowLeft, Landmark, MapPin, Minus, Plus, Send, ShoppingBag, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, get, post } from '../api/client'
@@ -15,7 +15,6 @@ import { byDistance, formatKm, useMyLocation } from '../lib/geo'
 import beefWine from '../assets/photos/beef-steak-wine.webp'
 
 interface Line { dish: BranchMenuItemResponse; quantity: number }
-type PayMethod = 'CASH' | 'BANK_TRANSFER'
 
 const BRANCH_KEY = 'savoris.takeawayBranch'
 const LEGACY_BRANCH_KEY = 'dinechain.takeawayBranch'
@@ -33,7 +32,7 @@ function savedBranch(): number | null {
 
 const branchSlugOf = (code?: string) => (code ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
-// Takeaway from the website: pick the branch to collect from, pick dishes, pay first (cash at the counter or bank transfer)
+// Web takeaway orders require advance bank transfer; the kitchen receives them only after payment.
 export function Takeaway() {
   const { branchSlug } = useParams()
   const navigate = useNavigate()
@@ -120,7 +119,6 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
-  const [method, setMethod] = useState<PayMethod>(branch.transferAvailable ? 'BANK_TRANSFER' : 'CASH')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pickupEstimate, setPickupEstimate] = useState<TakeawayEstimateResponse | null>(null)
@@ -186,7 +184,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
     setError(null)
     try {
       const order = await post<WebTakeawayResponse>('/public/takeaway-orders', {
-        branchId: branch.id, guestName: name.trim(), guestPhone: phone.replace(/\s/g, ''), payMethod: method,
+        branchId: branch.id, guestName: name.trim(), guestPhone: phone.replace(/\s/g, ''), payMethod: 'BANK_TRANSFER',
         pickupAt: pickupEstimate.pickupAt,
         notes: notes.trim() || undefined,
         items: lines.map((l) => ({ menuItemId: l.dish.menuItemId, quantity: l.quantity })),
@@ -259,15 +257,10 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
                 <label className="field">Ghi chú cho bếp<input className="input" maxLength={500} placeholder="Ít cay, không hành…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
                 <fieldset className="pay-methods">
                   <legend>Thanh toán trước</legend>
-                  <label className={`pay-method${method === 'BANK_TRANSFER' ? ' on' : ''}${branch.transferAvailable ? '' : ' off'}`}>
-                    <input type="radio" name="pay" value="BANK_TRANSFER" disabled={!branch.transferAvailable} checked={method === 'BANK_TRANSFER'} onChange={() => setMethod('BANK_TRANSFER')} />
+                  <label className={`pay-method on${branch.transferAvailable ? '' : ' off'}`}>
+                    <input type="radio" name="pay" value="BANK_TRANSFER" disabled checked />
                     <Landmark size={20} aria-hidden="true" />
-                    <span><strong>Chuyển khoản</strong><span>{branch.transferAvailable ? 'Quét mã QR ngân hàng của quán' : 'Quán chưa mở chuyển khoản'}</span></span>
-                  </label>
-                  <label className={`pay-method${method === 'CASH' ? ' on' : ''}`}>
-                    <input type="radio" name="pay" value="CASH" checked={method === 'CASH'} onChange={() => setMethod('CASH')} />
-                    <Banknote size={20} aria-hidden="true" />
-                    <span><strong>Tiền mặt tại quầy</strong><span>Đến quầy đọc mã đơn và trả tiền</span></span>
+                    <span><strong>Chuyển khoản trước</strong><span>{branch.transferAvailable ? 'Quét mã QR của quán; đơn chỉ vào bếp sau khi nhận đủ tiền' : 'Chi nhánh chưa cấu hình tài khoản hoặc mã QR nhận tiền'}</span></span>
                   </label>
                 </fieldset>
               </div>
@@ -279,9 +272,9 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
                 {vat > 0 && <div className="mrow"><span>VAT {menu.data?.vatPercent}%</span><span>{money(vat)}</span></div>}
                 <div className="total"><span>Cần trả</span><strong className="num">{money(subtotal + vat)}</strong></div>
               </div>
-              <button className="btn btn-primary btn-lg btn-block" disabled={sending || count === 0 || estimateLoading || !pickupEstimate?.canAccept}>
+              <button className="btn btn-primary btn-lg btn-block" disabled={sending || count === 0 || estimateLoading || !pickupEstimate?.canAccept || !branch.transferAvailable}>
                 {sending ? <span className="spinner" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
-                {method === 'BANK_TRANSFER' ? 'Đặt món & chuyển khoản' : 'Đặt món'}
+                Đặt món &amp; chuyển khoản trước
               </button>
             </div>
           </form>

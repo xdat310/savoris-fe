@@ -37,7 +37,8 @@ export function Shell() {
   const { pathname } = useLocation()
   const staff = session!.staff
   const branch = branches.find((b) => b.id === branchId)
-  const isFullscreen = FULLSCREEN_ROLES.includes(role ?? '')
+  // The kitchen route is a focused KDS screen for every role; management navigation stays in /admin.
+  const isFullscreen = pathname === `${STAFF}/bep` || FULLSCREEN_ROLES.includes(role ?? '')
   const pageTitle = TITLES[pathname] ?? 'Savoris'
   // Unread count is not provided by the API yet; the bell shows a number as soon as one is passed here
   const unread = 0
@@ -73,7 +74,7 @@ export function Shell() {
   // BRANCH_MANAGER: branch ops + website menu editor
   const opsLinks = [
     can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Glyph: LayoutDashboard },
-    can.pos(role)             && { to: `${STAFF}/ho-tro`,    label: 'Hỗ trợ khách hàng', Glyph: Headset },
+    can.pos(role) && pathname !== `${STAFF}/bep` && { to: `${STAFF}/ho-tro`, label: 'Hỗ trợ khách hàng', Glyph: Headset },
     can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Glyph: Users },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Glyph: QrCode },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Glyph: Package },

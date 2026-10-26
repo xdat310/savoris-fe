@@ -1,4 +1,4 @@
-import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
+import { MapPin, Phone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { branchLabel, formatBranchAddress, formatBranchPhone, type PublicBranch } from '../../api/site'
@@ -70,7 +70,6 @@ export function SiteContact({ branches }: Props) {
   const hasCoordinates = (branch.latitude ?? branch.lat) != null && (branch.longitude ?? branch.lng) != null
   const mapSrc = (!hasCoordinates ? branch.google_maps_embed?.trim() : '') ||
     (query ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed` : '')
-  const mapLink = query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : ''
 
   return (
     <section className="ctt-wrap" id="lien-he" aria-label="Liên hệ và địa chỉ nhà hàng">
@@ -115,38 +114,6 @@ export function SiteContact({ branches }: Props) {
             ))}
           </div>
 
-          {mapLink && (
-            <a className="ctt-link ctt-map-link" href={mapLink} target="_blank" rel="noreferrer">
-              <MapPin size={14} aria-hidden="true" /> Xem trên Google Maps
-              <ExternalLink size={13} aria-hidden="true" />
-            </a>
-          )}
-
-          {(branch.phone || branch.email) && (
-            <div className="ctt-contact-links">
-              {branch.phone && (
-                <a className="ctt-link" href={`tel:${branch.phone.replace(/\s/g, '')}`}>
-                  <Phone size={14} aria-hidden="true" /> {formatBranchPhone(branch.phone)}
-                </a>
-              )}
-              {branch.email && (
-                <a className="ctt-link" href={`mailto:${branch.email}`}>
-                  <Mail size={14} aria-hidden="true" /> {branch.email}
-                </a>
-              )}
-            </div>
-          )}
-
-          {branch.hours && branch.hours.length > 0 && (
-            <div className="ctt-hours">
-              <p className="ctt-group-label">Giờ mở cửa</p>
-              {compactHours(branch.hours).map((hours, index) => (
-                <div key={index} className="ctt-hour-row">
-                  <span>{hours.days}</span><span className="ctt-gold">{hours.time}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </section>

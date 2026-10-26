@@ -19,9 +19,8 @@ import { RowMenu } from '../components/ui/RowMenu'
 import { EMPTY, ROLE_LABEL, date, dateTime, hourly, isoDate, money, number, phone, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { BranchSettings } from './BranchSettings'
-import { KitchenForecast } from '../components/KitchenForecast'
 
-type Tab = 'staff' | 'shifts' | 'menu' | 'reservations' | 'branch' | 'forecast'
+type Tab = 'staff' | 'shifts' | 'menu' | 'reservations' | 'branch'
 
 export function Manager() {
   const { branches, branchId } = useAuth()
@@ -36,7 +35,7 @@ export function Manager() {
         </div>
       </div>
       <TabList label="Mục quản lý chi nhánh">
-        {([['staff', 'Nhân viên'], ['shifts', 'Ca làm & bảng công'], ['menu', 'Menu chi nhánh'], ['reservations', 'Đặt bàn'], ['branch', 'Chi nhánh'], ['forecast', 'Dự báo bếp']] as const).map(([id, label]) => (
+        {([['staff', 'Nhân viên'], ['shifts', 'Ca làm & bảng công'], ['menu', 'Menu chi nhánh'], ['reservations', 'Đặt bàn'], ['branch', 'Chi nhánh']] as const).map(([id, label]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </TabList>
@@ -45,7 +44,6 @@ export function Manager() {
       {branchId && tab === 'menu' && <BranchMenu branchId={branchId} />}
       {branchId && tab === 'reservations' && <Reservations branchId={branchId} />}
       {branch && tab === 'branch' && <BranchSettings branch={branch} />}
-      {branchId && tab === 'forecast' && <KitchenForecast branchId={branchId} />}
     </div>
   )
 }

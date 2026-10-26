@@ -85,7 +85,7 @@ export function Kitchen() {
     return [...map.values()].sort((a, b) => b.totalQty - a.totalQty)
   }, [batchMode, pending])
 
-  async function move(t: KitchenTicketResponse, step: 'start' | 'ready' | 'served') {
+  async function move(t: KitchenTicketResponse, step: 'start' | 'ready') {
     if (t.awaitingPayment) return
     setBusyId(t.itemId!)
     try {
@@ -307,13 +307,10 @@ export function Kitchen() {
           ))}
         </Column>
 
-        <Column title="Xong · chờ bưng" count={ready.length} Icon={HandPlatter}>
+        <Column title="Món đã hoàn thành" count={ready.length} Icon={HandPlatter}>
           {ready.map((t) => (
             <Ticket key={t.itemId} t={t} image={imageOf(t.menuItemId)} tableName={tableName(t.tableId)}>
-              <button className="btn btn-xl btn-block"
-                disabled={busyId === t.itemId} data-loading={busyId === t.itemId || undefined} onClick={() => move(t, 'served')}>
-                <Icon icon={HandPlatter} size="touch" /> Đã bưng ra
-              </button>
+              <span className="kds-ready-note"><Check size={15} aria-hidden="true" /> Chờ nhân viên xác nhận đã bưng</span>
             </Ticket>
           ))}
         </Column>
