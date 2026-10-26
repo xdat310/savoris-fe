@@ -198,7 +198,7 @@ function TakeawayMenu({ branch, onChangeBranch }: { branch: PublicBranchResponse
 
       {checkout && (
         <div className="guest-sheet-backdrop" onClick={() => !sending && setCheckout(false)}>
-          <form className="guest-sheet" role="dialog" aria-modal="true" aria-label="Đặt món mang về" onClick={(e) => e.stopPropagation()} onSubmit={place}>
+          <form className="guest-sheet guest-checkout-sheet" role="dialog" aria-modal="true" aria-label="Đặt món mang về" onClick={(e) => e.stopPropagation()} onSubmit={place}>
             <div className="panel-head">
               <h2>Mang về · {branchLabel(branch)}</h2>
               <button type="button" className="icon-btn" aria-label="Đóng" onClick={() => setCheckout(false)}><X size={18} /></button>

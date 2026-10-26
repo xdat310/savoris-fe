@@ -22,6 +22,8 @@ import { BranchMenu, PublicBranch } from './pages/PublicBranch'
 import { NotFound } from './pages/NotFound'
 import { BookingPage } from './pages/BookingPage'
 import { PublicErrorBoundary } from './components/PublicErrorBoundary'
+import { CustomerSupport } from './pages/CustomerSupport'
+import { SupportInbox } from './pages/SupportInbox'
 
 function Guard({ allow, children }: { allow: (role?: string) => boolean; children: ReactNode }) {
   const { role } = useAuth()
@@ -41,6 +43,7 @@ function AppRoutes() {
         <Route path="/chi-nhanh/:slug" element={<PublicErrorBoundary><PublicBranch /></PublicErrorBoundary>} />
         <Route path="/chi-nhanh/:slug/thuc-don" element={<PublicErrorBoundary><BranchMenu /></PublicErrorBoundary>} />
         <Route path="/dat-ban" element={<PublicErrorBoundary><BookingPage /></PublicErrorBoundary>} />
+        <Route path="/ho-tro" element={<PublicErrorBoundary><CustomerSupport /></PublicErrorBoundary>} />
         <Route path="/goi-mon/:token" element={<PublicErrorBoundary><GuestOrder /></PublicErrorBoundary>} />
         <Route path="/mang-ve" element={<PublicErrorBoundary><Takeaway /></PublicErrorBoundary>} />
         <Route path="/mang-ve/:branchSlug" element={<PublicErrorBoundary><Takeaway /></PublicErrorBoundary>} />
@@ -76,6 +79,7 @@ function AppRoutes() {
           element={<Guard allow={can.pos}>{branchId ? <Pos key={branchId} /> : null}</Guard>} />
         <Route path="bep"
           element={<Guard allow={can.kitchen}>{branchId ? <Kitchen key={branchId} /> : null}</Guard>} />
+        <Route path="ho-tro" element={<Guard allow={can.pos}><SupportInbox /></Guard>} />
         <Route path="ca-cua-toi"
           element={<Guard allow={can.shifts}><MyShifts /></Guard>} />
 

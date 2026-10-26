@@ -1,6 +1,6 @@
 import {
   Bell, BookOpen, ChefHat, ChevronDown, ExternalLink, Globe, LayoutDashboard, LogOut, Menu,
-  Package, PanelLeftClose, PanelLeftOpen, QrCode, ReceiptText, Users,
+  Package, PanelLeftClose, PanelLeftOpen, QrCode, ReceiptText, Users, Headset,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -12,6 +12,7 @@ const TITLES: Record<string, string> = {
   [`${STAFF}/chuoi`]:         'Toàn chuỗi',
   [`${STAFF}/chi-nhanh`]:     'Chi nhánh',
   [`${STAFF}/ban-hang`]:      'Bán hàng',
+  [`${STAFF}/ho-tro`]:        'Hỗ trợ khách hàng',
   [`${STAFF}/bep`]:           'Bếp',
   [`${STAFF}/ma-qr`]:         'Mã QR bàn',
   [`${STAFF}/kho`]:           'Kho & nhập hàng',
@@ -72,6 +73,7 @@ export function Shell() {
   // BRANCH_MANAGER: branch ops + website menu editor
   const opsLinks = [
     can.owner(role)           && { to: `${STAFF}/chuoi`,     label: 'Toàn chuỗi',       Glyph: LayoutDashboard },
+    can.pos(role)             && { to: `${STAFF}/ho-tro`,    label: 'Hỗ trợ khách hàng', Glyph: Headset },
     can.branchAdmin(role)     && { to: `${STAFF}/chi-nhanh`, label: 'Chi nhánh',         Glyph: Users },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/ma-qr`,    label: 'Mã QR bàn',         Glyph: QrCode },
     role === 'BRANCH_MANAGER' && { to: `${STAFF}/kho`,      label: 'Kho & nhập hàng',   Glyph: Package },

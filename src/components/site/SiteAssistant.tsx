@@ -1,5 +1,6 @@
 import { Bot, LoaderCircle, MessageCircle, Send, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ApiError, post } from '../../api/client'
 import './site-assistant.css'
 
@@ -15,6 +16,8 @@ export function SiteAssistant() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [resolved, setResolved] = useState<number[]>([])
+  const navigate = useNavigate()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -43,9 +46,15 @@ export function SiteAssistant() {
       const result = await post<ChatResponse>('/public/ai/chat', { message, history: previous })
       setTurns(current => [...current, { role: 'assistant', content: result.reply }])
     } catch (cause) {
-      const note = cause instanceof ApiError && cause.status === 503
-        ? 'Trợ lý đang tạm nghỉ. Bạn có thể gọi trực tiếp cho chi nhánh hoặc thử lại sau.'
-        : 'Mình chưa kết nối được lúc này. Kiểm tra mạng rồi thử gửi lại nhé.'
+      const note = cause instanceof ApiError && cause.code === 'AI_PROVIDER_FAILED'
+        ? 'Dịch vụ AI đang gặp sự cố khi xử lý câu hỏi. Tin nhắn vẫn được giữ lại; bạn có thể thử gửi lại sau.'
+        : cause instanceof ApiError && cause.status === 503
+          ? 'Trợ lý đang tạm nghỉ. Bạn có thể gọi trực tiếp cho chi nhánh hoặc thử lại sau.'
+          : cause instanceof ApiError && cause.status === 429
+            ? 'Trợ lý đang nhận nhiều câu hỏi. Chờ một chút rồi thử lại nhé.'
+            : cause instanceof ApiError
+              ? 'Trợ lý chưa xử lý được câu hỏi này. Bạn thử gửi lại sau nhé.'
+              : 'Mình chưa kết nối được lúc này. Kiểm tra mạng rồi thử gửi lại nhé.'
       setError(note)
     } finally {
       setBusy(false)
@@ -68,12 +77,28 @@ export function SiteAssistant() {
           </header>
           <div className="site-assistant__messages" aria-live="polite" aria-relevant="additions text">
             {turns.map((turn, index) => (
+              <div key={`${index}-${turn.role}`}>
               <p className={`site-assistant__bubble site-assistant__bubble--${turn.role}`} key={`${index}-${turn.role}`}>
                 {turn.content}
               </p>
+              {turn.role === 'assistant' && index > 0 && !resolved.includes(index) && (
+                <div className="site-assistant__resolution" key={`resolution-${index}`}>
+                  <span>Câu trả lời này đã giải quyết được vấn đề của bạn chưa?</span>
+                  <button type="button" onClick={() => setResolved(current => [...current, index])}>Đã giải quyết</button>
+                  <button type="button" onClick={() => {
+                    const question = [...turns.slice(0, index)].reverse().find(item => item.role === 'user')?.content ?? ''
+                    navigate('/ho-tro', { state: { question, answer: turn.content } })
+                  }}>Chưa, cần hỗ trợ</button>
+                </div>
+              )}
+              {turn.role === 'assistant' && resolved.includes(index) && <small className="site-assistant__thanks" key={`thanks-${index}`}>Cảm ơn bạn đã xác nhận. Savoris luôn sẵn sàng hỗ trợ!</small>}
+              </div>
             ))}
             {busy && <p className="site-assistant__typing"><LoaderCircle aria-hidden="true" /> Đang tìm thông tin…</p>}
-            {error && <p className="site-assistant__error" role="alert">{error}</p>}
+            {error && <div className="site-assistant__error" role="alert"><p>{error}</p><button type="button" onClick={() => {
+              const question = [...turns].reverse().find(item => item.role === 'user')?.content ?? ''
+              navigate('/ho-tro', { state: { question, answer: error } })
+            }}>Liên hệ chuyên gia hỗ trợ</button></div>}
             <div ref={endRef} />
           </div>
           {turns.length === 1 && (

@@ -13,7 +13,28 @@ import { applySeo } from '../lib/seo'
 function imageUrl(url?: unknown) {
   return typeof url === 'string' ? url : ''
 }
-const dayNames = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
+type OpeningHour = SiteBranchPage['openingHours'][number]
+type OpeningHourRange = OpeningHour & { startDay: number; endDay: number }
+
+function groupOpeningHours(hours: OpeningHour[]): OpeningHourRange[] {
+  const sorted = [...hours].sort((a, b) => a.weekday - b.weekday)
+  return sorted.reduce<OpeningHourRange[]>((ranges, hour) => {
+    const previous = ranges[ranges.length - 1]
+    const sameSchedule = previous && previous.closed === hour.closed && previous.opens_at === hour.opens_at && previous.closes_at === hour.closes_at
+    if (sameSchedule && hour.weekday === previous.endDay + 1) previous.endDay = hour.weekday
+    else ranges.push({ ...hour, startDay: hour.weekday, endDay: hour.weekday })
+    return ranges
+  }, [])
+}
+
+function shortDay(day: number) {
+  return day === 7 ? 'CN' : `T${day + 1}`
+}
+
+function shortTime(time?: string) {
+  const value = String(time ?? '').slice(0, 5)
+  return value.endsWith(':00') ? value.slice(0, 2) : value
+}
 
 export function PublicBranch() {
   const { slug = '' } = useParams()
@@ -64,6 +85,7 @@ export function PublicBranch() {
   const liveStatus = liveBranch?.openNow === false ? 'Đã đóng cửa' : liveBranch?.acceptingTakeaway === false ? 'Tạm dừng mang về' : Number(liveBranch?.estimatedWaitMinutes ?? 0) >= 20 ? 'Đang đông' : liveBranch?.openNow === true ? 'Đang mở' : 'Đang cập nhật'
   const allGallery = (Array.isArray(data.gallery) ? data.gallery : []).filter(item => typeof item.image_url === 'string' && item.image_url) as Record<string, unknown>[]
   const openingHours = Array.isArray(data.openingHours) ? data.openingHours : []
+  const compactHours = groupOpeningHours(openingHours)
   const gallery = showAllGallery ? allGallery : allGallery.slice(0, 5)
   const storySections = Array.isArray((page as Record<string, unknown>).storySections) ? (page as Record<string, unknown>).storySections as StorySectionItem[] : []
   const featuredDishes = groupDishes(menuPreview?.categories, menuPreview?.menu).flatMap(group => group.dishes).filter(dish => dish.imageUrl).slice(0, 6)
@@ -74,10 +96,10 @@ export function PublicBranch() {
       <a className="venue-scroll" href="#cau-chuyen">Khám phá <ArrowDown size={14}/></a>
     </section>
     <StorySections items={storySections} id="cau-chuyen"/>
-    {featuredDishes.length>0&&<section className="venue-featured-menu" id="thuc-don"><header><span>ĐƯỢC YÊU THÍCH TẠI {branch.name.toLocaleUpperCase('vi')}</span><h2>Hương vị đặc sắc</h2></header><div>{featuredDishes.map(dish=><article key={dish.menuItemId}>{dish.imageUrl&&<img src={dish.imageUrl} alt={dish.name??''} loading="lazy"/>}<h3>{dish.name}</h3></article>)}</div><nav><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Xem thực đơn</Link><Link to={`/mang-ve/${branch.slug}`}>Đặt mang về</Link></nav></section>}
+    {featuredDishes.length>0&&<section className="venue-featured-menu" id="thuc-don"><header><span>{String(page.featuredEyebrow || `ĐƯỢC YÊU THÍCH TẠI ${branch.name.toLocaleUpperCase('vi')}`)}</span><h2>{String(page.featuredTitle || 'Hương vị đặc sắc')}</h2></header><div>{featuredDishes.map(dish=><article key={dish.menuItemId}>{dish.imageUrl&&<img src={dish.imageUrl} alt={dish.name??''} loading="lazy"/>}<h3>{dish.name}</h3></article>)}</div><nav><Link to={`/chi-nhanh/${branch.slug}/thuc-don`}>Xem thực đơn</Link><Link to={`/mang-ve/${branch.slug}`}>Đặt mang về</Link></nav></section>}
     {page.privateEvent&&<section className="venue-event" id="su-kien" style={{backgroundImage:`linear-gradient(90deg,#000c,#0008),url("${String(page.privateEventImage||hero)}")`}} data-reveal><div><span>SAVORIS · PRIVATE EVENTS</span><h2>{String(page.privateEventTitle ?? 'Sự kiện riêng,\ndấu ấn của bạn.').split('\n').map((line,index)=><span key={index}>{index>0&&<br/>}{line}</span>)}</h2></div><div><p>{String(page.privateEvent)}</p><a className="venue-button" href={`mailto:${branch.email ?? ''}?subject=${encodeURIComponent('Tổ chức sự kiện tại Savoris')}`}>Liên hệ tổ chức <ArrowUpRight size={16}/></a></div></section>}
     {gallery.length > 0 && <section className="venue-gallery" id="thu-vien"><div className="venue-section-heading" data-reveal><span>KHÔNG GIAN SAVORIS</span><h2>Khoảnh khắc tại bàn.</h2></div><div className="venue-gallery-grid">{gallery.map((item,index) => <button className={`venue-gallery-cell venue-gallery-cell--${index%5}`} key={String(item.id)} onClick={() => setActiveImage(imageUrl(item.image_url))} aria-label={`Mở ảnh ${String(item.alt)}`} data-reveal><img src={imageUrl(item.image_url)} alt={String(item.alt)} loading="lazy"/><span>{String(item.alt)}</span></button>)}</div>{!showAllGallery&&allGallery.length>5&&<button className="venue-gallery-more" onClick={()=>setShowAllGallery(true)}>Xem thêm ảnh</button>}</section>}
-    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><span className="venue-live-status"><i/>{liveStatus}</span>{branch.address&&<p><MapPin size={15}/>{branch.address}, {branch.city}</p>}{branch.phone&&<a href={`tel:${branch.phone}`}><Phone size={15}/>{branch.phone}</a>}{openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{openingHours.map(hour => <p className={hour.weekday===today?'is-today':''} key={hour.weekday}><span>{dayNames[hour.weekday]}{hour.weekday===today?' · Hôm nay':''}</span><span>{hour.closed ? 'Nghỉ' : `${String(hour.opens_at ?? '').slice(0,5)} – ${String(hour.closes_at ?? '').slice(0,5)}`}</span></p>)}</div>}</div>{branch.address&&<iframe title={`Bản đồ ${branch.name}`} src={String(page.mapUrl ?? `https://maps.google.com/maps?q=${encodeURIComponent(`${branch.address} ${branch.city}`)}&output=embed`)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/>}</section>
+    <section className="venue-contact" id="lien-he"><div className="venue-contact-copy"><span>GHÉ THĂM CHÚNG TÔI</span><h2>{branchLabel(branch)}</h2><span className="venue-live-status"><i/>{liveStatus}</span>{branch.address&&<p><MapPin size={15}/>{branch.address}, {branch.city}</p>}{branch.phone&&<a href={`tel:${branch.phone}`}><Phone size={15}/>{branch.phone}</a>}{openingHours.some(h => !h.closed) && <div className="venue-hours"><strong>Giờ mở cửa</strong>{compactHours.map(hour => <p className={hour.startDay<=today && hour.endDay>=today?'is-today':''} key={hour.startDay}><span>{shortDay(hour.startDay)}{hour.endDay>hour.startDay?`–${shortDay(hour.endDay)}`:''}{hour.startDay<=today && hour.endDay>=today?' · Hôm nay':''}</span><span>{hour.closed ? 'Nghỉ' : `${shortTime(hour.opens_at)}–${shortTime(hour.closes_at)}h`}</span></p>)}</div>}</div>{branch.address&&<iframe title={`Bản đồ ${branch.name}`} src={String(page.mapUrl ?? `https://maps.google.com/maps?q=${encodeURIComponent(`${branch.address} ${branch.city}`)}&output=embed`)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/>}</section>
     <footer className="venue-footer"><Link to="/">SAVORIS</Link><span>Ẩm thực Việt đương đại, tinh tế trong từng khoảnh khắc.</span><Link to={booking}>Đặt bàn <ArrowUpRight size={14}/></Link></footer>
     {activeImage && <button className="venue-lightbox" onClick={() => setActiveImage(null)} aria-label="Đóng ảnh"><img src={activeImage} alt="Ảnh phóng lớn"/><span>Đóng ×</span></button>}
   </main>

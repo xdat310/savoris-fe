@@ -20,7 +20,7 @@ const MESSAGES: Record<string, string> = {
   ORDER_NOT_PAID: 'Đơn chưa thanh toán',
   NOT_ENOUGH_POINTS: 'Khách không đủ điểm',
   PROMOTION_NOT_APPLICABLE: 'Mã khuyến mãi không dùng được cho đơn này',
-  PAYMENT_METHOD_NOT_SUPPORTED: 'Chỉ nhận tiền mặt',
+  PAYMENT_METHOD_NOT_SUPPORTED: 'Phương thức thanh toán này chưa được hỗ trợ cho đơn hàng',
   DUPLICATE_TABLE_NAME: 'Chi nhánh đã có bàn tên này, đặt tên khác',
 }
 

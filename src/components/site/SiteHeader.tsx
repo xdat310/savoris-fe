@@ -17,7 +17,7 @@ export function SiteHeader({ nav = [], branches = [], currentBranchSlug, current
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [branchOpen, setBranchOpen] = useState(false)
-  const trigger = useRef<HTMLButtonElement>(null)
+  const trigger = useRef<HTMLAnchorElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const branchList = (Array.isArray(branches) ? branches : []).filter(branch => Boolean(branch.slug)).slice(0, 4)
   const links = (Array.isArray(nav) ? nav : [])
@@ -70,7 +70,7 @@ export function SiteHeader({ nav = [], branches = [], currentBranchSlug, current
     <header className={`sh${scrolled ? ' sh--solid' : ''}`} role="banner"><div className="sh-inner">
       <Link to="/" className="sh-logo" aria-label="Savoris — trang chủ">{logoUrl?<img className="sh-logo-img" src={logoUrl} alt="Savoris"/>:<span className="sh-logo-text">SAVORIS</span>}{currentBranchSlug && <span className="sh-current-branch">{currentBranchName||branchList.find(b=>b.slug===currentBranchSlug)?.name}</span>}</Link>
       <nav className="sh-nav" aria-label="Điều hướng chính">{visibleLinks.slice(0,2).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link} onClick={event=>followSiteLink(event,item)}>{item.label}</a>)}
-        <button ref={trigger} className="sh-nav-item sh-nav-item--branch" aria-haspopup="dialog" aria-expanded={branchOpen} onClick={()=>setBranchOpen(true)}>Chi nhánh</button>
+        <a ref={trigger} href="#chi-nhanh" className="sh-nav-item sh-nav-item--branch" aria-haspopup="dialog" aria-expanded={branchOpen} onClick={event=>{event.preventDefault();setBranchOpen(true)}}>Chi nhánh</a>
         {visibleLinks.slice(2,3).map((item,index)=><a key={`${item.link}-${index}`} className="sh-nav-item" href={item.link} onClick={event=>followSiteLink(event,item)}>{item.label}</a>)}
         <Link className="sh-nav-item" to={takeawayHref}>Mang về</Link>
         <Link className="sh-cta" to={currentBranchSlug?`/dat-ban?chi-nhanh=${currentBranchSlug}`:'/dat-ban'}>Đặt bàn</Link>

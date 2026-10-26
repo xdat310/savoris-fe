@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type {
   BranchLoadResponse, BranchMenuItemResponse, CustomerResponse, MenuCategoryResponse, OrderItemResponse,
-  OrderResponse, PaymentResponse, PromotionCheckResponse, TableResponse,
+  OrderResponse, PaymentResponse, PromotionCheckResponse, TableResponse, TransferQrSetting,
 } from '../api/types'
+import { mediaUrl } from '../api/site'
 import { can, useAuth } from '../auth'
 import { Strikable } from '../components/ChalkStrike'
 import { DishThumb } from '../components/DishThumb'
@@ -782,7 +783,9 @@ function OrderColumn(props: {
       {paying && order && !paid ? (
         <PayPanel
           total={order.totalAmount ?? 0}
-          allowTransfer={order.orderType === 'DINE_IN'}
+          branchId={branchId}
+          orderCode={order.code ?? String(order.id)}
+          allowTransfer={order.orderType === 'DINE_IN' || order.orderType === 'TAKEAWAY'}
           busy={busy}
           onCancel={() => setPaying(false)}
           onPay={(method, cash) => run(async () => {
@@ -885,8 +888,10 @@ function MoneyProof({ order, draftSubtotal, draftDiscount, draftPoints }: {
   )
 }
 
-function PayPanel({ total, allowTransfer, busy, onPay, onCancel }: {
+function PayPanel({ total, branchId, orderCode, allowTransfer, busy, onPay, onCancel }: {
   total: number
+  branchId: number
+  orderCode: string
   allowTransfer: boolean
   busy: boolean
   onPay: (method: 'CASH' | 'BANK_TRANSFER', cash?: number) => void
@@ -894,8 +899,23 @@ function PayPanel({ total, allowTransfer, busy, onPay, onCancel }: {
 }) {
   const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH')
   const [cash, setCash] = useState<number>(0)
+  const [transferQrUrl, setTransferQrUrl] = useState('')
+  const [qrLoading, setQrLoading] = useState(false)
   const change = cash - total
   const suggestions = [total, ...QUICK_CASH.filter((v) => v > total)].slice(0, 6)
+
+  useEffect(() => {
+    if (method !== 'BANK_TRANSFER') return
+    let current = true
+    setQrLoading(true)
+    setTransferQrUrl('')
+    get<TransferQrSetting>(`/public/branches/${branchId}/transfer-qr?amount=${total}&reference=${encodeURIComponent(orderCode)}`)
+      .then((result) => { if (current) setTransferQrUrl(mediaUrl(result.url)) })
+      .catch(() => { if (current) setTransferQrUrl('') })
+      .finally(() => { if (current) setQrLoading(false) })
+    return () => { current = false }
+  }, [method, branchId, total, orderCode])
+
   return (
     <div className="pay">
       {allowTransfer && (
@@ -929,6 +949,14 @@ function PayPanel({ total, allowTransfer, busy, onPay, onCancel }: {
         </>
       ) : (
         <>
+          <div className="pay-transfer-qr">
+            {qrLoading
+              ? <span className="muted">Đang tải mã QR…</span>
+              : transferQrUrl
+                ? <img className="transfer-qr" src={transferQrUrl} alt={`Mã QR chuyển ${money(total)} cho đơn ${orderCode}`} onError={() => setTransferQrUrl('')} />
+                : <span className="muted">Chi nhánh chưa cài mã QR chuyển khoản.</span>}
+            <span className="muted">Nội dung chuyển khoản: <strong className="num">{orderCode}</strong></span>
+          </div>
           <div className="notice notice-warn" role="note">
             Chỉ xác nhận sau khi kiểm tra giao dịch đã vào tài khoản nhà hàng.
           </div>
@@ -936,7 +964,7 @@ function PayPanel({ total, allowTransfer, busy, onPay, onCancel }: {
             <span>Khách cần chuyển</span>
             <strong className="num">{money(total)}</strong>
           </div>
-          <button className="btn btn-primary btn-lg btn-block" onClick={() => onPay('BANK_TRANSFER')} disabled={busy}>
+          <button className="btn btn-primary btn-lg btn-block" onClick={() => onPay('BANK_TRANSFER')} disabled={busy || qrLoading || !transferQrUrl}>
             <Landmark size={18} aria-hidden="true" /> Xác nhận đã nhận chuyển khoản
           </button>
         </>
