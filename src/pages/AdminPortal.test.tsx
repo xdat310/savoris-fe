@@ -7,6 +7,7 @@ import { AdminRoutes } from './AdminPortal'
 const { mockRole } = vi.hoisted(() => ({ mockRole: { value: 'ADMIN' } }))
 vi.mock('../api/client', () => ({ del: vi.fn(), get: vi.fn(), post: vi.fn(), put: vi.fn() }))
 vi.mock('../auth', () => ({
+  STAFF: '/nha-hang',
   homeFor: () => '/admin/overview',
   useAuth: () => ({
     session: { staff: { id: 10, role: mockRole.value, branchId: mockRole.value === 'MANAGER' ? 1 : undefined, fullName: mockRole.value === 'MANAGER' ? 'Quản lý' : 'Admin', branchName: 'Toàn chuỗi' } },

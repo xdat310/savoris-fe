@@ -782,14 +782,21 @@ function OrderColumn(props: {
       {paying && order && !paid ? (
         <PayPanel
           total={order.totalAmount ?? 0}
+          allowTransfer={order.orderType === 'DINE_IN'}
           busy={busy}
           onCancel={() => setPaying(false)}
-          onPay={(cash) => run(async () => {
-            const p = await post<PaymentResponse>('/payments', { orderId: order.id, cashReceived: cash })
+          onPay={(method, cash) => run(async () => {
+            const p = await post<PaymentResponse>('/payments', {
+              orderId: order.id,
+              paymentMethod: method,
+              ...(method === 'CASH' ? { cashReceived: cash } : {}),
+            })
             setPaying(false)
             await payment.reload()
             await props.onChanged()
-            toast(`Đã thu ${money(p.cashReceived)} — thối ${money(p.changeAmount)}`)
+            toast(method === 'BANK_TRANSFER'
+              ? `Đã ghi nhận chuyển khoản ${money(p.amount)}`
+              : `Đã thu ${money(p.cashReceived)} — thối ${money(p.changeAmount)}`)
           })}
         />
       ) : (
@@ -817,7 +824,7 @@ function OrderColumn(props: {
           )}
           {order && !paid && !awaiting && can.cash(props.role) && draft.length === 0 && (
             <button className="btn btn-primary btn-lg btn-block" onClick={() => setPaying(true)} disabled={busy || (order.totalAmount ?? 0) < 0}>
-              <Wallet size={18} aria-hidden="true" /> Thu tiền mặt · <span className="num">{money(order.totalAmount)}</span>
+              <Wallet size={18} aria-hidden="true" /> Thanh toán hóa đơn · <span className="num">{money(order.totalAmount)}</span>
             </button>
           )}
           {order && paid && can.cash(props.role) && (
@@ -878,28 +885,62 @@ function MoneyProof({ order, draftSubtotal, draftDiscount, draftPoints }: {
   )
 }
 
-function PayPanel({ total, busy, onPay, onCancel }: { total: number; busy: boolean; onPay: (cash: number) => void; onCancel: () => void }) {
+function PayPanel({ total, allowTransfer, busy, onPay, onCancel }: {
+  total: number
+  allowTransfer: boolean
+  busy: boolean
+  onPay: (method: 'CASH' | 'BANK_TRANSFER', cash?: number) => void
+  onCancel: () => void
+}) {
+  const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH')
   const [cash, setCash] = useState<number>(0)
   const change = cash - total
   const suggestions = [total, ...QUICK_CASH.filter((v) => v > total)].slice(0, 6)
   return (
     <div className="pay">
-      <label className="field">
-        Khách đưa (tiền mặt)
-        <input className="input num" type="number" min={0} step={1000} autoFocus value={cash || ''} onChange={(e) => setCash(Number(e.target.value))} />
-      </label>
-      <div className="quick-cash">
-        {suggestions.map((v, i) => (
-          <button key={i} className="btn" aria-pressed={cash === v} onClick={() => setCash(v)}>{i === 0 ? 'Vừa đủ' : money(v)}</button>
-        ))}
-      </div>
-      <div className={`change${change < 0 ? ' short' : ''}`} aria-live="polite">
-        <span>{change < 0 ? 'Còn thiếu' : 'Tiền thối'}</span>
-        <strong className="num">{money(Math.abs(change))}</strong>
-      </div>
-      <button className="btn btn-primary btn-lg btn-block" onClick={() => onPay(cash)} disabled={busy || cash < total}>
-        <Wallet size={18} aria-hidden="true" /> Xác nhận đã thu {money(cash)}
-      </button>
+      {allowTransfer && (
+        <div className="seg" role="group" aria-label="Phương thức thanh toán">
+          <button type="button" aria-pressed={method === 'CASH'} onClick={() => setMethod('CASH')}>
+            <Wallet size={15} aria-hidden="true" /> Tiền mặt
+          </button>
+          <button type="button" aria-pressed={method === 'BANK_TRANSFER'} onClick={() => setMethod('BANK_TRANSFER')}>
+            <Landmark size={15} aria-hidden="true" /> Chuyển khoản
+          </button>
+        </div>
+      )}
+      {method === 'CASH' ? (
+        <>
+          <label className="field">
+            Khách đưa (tiền mặt)
+            <input className="input num" type="number" min={0} step={1000} autoFocus value={cash || ''} onChange={(e) => setCash(Number(e.target.value))} />
+          </label>
+          <div className="quick-cash">
+            {suggestions.map((v, i) => (
+              <button key={i} className="btn" aria-pressed={cash === v} onClick={() => setCash(v)}>{i === 0 ? 'Vừa đủ' : money(v)}</button>
+            ))}
+          </div>
+          <div className={`change${change < 0 ? ' short' : ''}`} aria-live="polite">
+            <span>{change < 0 ? 'Còn thiếu' : 'Tiền thối'}</span>
+            <strong className="num">{money(Math.abs(change))}</strong>
+          </div>
+          <button className="btn btn-primary btn-lg btn-block" onClick={() => onPay('CASH', cash)} disabled={busy || cash < total}>
+            <Wallet size={18} aria-hidden="true" /> Xác nhận đã thu {money(cash)}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="notice notice-warn" role="note">
+            Chỉ xác nhận sau khi kiểm tra giao dịch đã vào tài khoản nhà hàng.
+          </div>
+          <div className="change">
+            <span>Khách cần chuyển</span>
+            <strong className="num">{money(total)}</strong>
+          </div>
+          <button className="btn btn-primary btn-lg btn-block" onClick={() => onPay('BANK_TRANSFER')} disabled={busy}>
+            <Landmark size={18} aria-hidden="true" /> Xác nhận đã nhận chuyển khoản
+          </button>
+        </>
+      )}
       <button className="btn btn-ghost btn-block" onClick={onCancel}>Quay lại</button>
     </div>
   )
