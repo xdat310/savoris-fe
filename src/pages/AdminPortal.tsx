@@ -243,33 +243,12 @@ function StaffPage() {
 function OperationalPage({ title, staffPath }: { title: string; staffPath: string }) {
   const { role, branchId, branches, setBranchId } = useAuth()
   const isAdmin = role === 'ADMIN'
-
-  if (isAdmin && !branchId) {
-    return (
-      <div className="ap-page">
-        <div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>Chọn chi nhánh để mở trang này.</p></div></div>
-        <div className="ap-empty" style={{ minHeight: 320 }}>
-          <ShieldAlert size={34} />
-          <h1>Chọn chi nhánh</h1>
-          <p>Bạn đang ở chế độ Toàn chuỗi. Hãy chọn một chi nhánh để xem {title.toLowerCase()}.</p>
-          <select
-            aria-label="Chọn chi nhánh"
-            style={{ marginTop: 12, minHeight: 42, padding: '0 12px', background: '#1a1b18', border: '1px solid #383a34', color: '#f0eee8', borderRadius: 4, fontSize: 13 }}
-            defaultValue=""
-            onChange={(e) => { if (e.target.value) setBranchId(Number(e.target.value)) }}
-          >
-            <option value="" disabled>Chọn chi nhánh…</option>
-            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}
-          </select>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="ap-page">
-      <div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>Mở giao diện vận hành tại chi nhánh đang chọn.</p></div></div>
-      <div className="ap-empty" style={{ minHeight: 260 }}>
+      <div className="ap-heading"><div><span className="ap-kicker">SAVORIS · VẬN HÀNH</span><h1>{title}</h1><p>{isAdmin ? 'Chọn chi nhánh để mở đúng màn hình vận hành.' : 'Mở giao diện vận hành tại chi nhánh của bạn.'}</p></div>{isAdmin && <label>Chi nhánh đang xem<select aria-label={`Chi nhánh đang xem — ${title}`} value={branchId ?? ''} onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : null)}><option value="">Toàn chuỗi</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.name}</option>)}</select></label>}</div>
+      {!branchId ? <div className="ap-empty" style={{ minHeight: 260 }}>
+        <ShieldAlert size={34} /><h2>Chưa chọn chi nhánh</h2><p>Chọn một chi nhánh ở phía trên để tiếp tục.</p>
+      </div> : <div className="ap-empty" style={{ minHeight: 260 }}>
         <a
           href={staffPath}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', background: '#a85a44', color: '#fff', borderRadius: 4, textDecoration: 'none', fontWeight: 700, fontSize: 13 }}
@@ -277,7 +256,7 @@ function OperationalPage({ title, staffPath }: { title: string; staffPath: strin
           Mở {title} →
         </a>
         <p style={{ marginTop: 8, fontSize: 13, color: '#a6a79e' }}>Giao diện mở trên cùng trình duyệt, trong tab hiện tại.</p>
-      </div>
+      </div>}
     </div>
   )
 }

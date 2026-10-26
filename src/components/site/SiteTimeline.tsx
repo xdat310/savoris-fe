@@ -58,7 +58,7 @@ export function SiteTimeline({ milestones }: Props) {
   return (
     <section className="tl-wrap" aria-label="Hành trình của chúng tôi">
       <div className="tl-head">
-        <h2 className="tl-title">Hành trình</h2>
+        <h2 className="tl-title">Dấu mốc &amp; thành tựu</h2>
         <div className="tl-controls">
           <button className="tl-arrow" onClick={prev} disabled={!canPrev} aria-label="Lùi">
             <ChevronLeft size={20} />

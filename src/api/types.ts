@@ -135,6 +135,22 @@ export interface ChainDashboardResponse {
   branches?: BranchSummary[];
 }
 
+export interface KitchenForecastResponse {
+  branchId: number;
+  branchName: string;
+  kitchenCapacity: number;
+  activeChefAccounts: number;
+  pendingPortions: number;
+  cookingPortions: number;
+  currentLoadPercent: number;
+  history: Array<{ hour: string; averageOrders: number; averagePortions: number; averageLoadPercent: number }>;
+  forecast: Array<{ hour: string; predictedLoad: number; risk: 'LOW' | 'NORMAL' | 'MEDIUM' | 'HIGH' | 'OVERLOADED' }>;
+  alert: string;
+  actions: string[];
+  suggestedPauseAt: string | null;
+  dataNote: string;
+}
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;

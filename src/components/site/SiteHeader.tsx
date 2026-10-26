@@ -19,10 +19,11 @@ export function SiteHeader({ nav = [], branches = [], currentBranchSlug, current
   const trigger = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const branchList = (Array.isArray(branches) ? branches : []).filter(branch => Boolean(branch.slug)).slice(0, 4)
-  const links = (Array.isArray(nav) ? nav : []).filter(item => item.visible).sort((a,b)=>a.order-b.order)
+  const links = (Array.isArray(nav) ? nav : [])
+    .filter(item => item.visible && !/thực đơn|menu/i.test(item.label) && !/\/thuc-don(?:\/|$)/i.test(item.link))
+    .sort((a,b)=>a.order-b.order)
   const visibleLinks = links.length ? links.map(item=>({label:item.label,link:item.link})) : [
     { label: 'Giới thiệu', link: '#ve-chung-toi' },
-    { label: 'Thực đơn', link: `/chi-nhanh/${currentBranchSlug || branchList[0]?.slug || 'hoan-kiem'}/thuc-don` },
     { label: 'Liên hệ', link: '#lien-he' },
   ]
 

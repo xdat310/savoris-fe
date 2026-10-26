@@ -2270,7 +2270,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
   max-width: 1200px; margin: 0 auto;
   padding: 72px 48px 48px;
   display: grid;
-  grid-template-columns: 1.5fr repeat(3, 1fr) 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 40px;
 }
 .ftr-brand { display: flex; flex-direction: column; }
@@ -2309,14 +2309,14 @@ table.data tr.is-current td { background: var(--accent-wash); }
   letter-spacing: 0.26em; text-transform: uppercase;
   color: var(--dc-text-muted); margin: 0 0 16px;
 }
-.ftr-social-links { display: flex; gap: 12px; }
+.ftr-social-links { display: flex; flex-direction: column; gap: 10px; }
 .ftr-social-links a {
-  width: 36px; height: 36px; display: grid; place-items: center;
-  border: 1px solid #1E1E24; color: var(--dc-text-muted);
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--dc-text-muted); font-size: 13px; text-decoration: none;
   transition: color 180ms, border-color 180ms;
-  text-decoration: none;
 }
-.ftr-social-links a:hover { color: var(--dc-gold); border-color: var(--dc-gold); }
+.ftr-social-links a:hover { color: var(--dc-gold); }
+.home-about, #ve-chung-toi { scroll-margin-top: 88px; }
 
 .ftr-bottom {
   border-top: 1px solid #1A1A20;

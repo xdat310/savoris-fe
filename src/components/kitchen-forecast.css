@@ -1,0 +1,50 @@
+.kitchen-forecast { display: grid; gap: var(--space-4); }
+.kitchen-forecast__head { align-items: flex-start; gap: var(--space-4); }
+.kitchen-forecast__head > div { min-width: 0; }
+.kitchen-forecast__head h2 { margin: 0; }
+.kitchen-forecast__head p { max-width: 62ch; margin: 6px 0 0; color: var(--text-subtle); font-size: 13px; line-height: 1.5; }
+.kitchen-forecast__head button { flex: 0 0 auto; }
+.kitchen-forecast__head button svg { width: 16px; height: 16px; }
+.kitchen-forecast__spin { animation: assistant-spin 1.1s linear infinite; }
+.kitchen-forecast__empty { margin: 0; padding: 18px; color: var(--text-subtle); background: var(--surface-2); border: 1px solid var(--rule); font-size: 13px; }
+.kitchen-forecast__error { margin: 0; padding: 12px 14px; color: var(--red-ink); background: var(--red-wash); font-size: 13px; line-height: 1.5; }
+.kitchen-forecast__current { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-block: 1px solid var(--rule); }
+.kitchen-forecast__current > div:not(.kitchen-forecast__chefs) { display: grid; gap: 6px; padding: 14px 16px; border-right: 1px solid var(--rule); }
+.kitchen-forecast__current > div:first-child { padding-left: 0; }
+.kitchen-forecast__current > div span { color: var(--text-subtle); font-size: 11px; }
+.kitchen-forecast__current strong { color: var(--navy); font: 400 28px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.kitchen-forecast__current small { color: var(--text-subtle); font: 500 11px var(--font-body); }
+.kitchen-forecast__chefs { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 10px 0; color: var(--text-subtle); font-size: 12px; }
+.kitchen-forecast__chefs svg { width: 16px; height: 16px; }
+.kitchen-forecast__alert { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; color: var(--amber-ink); background: var(--amber-wash); }
+.kitchen-forecast__alert svg { flex: 0 0 17px; width: 17px; height: 17px; margin-top: 1px; }
+.kitchen-forecast__alert p { margin: 0; font-size: 13px; line-height: 1.5; }
+.kitchen-forecast__forecasts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.kitchen-forecast__hour { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 14px 16px; background: var(--paper); }
+.kitchen-forecast__time { display: flex; align-items: center; gap: 7px; color: var(--text-subtle); font-size: 12px; }
+.kitchen-forecast__time svg { width: 15px; height: 15px; }
+.kitchen-forecast__hour > strong { grid-row: 2; color: var(--navy); font: 400 34px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.kitchen-forecast__risk { grid-column: 2; grid-row: 1 / span 2; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.kitchen-forecast__risk--OVERLOADED { color: var(--red-ink); background: var(--red-wash); }
+.kitchen-forecast__risk--HIGH, .kitchen-forecast__risk--MEDIUM { color: var(--amber-ink); background: var(--amber-wash); }
+.kitchen-forecast__risk--LOW, .kitchen-forecast__risk--NORMAL { color: var(--green-ink); background: var(--green-wash); }
+.kitchen-forecast__actions { padding-top: 2px; }
+.kitchen-forecast__actions h3 { margin: 0 0 8px; color: var(--navy); font-size: 14px; }
+.kitchen-forecast__actions ul { display: grid; gap: 6px; margin: 0; padding-left: 19px; font-size: 13px; line-height: 1.5; }
+.kitchen-forecast__actions li::marker { color: var(--accent); }
+.kitchen-forecast__actions p { margin: 10px 0 0; color: var(--red-ink); font-size: 12px; }
+.kitchen-forecast__history { border-top: 1px solid var(--rule); padding-top: 12px; }
+.kitchen-forecast__history summary { color: var(--navy); font-size: 12px; font-weight: 600; cursor: pointer; }
+.kitchen-forecast__table-wrap { overflow: auto; margin-top: 10px; }
+.kitchen-forecast__note { margin: 0; color: var(--text-subtle); font-size: 11px; line-height: 1.5; }
+@keyframes assistant-spin { to { transform: rotate(360deg); } }
+@media (max-width: 680px) {
+  .kitchen-forecast__head { display: grid; }
+  .kitchen-forecast__head button { justify-self: start; }
+  .kitchen-forecast__current { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kitchen-forecast__current > div:not(.kitchen-forecast__chefs):nth-child(2) { border-right: 0; }
+  .kitchen-forecast__current > div:not(.kitchen-forecast__chefs):nth-child(3) { padding-left: 0; border-top: 1px solid var(--rule); }
+  .kitchen-forecast__current > div:not(.kitchen-forecast__chefs):nth-child(4) { border-top: 1px solid var(--rule); }
+  .kitchen-forecast__forecasts { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .kitchen-forecast__spin { animation: none; } }

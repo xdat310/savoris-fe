@@ -30,11 +30,10 @@ function IconTiktok() {
 
 interface Props {
   config?: FooterData | null
-  menuHref?: string
   onScrollTo?: (id: string) => void
 }
 
-export function SiteFooter({ config, menuHref = '/chi-nhanh/hoan-kiem/thuc-don' }: Props) {
+export function SiteFooter({ config }: Props) {
   const year = YEAR
 
   return (
@@ -44,7 +43,6 @@ export function SiteFooter({ config, menuHref = '/chi-nhanh/hoan-kiem/thuc-don' 
         <nav className="ftr-col" aria-label="Đặt món">
           <h4>ĐẶT MÓN</h4>
           <Link to="/dat-ban">Đặt bàn</Link>
-          <a href={menuHref}>Xem thực đơn</a>
           <Link to="/mang-ve">Đặt mang về</Link>
         </nav>
 
@@ -60,24 +58,24 @@ export function SiteFooter({ config, menuHref = '/chi-nhanh/hoan-kiem/thuc-don' 
           <a href="mailto:info@savoris.vn">Liên hệ hợp tác</a>
         </nav>
 
-        {/* Social — only render the column when at least one link exists */}
+        {/* Social links share the footer grid with the existing navigation columns. */}
         {(config?.facebook_url || config?.instagram_url || config?.tiktok_url) && (
           <div className="ftr-social">
             <h4>KẾT NỐI</h4>
             <div className="ftr-social-links">
               {config?.facebook_url && (
-                <a href={config.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                  <IconFacebook />
+                <a href={config.facebook_url} target="_blank" rel="noopener noreferrer" aria-label="Savoris trên Facebook">
+                  <IconFacebook /><span>Facebook</span>
                 </a>
               )}
               {config?.instagram_url && (
-                <a href={config.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <IconInstagram />
+                <a href={config.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Savoris trên Instagram">
+                  <IconInstagram /><span>Instagram</span>
                 </a>
               )}
               {config?.tiktok_url && (
-                <a href={config.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="TikTok">
-                  <IconTiktok />
+                <a href={config.tiktok_url} target="_blank" rel="noopener noreferrer" aria-label="Savoris trên TikTok">
+                  <IconTiktok /><span>TikTok</span>
                 </a>
               )}
             </div>

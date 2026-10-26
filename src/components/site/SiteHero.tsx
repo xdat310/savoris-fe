@@ -29,10 +29,9 @@ function heroSrcSet(url: string) {
 
 interface Props {
   config?: HeroConfig | null
-  menuHref?: string
 }
 
-export function SiteHero({ config, menuHref = '#thuc-don' }: Props) {
+export function SiteHero({ config }: Props) {
   const c = config ?? FALLBACK
   const description = c.description.trim()
   const [active, setActive] = useState(0)
@@ -122,7 +121,6 @@ export function SiteHero({ config, menuHref = '#thuc-don' }: Props) {
         <div className="sh-hero-cta-wrap">
           <div className="sh-hero-rule" aria-hidden="true" />
           <Link className="sh-hero-cta" to="/dat-ban">Đặt bàn</Link>
-          <a className="sh-hero-cta sh-hero-cta--ghost" href={menuHref}>Xem thực đơn</a>
           <div className="sh-hero-rule" aria-hidden="true" />
         </div>
       </div>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { HeroConfig, PublicBranch } from '../api/site'
-import { getBranches, getPublicBranchPage, getPublicSite } from '../api/site'
+import { getBranches, getMilestones, getPublicBranchPage, getPublicSite, type SiteMilestone } from '../api/site'
 import { SiteFooter } from '../components/site/SiteFooter'
+import { SiteAssistant } from '../components/site/SiteAssistant'
 import { SiteHeader } from '../components/site/SiteHeader'
 import { SiteHero } from '../components/site/SiteHero'
+import { SiteTimeline } from '../components/site/SiteTimeline'
 import { StorySections, type StorySectionItem } from '../components/site/StorySections'
 import { applySeo } from '../lib/seo'
 
@@ -18,6 +20,7 @@ export function Home() {
   const [publicSite, setPublicSite] = useState<CmsContent | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [directory, setDirectory] = useState<(PublicBranch & { imageUrl?: string; openNow?: boolean; estimatedWaitMinutes?: number })[]>([])
+  const [milestones, setMilestones] = useState<SiteMilestone[]>([])
 
   useEffect(() => {
     let settled = false
@@ -29,6 +32,8 @@ export function Home() {
       .catch(() => setLoadError(true))
       .finally(() => { settled = true; clearTimeout(timeout) })
   }, [])
+
+  useEffect(() => { getMilestones().then(setMilestones).catch(() => setMilestones([])) }, [])
 
   useEffect(() => {
     if (!publicSite) return
@@ -65,29 +70,31 @@ export function Home() {
     badge_enabled: Boolean(settings.heroEyebrow ?? settings.brandLine), badge_line1: String(settings.heroEyebrow ?? settings.brandLine ?? ''), badge_line2:'', cta_text:'ĐẶT BÀN', cta_link:'/dat-ban',
   }
   const stories = Array.isArray(settings.storySections) ? (settings.storySections as StorySectionItem[]).slice(0,4) : null
-  const menuHref = branches[0]?.slug ? `/chi-nhanh/${branches[0].slug}/thuc-don` : '#chi-nhanh'
 
   return (
     <div className="dc-site">
       <SiteHeader branches={branches} logoUrl={settings.logo ? String(settings.logo) : undefined} />
-      <SiteHero config={cmsHero} menuHref={menuHref} />
+      <SiteHero config={cmsHero} />
       {loadError && (
         <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
           <p style={{ marginBottom: '1rem' }}>Không tải được nội dung. Máy chủ có thể đang khởi động, vui lòng thử lại sau 1–2 phút.</p>
           <button onClick={() => window.location.reload()} style={{ padding: '0.5rem 1.5rem', cursor: 'pointer' }}>Thử lại</button>
         </div>
       )}
-      <StorySections items={stories ?? []}/>
+      <div id="ve-chung-toi" className="home-about">
+        <StorySections items={stories ?? []} id="cau-chuyen-savoris" />
+        <SiteTimeline milestones={milestones} />
+      </div>
       {branches.length > 0 && <section className="home-branches" id="chi-nhanh"><header><p>GẶP GỠ SAVORIS</p><h2>Các chi nhánh</h2><span>Những điểm hẹn ẩm thực trong lòng Hà Nội.</span></header><div className="home-branches__grid">{branches.slice(0,4).map(branch=><a className="home-branch-card" href={`/chi-nhanh/${branch.slug}`} key={branch.id}><div>{'imageUrl' in branch && branch.imageUrl && <img src={branch.imageUrl} alt={branch.name} loading="lazy"/>}<span className="home-branch-card__status">{branch.openNow === true ? 'Đang mở' : branch.openNow === false ? 'Đã đóng cửa' : 'Thông tin giờ mở cửa'}</span></div><h3>{branch.code} · {branch.name}</h3><p>{branch.city ?? branch.address}</p><span className="home-branch-card__link">Xem chi nhánh →</span></a>)}</div></section>}
       <section className="home-booking-cta"><p>{String(settings.ctaEyebrow ?? 'HẸN GẶP BẠN TẠI SAVORIS')}</p><h2>{String(settings.ctaTitle ?? 'Một buổi tối\nđáng để nhớ.').split('\n').map((line,index)=><span key={index}>{index>0&&<br/>}{line}</span>)}</h2>{Boolean(settings.ctaDescription)&&<span>{String(settings.ctaDescription)}</span>}<div><a href={String(settings.reservationUrl ?? '/dat-ban')}>Đặt bàn</a><a href={String(settings.takeawayUrl ?? '/mang-ve')}>Đặt mang về</a></div></section>
       <SiteFooter
         config={{
-          facebook_url: String(settings.facebookUrl ?? ''),
-          instagram_url: String(settings.instagramUrl ?? ''),
-          tiktok_url: String(settings.tiktokUrl ?? ''),
+          facebook_url: String(settings.facebookUrl || 'https://www.facebook.com/savoris.vn'),
+          instagram_url: String(settings.instagramUrl || 'https://www.instagram.com/savoris.vn/'),
+          tiktok_url: String(settings.tiktokUrl || 'https://www.tiktok.com/@savoris.vn'),
         }}
-        menuHref={menuHref}
       />
+      <SiteAssistant />
     </div>
   )
 }
