@@ -1400,7 +1400,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .sh-dropdown-item {
   width: 100%; background: none; border: none; padding: 10px 18px;
   display: flex; flex-direction: column; gap: 2px; cursor: pointer; text-align: left;
-  transition: background 150ms;
+  transition: background 150ms; text-decoration: none;
 }
 .sh-dropdown-item:hover { background: var(--dc-surface-raised); }
 .sh-dropdown-name { font-size: 13px; font-weight: 600; color: var(--dc-text); letter-spacing: 0.06em; text-transform: uppercase; }
@@ -1472,6 +1472,8 @@ table.data tr.is-current td { background: var(--accent-wash); }
 }
 .sh-overlay-item:hover { color: var(--dc-gold); }
 .sh-overlay-item--branch { color: var(--dc-text-muted); font-size: 12px; }
+.sh-overlay-branch-label { padding: 16px 0 2px; color: var(--dc-gold); font-family: var(--dc-sans); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; }
+.sh-overlay-item--branch { padding-left: 14px; }
 .sh-overlay-cta {
   margin-top: 28px; align-self: flex-start;
   background: transparent; border: 1px solid var(--dc-gold); padding: 14px 32px;

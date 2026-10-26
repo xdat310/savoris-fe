@@ -1,5 +1,5 @@
-import { Menu, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ChevronDown, Menu, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { PublicBranch, SiteNavItem } from '../../api/site'
 
@@ -14,9 +14,11 @@ interface Props {
   branches?: PublicBranch[]
 }
 
-export function SiteHeader({ nav = FALLBACK_NAV }: Props) {
+export function SiteHeader({ nav = FALLBACK_NAV, branches = [] }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [branchOpen, setBranchOpen] = useState(false)
+  const branchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handler() { setScrolled(window.scrollY > 40) }
@@ -30,9 +32,25 @@ export function SiteHeader({ nav = FALLBACK_NAV }: Props) {
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
+  useEffect(() => {
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (branchRef.current && !branchRef.current.contains(event.target as Node)) setBranchOpen(false)
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setBranchOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
   const visibleNav = (nav.length > 0 ? nav : FALLBACK_NAV)
     .filter((item) => item.visible)
     .sort((a, b) => a.order - b.order)
+  const branchList = branches.filter((branch) => Boolean(branch.slug))
   const hasContactLink = visibleNav.some((item) => /lien-he|chi-nhanh|contact|location/i.test(item.link))
 
   return (
@@ -50,6 +68,19 @@ export function SiteHeader({ nav = FALLBACK_NAV }: Props) {
               </a>
             ))}
             {!hasContactLink && <a className="sh-nav-item" href="#lien-he">ĐỊA CHỈ</a>}
+            {branchList.length > 0 ? (
+              <div className="sh-branch-wrap" ref={branchRef}>
+                <button className="sh-nav-item sh-nav-item--branch" aria-expanded={branchOpen} aria-controls="sh-branch-menu" onClick={() => setBranchOpen((open) => !open)}>
+                  CHI NHÁNH <ChevronDown size={13} className={branchOpen ? 'sh-chevron sh-chevron--open' : 'sh-chevron'} aria-hidden="true"/>
+                </button>
+                {branchOpen && <div className="sh-dropdown" id="sh-branch-menu" role="menu" aria-label="Chọn chi nhánh">
+                  {branchList.map((branch) => <Link key={branch.id} className="sh-dropdown-item" role="menuitem" to={'/chi-nhanh/' + branch.slug} onClick={() => setBranchOpen(false)}>
+                    <span className="sh-dropdown-name">{branch.name}</span>
+                    <span className="sh-dropdown-city">{branch.city || branch.address}</span>
+                  </Link>)}
+                </div>}
+              </div>
+            ) : <a className="sh-nav-item" href="#lien-he">CHI NHÁNH</a>}
             <Link className="sh-cta" to="/dat-ban" aria-label="Đặt bàn">ĐẶT BÀN</Link>
           </nav>
 
@@ -76,6 +107,12 @@ export function SiteHeader({ nav = FALLBACK_NAV }: Props) {
               ĐỊA CHỈ
             </a>
           )}
+          {branchList.length > 0 ? <>
+            <span className="sh-overlay-branch-label">CHI NHÁNH</span>
+            {branchList.map((branch) => <Link key={branch.id} className="sh-overlay-item sh-overlay-item--branch" to={'/chi-nhanh/' + branch.slug} onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>
+              {branch.name}{branch.city ? ' · ' + branch.city : ''}
+            </Link>)}
+          </> : <a className="sh-overlay-item" href="#lien-he" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>CHI NHÁNH</a>}
           <Link className="sh-overlay-cta" to="/dat-ban" onClick={() => setMobileOpen(false)} tabIndex={mobileOpen ? 0 : -1}>ĐẶT BÀN</Link>
         </nav>
       </div>
