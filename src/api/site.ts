@@ -29,7 +29,18 @@ export interface SiteBranchPage {
 }
 
 export const getPublicSite = () => get<Record<string, unknown>>('/public/site')
-export const getPublicBranchPage = (slug: string) => get<SiteBranchPage>(`/public/branches/${slug}`)
+export async function getPublicBranchPage(slug: string): Promise<SiteBranchPage> {
+  const result = await get<Partial<SiteBranchPage>>(`/public/branches/${slug}`)
+  return {
+    ...result,
+    offers: Array.isArray(result.offers) ? result.offers : [],
+    gallery: Array.isArray(result.gallery) ? result.gallery : [],
+    accolades: Array.isArray(result.accolades) ? result.accolades : [],
+    testimonials: Array.isArray(result.testimonials) ? result.testimonials : [],
+    menus: Array.isArray(result.menus) ? result.menus : [],
+    openingHours: Array.isArray(result.openingHours) ? result.openingHours : [],
+  } as SiteBranchPage
+}
 export const getWebsiteCms = () => get<Record<string, any>>('/admin/website')
 export const saveWebsiteSettings = (payload: Record<string, unknown>) => put('/admin/website/settings', payload)
 export const saveBranchPage = (branchId: number, payload: Record<string, unknown>) => put(`/admin/website/branches/${branchId}`, payload)

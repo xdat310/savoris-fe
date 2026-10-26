@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { branchLabel, isCloudinaryImageUrl } from './site'
+import { describe, expect, it, vi } from 'vitest'
+import { branchLabel, getPublicBranchPage, isCloudinaryImageUrl } from './site'
 
 describe('isCloudinaryImageUrl', () => {
   it('accepts secure Cloudinary image delivery URLs only', () => {
@@ -13,5 +13,25 @@ describe('isCloudinaryImageUrl', () => {
 describe('branchLabel', () => {
   it('combines the branch code with its clean district name', () => {
     expect(branchLabel({ code: 'CN01', name: 'Hoàn Kiếm' })).toBe('CN01 · Hoàn Kiếm')
+  })
+})
+
+describe('getPublicBranchPage', () => {
+  it('defaults optional CMS lists omitted by the public API to empty arrays', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      branch: { id: 1, code: 'CN01', name: 'Hoàn Kiếm', slug: 'hoan-kiem' },
+      page: { introduction: 'Ẩm thực Việt đương đại' },
+      gallery: [],
+      openingHours: [],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    const result = await getPublicBranchPage('hoan-kiem')
+
+    expect(result.offers).toEqual([])
+    expect(result.accolades).toEqual([])
+    expect(result.testimonials).toEqual([])
+    expect(result.menus).toEqual([])
+    expect(result.gallery).toEqual([])
+    expect(result.openingHours).toEqual([])
   })
 })
