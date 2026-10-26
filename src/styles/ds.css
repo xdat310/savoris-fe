@@ -19,8 +19,8 @@
 
   /* ── Text ── (subtle lifted from #71717A to pass 4.5:1 on surface-1) */
   --text:          #F4F4F5;
-  --text-muted:    #A1A1AA;
-  --text-subtle:   #8B8B94;
+  --text-muted:    #B8B8C1;
+  --text-subtle:   #A7A7B0;
   --text-on-accent:#17130B;
 
   /* ── Brand & status ── */
@@ -49,7 +49,7 @@
   --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-16: 16px;
   --fs-20: 20px; --fs-24: 24px; --fs-32: 32px; --fs-48: 48px;
   --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600;
-  --font-ui: 'Be Vietnam Pro', Inter, system-ui, sans-serif;
+  --font-ui: 'Be Vietnam Pro', system-ui, sans-serif;
   --font-display: 'Noto Serif Display Variable', 'Noto Serif', Georgia, serif;
   --display-stretch: 68%;
   --tracking-label: 0.08em;
@@ -93,9 +93,9 @@
 
   color-scheme: dark;
   font-family: var(--font-ui);
-  font-size: var(--fs-14);
+  font-size: 15px;
   font-weight: var(--fw-regular);
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text);
   background: var(--bg);
   /* every figure lines up in columns */

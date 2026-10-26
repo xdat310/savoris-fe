@@ -1,5 +1,4 @@
-/* Savoris — Hakkasan × Nobu: jet-black canvas, teal accent, warm off-white text, editorial serif.
-   Dark surfaces throughout; teal owns interactive highlights; display type in warm parchment. */
+/* Savoris: a Vietnamese restaurant brand with warm editorial serif headings and clear staff UI. */
 
 /* Cascade order: element resets (base) < design system (ds, src/styles/ds.css) < page rules below (unlayered) */
 @layer base, ds;
@@ -1296,7 +1295,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
 
   /* ── Text ── */
   --dc-text:            #ECE7DC;   /* ivory */
-  --dc-text-muted:      #A39E92;
+  --dc-text-muted:      #BCB8AD;
 
   /* ── Accent ── */
   --dc-gold:            #C9A45C;
@@ -1310,8 +1309,8 @@ table.data tr.is-current td { background: var(--accent-wash); }
   --dc-blue:            #AFC4E6;
 
   /* ── Typography ── */
-  --dc-serif:           'Cormorant Garamond', 'Times New Roman', serif;
-  --dc-sans:            'Manrope', system-ui, sans-serif;
+  --dc-serif:           var(--font-display);
+  --dc-sans:            var(--font-ui);
 
   font-family: var(--dc-sans);
   color: var(--dc-text);
@@ -1342,13 +1341,13 @@ table.data tr.is-current td { background: var(--accent-wash); }
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   padding: 0 48px; height: 76px;
 }
-.sh-logo-text { display:block; color:#f2eee7; font:500 21px/1 'Cormorant Garamond',Georgia,serif; letter-spacing:.24em; }
+.sh-logo-text { display:block; color:#f2eee7; font:500 21px/1 var(--dc-serif); letter-spacing:.24em; }
 .sh-current-branch { display:block; color:#c3a979; margin-top:6px; font:9px/1 var(--dc-sans); letter-spacing:.13em; text-transform:uppercase; }
 .sh-branch-overlay { position:fixed; inset:0; z-index:120; overflow:auto; background:rgba(0,0,0,.97); display:grid; align-items:center; padding:5vh 6vw; animation:dc-fade-in .25s ease both; }
 .sh-branch-dialog { width:min(1400px,100%); margin:auto; color:#f2eee7; }
 .sh-branch-dialog>header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:36px; }
 .sh-branch-dialog>header span { color:#b89b6a; font:10px var(--dc-sans); letter-spacing:.2em; }
-.sh-branch-dialog>header h2 { margin:10px 0; font:400 clamp(42px,6vw,72px)/1 'Cormorant Garamond',Georgia,serif; }
+.sh-branch-dialog>header h2 { margin:10px 0; font:400 clamp(42px,6vw,72px)/1 var(--dc-serif); }
 .sh-branch-dialog>header p { color:#a7a197; margin:0; font:14px var(--dc-sans); }
 .sh-branch-dialog>header button { color:#eee; border:1px solid #ffffff30; background:none; width:46px; height:46px; display:grid; place-items:center; cursor:pointer; }
 .sh-branch-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:22px; }
@@ -1538,7 +1537,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .story-editorial--reverse .story-editorial__copy { grid-column: 2; justify-self: end; }
 .story-editorial__number { color:#8c7653; font: 13px/1 var(--dc-sans); letter-spacing:.14em; }
 .story-editorial__kicker { color:#b89b6a; font: 11px/1.5 var(--dc-sans); letter-spacing:.2em; text-transform:uppercase; margin:18px 0 0; }
-.story-editorial__copy h2 { color:#f1eee8; font:400 clamp(44px,5.2vw,92px)/1.04 'Cormorant Garamond',Georgia,serif; margin:18px 0; }
+.story-editorial__copy h2 { color:#f1eee8; font:400 clamp(44px,5.2vw,92px)/1.04 var(--dc-serif); margin:18px 0; }
 .story-editorial__body { color:#e8e4dc; white-space:pre-line; font:400 17px/1.8 var(--dc-sans); max-width:34em; }
 .story-editorial__link { margin-top:24px; width:max-content; display:flex; gap:10px; align-items:center; color:#c5a978; text-decoration:none; font:11px var(--dc-sans); text-transform:uppercase; letter-spacing:.14em; border-bottom:1px solid #c5a97866; padding:0 0 8px; transition:border-color .2s,color .2s; }
 .story-editorial__link:hover { border-color:#c5a978; color:#f2d6a4; }
@@ -1548,7 +1547,7 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .home-branches { background:#000; padding:130px max(6vw,20px) 145px; }
 .home-branches>header { max-width:1440px; margin:0 auto 48px; }
 .home-branches>header p,.home-booking-cta>p { color:#b89b6a; font:10px var(--dc-sans); letter-spacing:.2em; text-transform:uppercase; }
-.home-branches>header h2 { margin:14px 0; color:#f1eee8; font:400 clamp(48px,6vw,76px)/1 'Cormorant Garamond',Georgia,serif; }
+.home-branches>header h2 { margin:14px 0; color:#f1eee8; font:400 clamp(48px,6vw,76px)/1 var(--dc-serif); }
 .home-branches>header span { color:#aaa49a; font:14px var(--dc-sans); }
 .home-branches__grid { max-width:1440px; margin:auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:22px; }
 .home-branch-card { display:block; color:inherit; text-decoration:none; }
@@ -1557,11 +1556,11 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .home-branch-card img { width:100%; height:100%; object-fit:cover; filter:brightness(.75); -webkit-mask-image:radial-gradient(ellipse 80% 76%,#000 64%,transparent 100%); mask-image:radial-gradient(ellipse 80% 76%,#000 64%,transparent 100%); transition:transform .5s; }
 .home-branch-card:hover img { transform:scale(1.04); }
 .home-branch-card__status { position:absolute; z-index:1; left:14px; bottom:14px; color:#e6ddca; font:9px var(--dc-sans); letter-spacing:.12em; text-transform:uppercase; }
-.home-branch-card h3 { color:#eee9df; font:400 25px/1.2 'Cormorant Garamond',Georgia,serif; margin:17px 0 5px; }
+.home-branch-card h3 { color:#eee9df; font:400 25px/1.2 var(--dc-serif); margin:17px 0 5px; }
 .home-branch-card p { color:#aaa49a; font:12px var(--dc-sans); margin:0; }
 .home-branch-card__link { display:block; color:#b89b6a; margin-top:15px; font:10px var(--dc-sans); letter-spacing:.12em; text-transform:uppercase; }
 .home-booking-cta { padding:120px 20px; text-align:center; background:#10100e; }
-.home-booking-cta h2 { color:#f2eee7; font:400 clamp(48px,7vw,88px)/.98 'Cormorant Garamond',Georgia,serif; margin:22px 0 34px; }
+.home-booking-cta h2 { color:#f2eee7; font:400 clamp(48px,7vw,88px)/.98 var(--dc-serif); margin:22px 0 34px; }
 .home-booking-cta>div { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
 .home-booking-cta a { min-width:150px; padding:15px 22px; border:1px solid #b89b6a; color:#efe7d8; text-decoration:none; font:10px var(--dc-sans); letter-spacing:.13em; text-transform:uppercase; }
 .home-booking-cta a:hover { background:#b89b6a; color:#050505; }

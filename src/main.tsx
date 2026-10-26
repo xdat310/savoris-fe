@@ -8,17 +8,7 @@ import '@fontsource/be-vietnam-pro/600.css'
 // No 700 on purpose: the design system uses 400/500/600 only, so any leftover "bold" renders at 600
 // Condensed serif display: variable width (62.5–100%) and weight, with the Vietnamese subset
 import '@fontsource-variable/noto-serif-display/wdth.css'
-// Public site fonts
-import '@fontsource/cormorant-garamond/300.css'
-import '@fontsource/cormorant-garamond/300-italic.css'
-import '@fontsource/cormorant-garamond/400.css'
-import '@fontsource/cormorant-garamond/400-italic.css'
-import '@fontsource/cormorant-garamond/500.css'
-import '@fontsource/cormorant-garamond/600.css'
-import '@fontsource/manrope/400.css'
-import '@fontsource/manrope/500.css'
-import '@fontsource/manrope/600.css'
-import '@fontsource/manrope/700.css'
+// Use the same Vietnamese-capable type system across guest and staff routes.
 import './index.css'
 import './styles/ds.css'
 import App from './App.tsx'
