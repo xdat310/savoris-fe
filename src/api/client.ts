@@ -1,4 +1,4 @@
-import type { ErrorResponse, StaffResponse } from './types'
+import type { AuthResponse, ErrorResponse, StaffResponse } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
 export interface Session {
@@ -61,6 +61,17 @@ export function saveSession(session: Session | null) {
   listeners.forEach((l) => l(session))
 }
 
+export function sessionFromAuth(payload: AuthResponse | StaffResponse, previous?: Session): Session | null {
+  const response = payload as AuthResponse & StaffResponse
+  const staff = response.staff ?? (response.id ? response as StaffResponse : previous?.staff)
+  if (!staff?.id) return null
+  return {
+    staff,
+    accessToken: response.accessToken ?? previous?.accessToken,
+    refreshToken: response.refreshToken ?? previous?.refreshToken,
+  }
+}
+
 let current: Session | null = loadSession()
 const listeners = new Set<(s: Session | null) => void>()
 export function onSessionChange(listener: (s: Session | null) => void) {
@@ -87,9 +98,10 @@ async function refresh(): Promise<boolean> {
         body: JSON.stringify({ refreshToken: rt }),
       })
       if (!res.ok) return false
-      const staff = (await res.json()) as StaffResponse
-      if (!staff?.id) return false
-      saveSession({ staff })
+      const payload = (await res.json()) as AuthResponse | StaffResponse
+      const session = sessionFromAuth(payload, current ?? undefined)
+      if (!session) return false
+      saveSession(session)
       return true
     } catch {
       return false

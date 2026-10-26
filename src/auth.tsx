@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { readMigratedStorage } from './lib/storage'
-import { get, getSession, onSessionChange, post, saveSession, type Session } from './api/client'
-import type { BranchResponse, StaffResponse } from './api/types'
+import { get, getSession, onSessionChange, post, saveSession, sessionFromAuth, type Session } from './api/client'
+import type { AuthResponse, BranchResponse, StaffResponse } from './api/types'
 
 interface AuthState {
   session: Session | null
@@ -73,8 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     login: async (username, password) => {
-      const staff = await post<StaffResponse>('/auth/login', { username, password })
-      saveSession({ staff })
+      const response = await post<AuthResponse | StaffResponse>('/auth/login', { username, password })
+      const nextSession = sessionFromAuth(response)
+      if (!nextSession) throw new Error('Máy chủ không trả về thông tin phiên đăng nhập hợp lệ')
+      saveSession(nextSession)
     },
     logout: async () => {
       try {
