@@ -4,7 +4,7 @@ import { can, homeFor } from './auth'
 describe('role routes and capabilities', () => {
   it('routes each role to its own landing page', () => {
     expect(homeFor('ADMIN')).toBe('/admin/overview')
-    expect(homeFor('MANAGER')).toBe('/admin/branch')
+    expect(homeFor('MANAGER')).toBe('/admin/reservations')
     expect(homeFor('STAFF')).toBe('/admin/floor')
     expect(homeFor('CHEF')).toBe('/admin/kitchen')
   })

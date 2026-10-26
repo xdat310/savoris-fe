@@ -267,6 +267,7 @@ svg.lucide { stroke-width: 1.5; flex: none; }
 .input:disabled, .select:disabled, .textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .input::placeholder, .textarea::placeholder { color: var(--text-subtle); }
 .input[type='date'], .input[type='time'], .input[type='datetime-local'] { color-scheme: dark; }
+.input[type='date'], .input[type='time'], .input[type='datetime-local'] { width: 100%; min-width: 0; max-width: 100%; }
 .select {
   appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
