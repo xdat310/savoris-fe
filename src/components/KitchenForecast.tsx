@@ -9,11 +9,12 @@ export function KitchenForecast({ branchId }: { branchId: number }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function analyze() {
+  async function analyze(sampleData = false) {
     setLoading(true)
     setError('')
     try {
-      setData(await get<KitchenForecastResponse>(`/dashboard/branch/${branchId}/kitchen-forecast`))
+      const sampleQuery = sampleData ? '?sampleData=true' : ''
+      setData(await get<KitchenForecastResponse>(`/dashboard/branch/${branchId}/kitchen-forecast${sampleQuery}`))
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 503) setError('AI chưa được cấu hình trên máy chủ. Báo quản trị viên thêm AI_API_KEY và AI_MODEL rồi thử lại.')
       else setError(cause instanceof Error ? cause.message : 'Không lấy được dự báo. Thử lại sau.')
@@ -26,9 +27,14 @@ export function KitchenForecast({ branchId }: { branchId: number }) {
     <section className="panel kitchen-forecast" aria-labelledby="kitchen-forecast-title">
       <div className="panel-head kitchen-forecast__head">
         <div><h2 id="kitchen-forecast-title">Dự báo giờ cao điểm</h2><p>AI phân tích tải bếp hiện tại và lịch sử cùng thứ trong bốn tuần để dự báo hai giờ tới.</p></div>
-        <button type="button" className="btn btn-primary" onClick={() => void analyze()} disabled={loading}>
-          {loading ? <><LoaderCircle aria-hidden="true" className="kitchen-forecast__spin" /> Đang phân tích</> : <><RefreshCw aria-hidden="true" /> Phân tích tải bếp</>}
-        </button>
+        <div className="kitchen-forecast__buttons">
+          <button type="button" className="btn btn-primary" onClick={() => void analyze()} disabled={loading}>
+            {loading ? <><LoaderCircle aria-hidden="true" className="kitchen-forecast__spin" /> Đang phân tích</> : <><RefreshCw aria-hidden="true" /> Phân tích tải bếp</>}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => void analyze(true)} disabled={loading}>
+            Thử AI với dữ liệu mẫu
+          </button>
+        </div>
       </div>
       {error && <p className="kitchen-forecast__error" role="alert">{error}</p>}
       {!data && !error && <p className="kitchen-forecast__empty">Nhấn “Phân tích tải bếp” để xem dự báo mới nhất.</p>}

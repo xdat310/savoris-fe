@@ -1,5 +1,6 @@
 .kitchen-forecast { display: grid; gap: var(--space-4); }
 .kitchen-forecast__head { align-items: flex-start; gap: var(--space-4); }
+.kitchen-forecast__buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .kitchen-forecast__head > div { min-width: 0; }
 .kitchen-forecast__head h2 { margin: 0; }
 .kitchen-forecast__head p { max-width: 62ch; margin: 6px 0 0; color: var(--text-subtle); font-size: 13px; line-height: 1.5; }
@@ -41,6 +42,7 @@
 @media (max-width: 680px) {
   .kitchen-forecast__head { display: grid; }
   .kitchen-forecast__head button { justify-self: start; }
+  .kitchen-forecast__buttons { display: grid; justify-items: start; }
   .kitchen-forecast__current { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kitchen-forecast__current > div:not(.kitchen-forecast__chefs):nth-child(2) { border-right: 0; }
   .kitchen-forecast__current > div:not(.kitchen-forecast__chefs):nth-child(3) { padding-left: 0; border-top: 1px solid var(--rule); }

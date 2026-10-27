@@ -148,7 +148,7 @@ export function SiteAssistant() {
                 void sendMessage(draft)
               }} />
             <button type="submit" aria-label="Gửi tin nhắn" disabled={!draft.trim() || busy}>
-              {busy ? <LoaderCircle aria-hidden="true" /> : <Send aria-hidden="true" />}
+              <Send aria-hidden="true" />
             </button>
           </form>}
           <p className="site-assistant__privacy"><Sparkles aria-hidden="true" /> Trợ lí alibibee có thể nhầm; xác nhận lại thông tin đặt bàn với nhà hàng.</p>

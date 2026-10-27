@@ -149,6 +149,7 @@ export interface KitchenForecastResponse {
   actions: string[];
   suggestedPauseAt: string | null;
   dataNote: string;
+  sampleData: boolean;
 }
 
 export interface ChangePasswordRequest {

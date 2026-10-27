@@ -70,6 +70,9 @@ describe('SiteAssistant', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Gửi tin nhắn' }))
 
     expect(screen.getByText('Đang tìm thông tin…')).toBeInTheDocument()
+    const sendButton = screen.getByRole('button', { name: 'Gửi tin nhắn' })
+    expect(sendButton.querySelector('svg')).toHaveClass('lucide-send')
+    expect(sendButton.querySelector('svg')).not.toHaveClass('lucide-loader-circle')
     expect(screen.getByRole('button', { name: 'Gửi tin nhắn' })).toBeDisabled()
     finish({ reply: 'Mình sẽ tìm thực đơn cho bạn.' })
     expect(await screen.findByText('Mình sẽ tìm thực đơn cho bạn.')).toBeInTheDocument()

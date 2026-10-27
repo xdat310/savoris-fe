@@ -17,7 +17,7 @@
 .site-assistant__bubble--user { align-self: flex-end; color: #17130b; background: var(--dc-gold); border-bottom-right-radius: 4px; }
 .site-assistant__typing { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--dc-text-muted); font-size: 12px; }
 .site-assistant__typing svg, .site-assistant__form button svg { width: 18px; height: 18px; }
-.site-assistant__typing svg, .site-assistant__form button:disabled svg { animation: assistant-spin 1.1s linear infinite; }
+.site-assistant__typing svg { animation: assistant-spin 1.1s linear infinite; }
 .site-assistant__form { display: flex; align-items: flex-end; gap: 9px; padding: 12px; border-top: 1px solid var(--dc-border); }
 .site-assistant__form textarea { flex: 1; min-height: 42px; max-height: 96px; resize: vertical; padding: 11px 12px; color: var(--dc-text); background: var(--dc-surface-raised); border: 1px solid var(--dc-border-strong); border-radius: 8px; font: 13px/1.4 var(--dc-sans); }
 .site-assistant__form textarea::placeholder { color: var(--dc-text-muted); }

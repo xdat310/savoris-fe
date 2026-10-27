@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { get } from '../api/client'
 import { KitchenForecast } from './KitchenForecast'
 
@@ -8,6 +8,7 @@ const load = vi.mocked(get)
 
 describe('KitchenForecast', () => {
   beforeEach(() => load.mockReset())
+  afterEach(cleanup)
 
   it('loads a forecast only after the manager requests one', async () => {
     load.mockResolvedValue({
@@ -25,5 +26,20 @@ describe('KitchenForecast', () => {
     expect(screen.getByText('110%')).toBeInTheDocument()
     expect(screen.getByText('Quá tải')).toBeInTheDocument()
     expect(load).toHaveBeenCalledWith('/dashboard/branch/4/kitchen-forecast')
+  })
+
+
+  it('runs the AI against the synthetic peak-hour scenario on request', async () => {
+    load.mockResolvedValue({
+      branchId: 4, branchName: 'Hoàn Kiếm', kitchenCapacity: 50, activeChefAccounts: 4,
+      pendingPortions: 24, cookingPortions: 8, currentLoadPercent: 64, history: [], forecast: [],
+      alert: 'Bếp có nguy cơ quá tải', actions: ['Bổ sung đầu bếp'], suggestedPauseAt: '19:30',
+      dataNote: 'DỮ LIỆU MÔ PHỎNG', sampleData: true,
+    } as never)
+    render(<KitchenForecast branchId={4} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Thử AI với dữ liệu mẫu' }))
+
+    expect(await screen.findByText('Bếp có nguy cơ quá tải')).toBeInTheDocument()
+    expect(load).toHaveBeenCalledWith('/dashboard/branch/4/kitchen-forecast?sampleData=true')
   })
 })
