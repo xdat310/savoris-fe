@@ -34,6 +34,8 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
   const [slots, setSlots] = useState<SlotAvailability[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [customTimeOpen, setCustomTimeOpen] = useState(false)
+  const [customTime, setCustomTime] = useState('')
 
   // Step 3 — personal info
   const [name, setName] = useState('')
@@ -67,6 +69,8 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
     setSlotsLoading(true)
     setSlots([])
     setSelectedSlot(null)
+    setCustomTimeOpen(false)
+    setCustomTime('')
     try {
       const data = await getSlots(branchId, date)
       setSlots(data)
@@ -170,7 +174,7 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
                   <button key={s.slotTime}
                     className={`bk-slot${full ? ' bk-slot--full' : ''}${selected ? ' bk-slot--on' : ''}`}
                     disabled={full}
-                    onClick={() => { setSelectedSlot(s.slotTime); setStep('info') }}
+                    onClick={() => { setCustomTimeOpen(false); setCustomTime(''); setSelectedSlot(s.slotTime); setStep('info') }}
                   >
                     <span className="bk-slot-time">{fmt(s.slotTime)}</span>
                     <div className="bk-slot-bar">
@@ -184,7 +188,24 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
                   </button>
                 )
               })}
+              <button className={`bk-slot bk-slot-other${customTimeOpen ? ' bk-slot--on' : ''}`} type="button"
+                aria-expanded={customTimeOpen}
+                onClick={() => { setCustomTimeOpen((open) => !open); setCustomTime(''); setSelectedSlot(null) }}>
+                <span className="bk-slot-time">Khác</span>
+              </button>
             </div>
+            {customTimeOpen && <div className="bk-custom-time">
+              <label className="bk-field bk-custom-time-field">
+                <span>Giờ khác</span>
+                <input className="bk-input" type="time" step={1800} value={customTime}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    setCustomTime(value)
+                    setSelectedSlot(value ? `${date}T${value}:00` : null)
+                    if (value) setStep('info')
+                  }} />
+              </label>
+            </div>}
             <button className="bk-btn bk-btn-ghost" onClick={() => setStep('pick')}>← Quay lại</button>
           </div>
         )}
@@ -225,7 +246,7 @@ export function SiteBookingModal({ open, onClose, branches }: Props) {
               onClick={confirm}>
               {busy ? 'Đang đặt…' : 'Xác nhận đặt bàn'}
             </button>
-            <button className="bk-btn bk-btn-ghost" onClick={() => setStep('slots')}>← Đổi giờ</button>
+            <button className="bk-btn bk-btn-ghost" onClick={() => { setCustomTimeOpen(Boolean(selectedSlot && !slots.some((s) => s.slotTime === selectedSlot))); setCustomTime(selectedSlot && !slots.some((s) => s.slotTime === selectedSlot) ? selectedSlot.slice(11, 16) : ''); setStep('slots') }}>← Đổi giờ</button>
           </div>
         )}
 

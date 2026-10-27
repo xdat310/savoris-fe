@@ -2669,10 +2669,14 @@ table.data tr.is-current td { background: var(--accent-wash); }
 .bk-slot-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 }
+.bk-custom-time { display: grid; gap: 12px; }
+.bk-slot-other { min-height: 64px; justify-content: center; }
+.bk-custom-time-field { gap: 8px; }
 .bk-slot {
   background: none; border: 1px solid #22222A;
   padding: 10px 8px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 5px;
+  font-family: var(--dc-sans); font-size: 14px;
   transition: border-color 200ms, background 200ms;
 }
 .bk-slot:hover:not(:disabled) { border-color: var(--dc-gold); background: rgba(201,164,92,0.05); }
@@ -2727,6 +2731,8 @@ table.data tr.is-current td { background: var(--accent-wash); }
   letter-spacing: 0.2em; text-transform: uppercase;
   cursor: pointer; border: 1px solid; transition: all 200ms;
 }
+.bk-sheet { font-family: var(--dc-sans); }
+.bk-sheet button,.bk-sheet input,.bk-sheet select,.bk-sheet textarea { font-family: var(--dc-sans); }
 .bk-btn:disabled { opacity: 0.4; cursor: default; }
 .bk-btn-primary {
   background: var(--dc-gold); border-color: var(--dc-gold);

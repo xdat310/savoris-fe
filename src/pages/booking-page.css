@@ -1,1 +1,46 @@
-.venue-booking{min-height:100vh;background:#10100e;color:#eeeae0;padding:28px clamp(20px,6vw,96px) 80px;font-family:var(--font-ui)}.venue-booking>header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3b3933;padding-bottom:20px}.booking-back{color:#c7b48e;text-decoration:none}.booking-layout{max-width:1160px;margin:10vh auto 0;display:grid;grid-template-columns:1fr 1fr;gap:9vw}.booking-intro>span,.booking-confirm>span{font-size:11px;letter-spacing:.2em;color:#b89b6a}.booking-intro h1,.booking-confirm h1{font-family:var(--font-display);font-size:clamp(60px,8vw,112px);line-height:.9;font-weight:400;margin:26px 0}.booking-intro p,.booking-confirm p{max-width:410px;color:#c7c2b7;line-height:1.8}.booking-form{display:grid;gap:16px}.booking-form label{display:grid;gap:7px;color:#d3cfc5;font-size:13px}.booking-form input,.booking-form select,.booking-form textarea{background:#181815;border:1px solid #47443d;color:#f1eee7;padding:12px;font:inherit;min-width:0}.booking-form input[type='date']{display:block;width:100%;max-width:100%;min-width:0;height:46px}.booking-form input:not([type='checkbox']),.booking-form select{height:46px;box-sizing:border-box}.booking-form fieldset{border:0;padding:0;margin:0}.booking-form legend{font-size:13px;color:#d3cfc5;margin-bottom:9px}.booking-slots{display:flex;flex-wrap:wrap;gap:8px}.booking-slots button{background:transparent;color:#ddd4c3;border:1px solid #5b554a;padding:9px 13px;cursor:pointer}.booking-slots button.is-selected{background:#b89b6a;color:#141310;border-color:#b89b6a}.booking-address{font-size:12px;color:#aaa69d;margin:0}.booking-form .venue-button{justify-self:start;cursor:pointer}.booking-form .venue-button:disabled{opacity:.45;cursor:not-allowed}.booking-confirm{max-width:760px;margin:18vh auto}.booking-confirm .venue-button{display:inline-flex;margin-top:18px}@media(max-width:800px){.booking-layout{grid-template-columns:1fr;gap:36px;margin-top:8vh}.booking-intro h1,.booking-confirm h1{font-size:64px}}
+.venue-booking {
+  min-height: 100vh;
+  padding: 28px clamp(20px, 6vw, 96px) 80px;
+  color: #eeeae0;
+  background: #10100e;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.venue-booking button,
+.venue-booking input,
+.venue-booking select,
+.venue-booking textarea { font: inherit; }
+.venue-booking > header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3b3933; padding-bottom:20px; }
+.venue-brand { color:#eeeae0; font-family:var(--font-display); font-size:20px; letter-spacing:.16em; text-decoration:none; }
+.booking-back { color:#c7b48e; font-size:13px; text-decoration:none; }
+.booking-layout { max-width:1320px; margin:7vh auto 0; display:grid; grid-template-columns:minmax(0,.82fr) minmax(560px,1.18fr); gap:5vw; align-items:start; }
+.booking-side-image { min-height:690px; position:sticky; top:32px; background:linear-gradient(180deg,#10100e10 50%,#10100ef0 100%),url('../assets/photos/restaurant-interior.webp') center/cover no-repeat; }
+.booking-confirm > span { font-size:11px; font-weight:500; letter-spacing:.16em; color:#b89b6a; }
+.booking-confirm h1 { max-width:8ch; font-family:var(--font-display); font-size:clamp(60px,8vw,112px); line-height:.96; font-weight:400; letter-spacing:-.025em; margin:24px 0; }
+.booking-confirm p { max-width:410px; color:#c7c2b7; line-height:1.8; }
+.booking-form { display:grid; align-content:start; gap:17px; }
+.booking-form label { display:grid; gap:7px; color:#d3cfc5; font-size:13px; line-height:1.5; }
+.booking-form input,.booking-form select,.booking-form textarea { width:100%; min-width:0; min-height:46px; box-sizing:border-box; padding:11px 12px; border:1px solid #47443d; border-radius:2px; background:#181815; color:#f1eee7; font-family:var(--font-ui); font-size:14px; line-height:1.4; }
+.booking-form textarea { resize:vertical; min-height:90px; }
+.booking-form input:focus-visible,.booking-form select:focus-visible,.booking-form textarea:focus-visible { outline:2px solid #c4a875; outline-offset:2px; }
+.booking-form input[type='date'] { display:block; width:100%; }
+.booking-form fieldset { min-width:0; border:0; padding:0; margin:0; }
+.booking-form legend { margin-bottom:9px; color:#e2ddd3; font-size:13px; font-weight:500; }
+.booking-slots { display:flex; flex-wrap:wrap; gap:8px; }
+.booking-slots button { min-width:64px; min-height:40px; padding:8px 12px; border:1px solid #5b554a; border-radius:2px; background:transparent; color:#ddd4c3; font-family:var(--font-ui); font-size:13px; cursor:pointer; transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease; }
+.booking-slots button:hover { border-color:#c4a875; }
+.booking-slots button.is-selected { border-color:#b89b6a; background:#b89b6a; color:#141310; }
+.booking-time-field { width:min(100%,240px); margin-top:13px; }
+.booking-address { margin:8px 0 0; color:#b8b3a9; font-size:12px; line-height:1.55; }
+.booking-form .venue-button { justify-self:start; cursor:pointer; font-family:var(--font-ui); }
+.booking-form .venue-button:disabled { opacity:.45; cursor:not-allowed; }
+.booking-confirm { max-width:760px; margin:18vh auto; }
+.booking-confirm .venue-button { display:inline-flex; margin-top:18px; }
+@media(max-width:800px) {
+  .booking-layout { grid-template-columns:1fr; gap:24px; margin-top:6vh; }
+  .booking-layout { grid-template-columns:minmax(0,1fr); }
+  .booking-side-image { position:relative; top:auto; min-height:0; height:220px; }
+  .booking-confirm h1 { font-size:clamp(56px,14vw,72px); }
+}
