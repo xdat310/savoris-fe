@@ -374,6 +374,7 @@ export interface KitchenTicketResponse {
   cookedBy?: number;
   orderedAt?: string;
   waitingMinutes?: number;
+  cookingStartedAt?: string;
   voidReason?: string;
   voidResolution?: 'ACCEPT' | 'REMAKE' | 'CHARGE';
   awaitingPayment?: boolean;
