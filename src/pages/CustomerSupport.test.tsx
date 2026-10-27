@@ -10,7 +10,7 @@ vi.mock('../api/client', async importOriginal => {
 })
 
 describe('CustomerSupport', () => {
-  afterEach(() => cleanup())
+  afterEach(() => { cleanup(); sessionStorage.clear() })
   it('submits the handoff and shows the ticket reference', async () => {
     vi.mocked(post).mockResolvedValue({ referenceCode: 'SV-ABC12345', accessToken: 'test-access-token', status: 'OPEN' } as never)
     vi.mocked(getWithHeaders).mockResolvedValue([
@@ -34,5 +34,14 @@ describe('CustomerSupport', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Gửi' }))
     expect(await screen.findByText('Nhân viên đang kiểm tra cho bạn.')).toBeInTheDocument()
     expect(postWithHeaders).toHaveBeenCalledWith('/public/support-tickets/SV-ABC12345/messages', { body: 'Mình bị dị ứng đậu phộng.' }, { 'X-Support-Token': 'test-access-token' })
+  })
+
+  it('restores the existing conversation from this browser session', async () => {
+    sessionStorage.setItem('alibibee.support.active', JSON.stringify({ referenceCode: 'SV-KEEP1234', accessToken: 'session-token', status: 'IN_PROGRESS' }))
+    vi.mocked(getWithHeaders).mockResolvedValue([{ id: 8, senderType: 'STAFF', body: 'Nhân viên đã nhận yêu cầu.' }] as never)
+    render(<MemoryRouter initialEntries={['/ho-tro']}><CustomerSupport /></MemoryRouter>)
+    expect(await screen.findByText('SV-KEEP1234')).toBeInTheDocument()
+    expect(await screen.findByText('Nhân viên đã nhận yêu cầu.')).toBeInTheDocument()
+    expect(getWithHeaders).toHaveBeenCalledWith('/public/support-tickets/SV-KEEP1234/messages', { 'X-Support-Token': 'session-token' })
   })
 })

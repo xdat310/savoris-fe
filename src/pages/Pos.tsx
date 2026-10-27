@@ -19,6 +19,8 @@ import { ITEM_STATUS_LABEL, ORDER_TYPE_LABEL, money, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { Counter } from '../components/Counter'
 import { confirmDialog } from '../components/ui/Dialog'
+import { countPosTableStates, filterPosMenu, filterPosTables, getCoursePayload, getPosTableState, splitEvenly, type PosCourse, type PosTableFilter } from '../lib/pos-logic'
+import './pos.css'
 
 type Selection =
   | { kind: 'table'; tableId: number }
@@ -26,11 +28,11 @@ type Selection =
   | { kind: 'new'; type: 'TAKEAWAY' | 'DELIVERY' }
   | null
 
-type Course = 1 | 2 | 3
-interface DraftLine { menuItemId: number; quantity: number; course: Course }
+type Course = PosCourse
+interface DraftLine { menuItemId: number; quantity: number; course: Course; notes: string }
 
 const COURSE_LABEL: Record<Course, string> = { 1: 'Khai vị', 2: 'Món chính', 3: 'Tráng miệng' }
-const QUICK_CASH = [50000, 100000, 200000, 500000]
+const QUICK_CASH = [500000, 1000000]
 
 export function Pos() {
   const { branchId, role } = useAuth()
@@ -40,6 +42,10 @@ export function Pos() {
   const [draft, setDraft] = useState<DraftLine[]>([])
   const [activeCourse, setActiveCourse] = useState<Course>(2)
   const [flashReadyTables, setFlashReadyTables] = useState<Set<number>>(new Set())
+  const [tableFilter, setTableFilter] = useState<PosTableFilter>('ALL')
+  const [tableSearch, setTableSearch] = useState('')
+  const [menuSearch, setMenuSearch] = useState('')
+  const [menuCategory, setMenuCategory] = useState<number | 'ALL'>('ALL')
 
   const tables = useData(() => get<TableResponse[]>(`/branches/${branchId}/tables`), [branchId], 10000)
   const orders = useData(() => get<OrderResponse[]>(`/orders/branch/${branchId}`), [branchId], 8000)
@@ -47,7 +53,19 @@ export function Pos() {
   const categories = useData(() => get<MenuCategoryResponse[]>('/menu-categories/search?q='), [])
   const load   = useData(() => get<BranchLoadResponse>(`/kitchen/branches/${branchId}/load`), [branchId], 15000)
 
-  const openOrders = useMemo(() => orders.data ?? [], [orders.data])
+  const openOrders = useMemo(() => (orders.data ?? []).filter((order) => order.status !== 'COMPLETED' && order.status !== 'CANCELLED'), [orders.data])
+  const servedOrders = useMemo(() => openOrders.filter((order) => {
+    const live = (order.items ?? []).filter((item) => item.status !== 'CANCELLED')
+    return live.length > 0 && live.every((item) => item.status === 'SERVED')
+  }), [openOrders])
+  const tablePayments = useData(() => Promise.all(servedOrders.filter((order) => order.id != null).map(async (order) => {
+    try {
+      const payment = await get<PaymentResponse>(`/payments/order/${order.id}`)
+      return [order.id!, payment?.status ?? 'PENDING'] as const
+    } catch (error) {
+      return [order.id!, error instanceof ApiError && error.status === 404 ? 'PENDING' : 'UNKNOWN'] as const
+    }
+  })).then((entries) => new Map(entries)), [servedOrders.map((order) => `${order.id}:${order.updatedAt ?? ''}`).join('|')], 15000)
 
   const refunds = useData(
     () => (can.cash(role) ? get<OrderResponse[]>(`/orders/branch/${branchId}/refunds-due`) : Promise.resolve([])),
@@ -128,7 +146,7 @@ export function Pos() {
       const existing = d.find((l) => l.menuItemId === item.menuItemId && l.course === activeCourse)
       return existing
         ? d.map((l) => (l.menuItemId === item.menuItemId && l.course === activeCourse ? { ...l, quantity: l.quantity + 1 } : l))
-        : [...d, { menuItemId: item.menuItemId!, quantity: 1, course: activeCourse }]
+        : [...d, { menuItemId: item.menuItemId!, quantity: 1, course: activeCourse, notes: '' }]
     })
   }
 
@@ -143,8 +161,7 @@ export function Pos() {
 
   return (
     <div className="pos">
-      <div className="pos-work">
-        <div className="pos-toolbar">
+      <div className="pos-toolbar">
           <div className="seg" role="group" aria-label="Loại đơn">
             <button aria-pressed={mode === 'floor'} onClick={() => setMode('floor')}>Tại bàn</button>
             <button aria-pressed={mode === 'takeaway'} onClick={() => setMode('takeaway')}>
@@ -165,40 +182,47 @@ export function Pos() {
               )}
             </div>
           )}
-        </div>
+      </div>
 
+      <div className="pos-notices">
         <GuestOrderAlerts alerts={guestOrders.alerts} onDismiss={guestOrders.dismiss}
           tableName={(id) => `Bàn ${tables.data?.find((t) => t.id === id)?.name ?? ''}`.trim()}
           onOpen={(tableId) => { setMode('floor'); select({ kind: 'table', tableId }) }} />
         <TakeawayAlerts alerts={reminders.alerts} onDismiss={reminders.dismiss} onRefunded={refunded} settling={settling}
           onOpen={(orderId) => { setMode('takeaway'); select({ kind: 'order', orderId }) }} />
-
         {stockPanel && (
-          <ReadyMadeStock items={(menu.data ?? []).filter((m) => !m.needsKitchen)} branchId={branchId!} onChanged={menu.reload} />
+          <ReadyMadeStock items={(menu.data ?? []).filter((m) => !m.needsKitchen)} branchId={branchId!} canToggle={can.manage(role)} onChanged={menu.reload} />
         )}
+      </div>
 
+      <section className="pos-left" aria-label={mode === 'floor' ? 'Chọn bàn' : 'Đơn mang đi'}>
         {mode === 'floor' ? (
           <FloorPlan
             tables={tables.data}
             error={tables.error}
             ordersByTable={ordersByTable}
             flashReadyTables={flashReadyTables}
-            selectedTable={selection?.kind === 'table' ? selection.tableId : undefined}
+            paymentStatus={tablePayments.data}
+            tableFilter={tableFilter}
+            onTableFilter={setTableFilter}
+            tableSearch={tableSearch}
+            onTableSearch={setTableSearch}
+            selectedTable={selection?.kind === 'table' ? selection.tableId ?? undefined : undefined}
             onSelect={(tableId) => select({ kind: 'table', tableId })}
           />
         ) : (
           <TakeawayList
             orders={openOrders.filter((o) => o.orderType !== 'DINE_IN')}
             paused={!!takeawayPaused}
-            wait={load.data?.estimatedWaitMinutes}
+            wait={load.data?.estimatedWaitMinutes ?? undefined}
             selected={selection}
             onNew={(type) => select({ kind: 'new', type })}
             onSelect={(orderId) => select({ kind: 'order', orderId })}
           />
         )}
+      </section>
 
-        {/* Course selector + menu board */}
-        <div style={{ marginTop: 22 }}>
+      <section className="pos-center" aria-label="Thực đơn và đợt gọi món">
           {selection && (
             <div className="course-tabs" role="group" aria-label="Đợt gọi món">
               {([1, 2, 3] as Course[]).map((c) => {
@@ -223,9 +247,12 @@ export function Pos() {
             error={menu.error}
             onAdd={addDish}
             disabled={!selection || currentOrder?.status === 'AWAITING_PAYMENT'}
+            search={menuSearch}
+            onSearch={setMenuSearch}
+            category={menuCategory}
+            onCategory={setMenuCategory}
           />
-        </div>
-      </div>
+      </section>
 
       <OrderColumn
         key={selection ? JSON.stringify(selection) + (currentOrder?.id ?? '') : 'none'}
@@ -243,7 +270,6 @@ export function Pos() {
         onCreated={(order) => {
           refreshAll()
           if (order.orderType !== 'DINE_IN') setSelection({ kind: 'order', orderId: order.id! })
-          setDraft([])
         }}
         onClosed={() => { refreshAll(); select(null) }}
       />
@@ -253,11 +279,16 @@ export function Pos() {
 
 // ---------------------------------------------------------------- floor plan
 
-function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTable, onSelect }: {
+function FloorPlan({ tables, error, ordersByTable, flashReadyTables, paymentStatus, tableFilter, onTableFilter, tableSearch, onTableSearch, selectedTable, onSelect }: {
   tables?: TableResponse[]
   error: string | null
   ordersByTable: Map<number, OrderResponse[]>
   flashReadyTables: Set<number>
+  paymentStatus?: ReadonlyMap<number, string>
+  tableFilter: PosTableFilter
+  onTableFilter: (filter: PosTableFilter) => void
+  tableSearch: string
+  onTableSearch: (search: string) => void
   selectedTable?: number
   onSelect: (id: number) => void
 }) {
@@ -265,11 +296,31 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTab
   if (!tables) return <Loading label="Đang tải sơ đồ bàn…" />
   if (tables.length === 0) return <Empty title="Chi nhánh chưa có bàn">Quản lý cần tạo khu vực và bàn.</Empty>
 
+  const visibleTables = filterPosTables(tables, ordersByTable, tableFilter, tableSearch, paymentStatus)
+  const counts = countPosTableStates(tables, ordersByTable, paymentStatus)
   const areas = new Map<number, TableResponse[]>()
-  for (const t of tables) areas.set(t.areaId!, [...(areas.get(t.areaId!) ?? []), t])
+  for (const t of visibleTables) areas.set(t.areaId!, [...(areas.get(t.areaId!) ?? []), t])
+  const filterLabels: Record<PosTableFilter, string> = {
+    ALL: 'Tất cả', EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán',
+  }
+  const stateLabels = { EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán' } as const
 
   return (
     <div className="floor-areas">
+      <div className="pos-table-tools">
+        <label className="pos-search">
+          <Search size={16} aria-hidden="true" />
+          <span className="sr-only">Tìm bàn</span>
+          <input aria-label="Tìm bàn" placeholder="Tìm bàn…" value={tableSearch} onChange={(event) => onTableSearch(event.target.value)} />
+        </label>
+        <div className="pos-table-filters" role="group" aria-label="Lọc bàn">
+          {(Object.keys(filterLabels) as PosTableFilter[]).map((key) => (
+            <button key={key} className={`pos-filter${tableFilter === key ? ' is-active' : ''}`} aria-pressed={tableFilter === key} onClick={() => onTableFilter(key)}>
+              {filterLabels[key]} <span>{counts[key]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="floor-legend" aria-hidden="true">
         <span style={{ '--tone': 'var(--success)' } as React.CSSProperties}><i /> Trống</span>
         <span style={{ '--tone': 'var(--info)' } as React.CSSProperties}><i /> Đang phục vụ</span>
@@ -277,6 +328,7 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTab
         <span style={{ '--tone': 'var(--warning)' } as React.CSSProperties}><i /> Chờ thanh toán</span>
         <span style={{ '--tone': 'var(--accent)' } as React.CSSProperties}><i /> Có món ra</span>
       </div>
+      {visibleTables.length === 0 && <Empty title="Không tìm thấy bàn phù hợp">Thử đổi trạng thái lọc hoặc từ khóa.</Empty>}
       {[...areas.entries()].map(([areaId, list], i) => (
         <section key={areaId}>
           <h2 className="area-title">Khu {i + 1}</h2>
@@ -288,14 +340,10 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, selectedTab
               const open     = ordersByTable.get(t.id!) ?? []
               const occupied = open.length > 0 || t.status === 'OCCUPIED'
               const total    = open.reduce((s, o) => s + (o.totalAmount ?? 0), 0)
-              const hasReady = open.some((o) => o.items?.some((it) => it.status === 'READY')) || flashReadyTables.has(t.id!)
-              // Display-only state, read from data already on screen: the order list does not say whether a bill
-              // is paid, so a table whose dishes are all out is labelled as such rather than "waiting to pay"
-              const live = (o: OrderResponse) => (o.items ?? []).filter((it) => it.status !== 'CANCELLED')
-              const awaiting = open.some((o) => o.status === 'AWAITING_PAYMENT')
-              const allServed = !awaiting && open.length > 0 && open.every((o) => live(o).length > 0 && live(o).every((it) => it.status === 'SERVED'))
-              const tileState = !occupied ? 'free' : awaiting ? 'awaiting' : allServed ? 'served' : 'occupied'
-              const stateLabel = { free: 'Trống', occupied: 'Đang phục vụ', served: 'Đã lên đủ món', awaiting: 'Chờ thanh toán' }[tileState]
+              const state = getPosTableState(t, open, paymentStatus)
+              const hasReady = state === 'READY' || flashReadyTables.has(t.id!)
+              const tileState = state.toLowerCase()
+              const stateLabel = stateLabels[state]
               return (
                 <button
                   key={t.id}
@@ -393,40 +441,54 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
 
 // ---------------------------------------------------------------- menu board
 
-function MenuBoard({ items, categories, error, onAdd, disabled }: {
+function MenuBoard({ items, categories, error, onAdd, disabled, search, onSearch, category, onCategory }: {
   items?: BranchMenuItemResponse[]; categories?: MenuCategoryResponse[]; error: string | null
   onAdd: (item: BranchMenuItemResponse) => void; disabled: boolean
+  search: string; onSearch: (value: string) => void
+  category: number | 'ALL'; onCategory: (category: number | 'ALL') => void
 }) {
   if (error) return <ErrorNotice message={error} />
   if (!items) return <Loading label="Đang tải menu…" />
+  const filteredItems = filterPosMenu(items, category, search)
   const groups = new Map<number, BranchMenuItemResponse[]>()
-  for (const it of items) groups.set(it.categoryId!, [...(groups.get(it.categoryId!) ?? []), it])
+  for (const it of filteredItems) groups.set(it.categoryId!, [...(groups.get(it.categoryId!) ?? []), it])
   const catName = (id: number) => categories?.find((c) => c.id === id)?.name ?? 'Món'
 
   return (
     <section className="menu-board" id="menu-board" aria-label="Menu chi nhánh">
       <h3>
-        <span className="chalk board-title">Hôm nay có</span>
+        <span className="board-title">Thực đơn</span>
         {disabled && <span style={{ fontSize: 'var(--fs-13)', fontWeight: 'var(--fw-medium)' }}>Chọn bàn để gọi món</span>}
       </h3>
+      <label className="pos-search pos-menu-search">
+        <Search size={16} aria-hidden="true" />
+        <span className="sr-only">Tìm món</span>
+        <input aria-label="Tìm món" placeholder="Tìm món…" value={search} onChange={(event) => onSearch(event.target.value)} />
+      </label>
+      <div className="pos-menu-categories" role="group" aria-label="Lọc danh mục món">
+        <button className={`pos-filter${category === 'ALL' ? ' is-active' : ''}`} aria-pressed={category === 'ALL'} onClick={() => onCategory('ALL')}>Tất cả</button>
+        {(categories ?? []).map((cat) => <button key={cat.id} className={`pos-filter${category === cat.id ? ' is-active' : ''}`} aria-pressed={category === cat.id} onClick={() => onCategory(cat.id!)}>{cat.name}</button>)}
+      </div>
+      {filteredItems.length === 0 && <Empty title="Không có món phù hợp">Đổi từ khóa hoặc chọn danh mục khác.</Empty>}
       {[...groups.entries()].map(([catId, list]) => (
         <div key={catId}>
           <div className="menu-cat">{catName(catId)}</div>
           {list.map((it) => {
-            const soldOut = !it.available
+            const soldOut = it.available === false || it.outOfStock === true
+            const unknownAvailability = it.available == null && !it.outOfStock
             return (
               <button
                 key={it.menuItemId}
-                className={`dish${soldOut ? ' soldout' : ''}`}
+                className={`dish pos-dish${soldOut ? ' soldout' : ''}`}
                 onClick={() => onAdd(it)}
-                disabled={soldOut || disabled}
-                aria-label={soldOut ? `${it.name}, hết món` : `Thêm ${it.name}, ${money(it.price)}`}
+                disabled={soldOut || unknownAvailability || disabled}
+                aria-label={soldOut ? `${it.name}, hết món` : unknownAvailability ? `${it.name}, chưa xác định tình trạng` : `Thêm ${it.name}, ${money(it.price)}`}
               >
                 <DishThumb src={it.imageUrl} name={it.name} size="sm" />
                 <span className="dname"><Strikable on={soldOut}>{it.name}</Strikable></span>
                 <span className="dots" aria-hidden="true" />
-                {soldOut ? <span className="soldout-tag">{it.outOfStock ? 'hết kho' : 'hết'}</span> : <span className="dprice">{money(it.price)}</span>}
-                {!soldOut && <Plus className="add" size={18} aria-hidden="true" />}
+                {soldOut ? <span className="soldout-tag">HẾT MÓN</span> : unknownAvailability ? <span className="soldout-tag">ĐANG CẬP NHẬT</span> : <span className="dprice">{money(it.price)}</span>}
+                {!soldOut && !unknownAvailability && <Plus className="add" size={18} aria-hidden="true" />}
               </button>
             )
           })}
@@ -464,6 +526,7 @@ function OrderColumn(props: {
   const payment = useData(
     () => (order ? get<PaymentResponse>(`/payments/order/${order.id}`).catch(() => null) : Promise.resolve(null)),
     [order?.id, order?.totalAmount],
+    order?.status === 'AWAITING_PAYMENT' ? 4000 : undefined,
   )
 
   if (!selection) {
@@ -490,9 +553,7 @@ function OrderColumn(props: {
 
   // Send items for a specific course to kitchen
   const sendCourse = (course: Course) => {
-    const courseItems = draft
-      .filter((l) => l.course === course)
-      .map((l) => ({ menuItemId: l.menuItemId, quantity: l.quantity }))
+    const courseItems = getCoursePayload(draft, course)
     if (courseItems.length === 0) return
 
     if (order) {
@@ -548,15 +609,6 @@ function OrderColumn(props: {
       await put(`/orders/${order!.id}/cancel`)
       props.onClosed()
     }, 'Đã huỷ đơn')
-  }
-
-  const confirmTransfer = async () => {
-    if (!(await confirmDialog({ title: 'Xác nhận đã nhận chuyển khoản?', message: `Đã thấy ${money(order!.totalAmount)} với nội dung ${order!.code} về tài khoản.`, confirmLabel: 'Đã nhận tiền' }))) return
-    run(async () => {
-      await post<PaymentResponse>('/payments', { orderId: order!.id, paymentMethod: 'BANK_TRANSFER' })
-      await payment.reload()
-      await props.onChanged()
-    }, `Đã xác nhận chuyển khoản ${order!.code}, món xuống bếp`)
   }
 
   async function lookupCustomer() {
@@ -648,10 +700,11 @@ function OrderColumn(props: {
               <span className="lamt">{money(it.amount)}</span>
               <span className="lsub">
                 <ItemStatus status={it.status} />
+                {it.notes && <span className="order-item-notes">Ghi chú: {it.notes}</span>}
                 {it.cancelReason && <span>· {it.cancelReason}</span>}
                 {voidPending && it.voidReason && <span className="void-reason-tag">"{it.voidReason}"</span>}
                 <span style={{ marginLeft: 'auto' }} className="row">
-                  {it.status === 'READY' && !paid && (
+                  {it.status === 'READY' && !awaiting && (
                     <button className="btn btn-sm btn-accent" onClick={() => serveItem(it)} disabled={busy}>
                       <HandPlatter size={15} aria-hidden="true" /> Bưng ra
                     </button>
@@ -730,6 +783,19 @@ function OrderColumn(props: {
                       </button>
                     </span>
                   </span>
+                  <div className="draft-notes">
+                    <label htmlFor={`draft-note-${course}-${l.menuItemId}`}>Ghi chú món</label>
+                    <div className="draft-note-presets">
+                      {['Không hành', 'Ít cay', 'Không đá', 'Medium', 'Well done'].map((preset) => (
+                        <button key={preset} type="button" className="pos-note-preset" aria-pressed={l.notes === preset}
+                          onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, notes: x.notes === preset ? '' : preset } : x))}>
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                    <input id={`draft-note-${course}-${l.menuItemId}`} className="input" aria-label={`Ghi chú ${m?.name ?? 'món'}`} maxLength={240} placeholder="Ghi chú riêng cho món này…"
+                      value={l.notes} onChange={(event) => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, notes: event.target.value } : x))} />
+                  </div>
                 </div>
               )
             })}
@@ -797,9 +863,9 @@ function OrderColumn(props: {
             setPaying(false)
             await payment.reload()
             await props.onChanged()
-            toast(method === 'BANK_TRANSFER'
-              ? `Đã ghi nhận chuyển khoản ${money(p.amount)}`
-              : `Đã thu ${money(p.cashReceived)} — thối ${money(p.changeAmount)}`)
+            toast(p.status === 'PAID'
+              ? method === 'BANK_TRANSFER' ? `Đã xác nhận chuyển khoản ${money(p.amount)}` : `Đã thu ${money(p.cashReceived)} — thối ${money(p.changeAmount)}`
+              : 'Đang chờ backend xác nhận thanh toán')
           })}
         />
       ) : (
@@ -815,15 +881,15 @@ function OrderColumn(props: {
           {draft.length === 0 && order && !paid && !can.cash(props.role) && (
             <div className="notice notice-ok">{awaiting ? 'Đơn web chờ thu ngân thu tiền.' : 'Gọi món xong. Khách thanh toán tiền mặt tại quầy thu ngân.'}</div>
           )}
-          {order && awaiting && order.payMethod === 'BANK_TRANSFER' && (
-            <>
-              <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={confirmTransfer}>
-                <Landmark size={18} aria-hidden="true" /> Đã nhận chuyển khoản · <span className="num">{money(order.totalAmount)}</span>
-              </button>
-              <button className="btn btn-block" disabled={busy} onClick={() => setPaying(true)}>
-                <Wallet size={16} aria-hidden="true" /> Khách trả tiền mặt thay
-              </button>
-            </>
+          {order && awaiting && order.orderType !== 'DINE_IN' && order.payMethod === 'BANK_TRANSFER' && (
+            <div className="notice notice-warn" role="status">
+              Đang chờ SePay xác nhận giao dịch. Đơn chưa PAID nên bếp chưa nhận món; không xác nhận chỉ dựa trên mã QR hoặc thông báo của khách.
+            </div>
+          )}
+          {order && awaiting && order.orderType !== 'DINE_IN' && order.payMethod !== 'BANK_TRANSFER' && can.cash(props.role) && (
+            <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={() => setPaying(true)}>
+              <Wallet size={16} aria-hidden="true" /> Thu tiền mặt tại quầy
+            </button>
           )}
           {order && !paid && !awaiting && can.cash(props.role) && draft.length === 0 && (
             <button className="btn btn-primary btn-lg btn-block" onClick={() => setPaying(true)} disabled={busy || (order.totalAmount ?? 0) < 0}>
@@ -837,7 +903,7 @@ function OrderColumn(props: {
           )}
           {order && !paid && can.cash(props.role) && items.length > 0 && (
             <button className="btn btn-block" onClick={() => setSplitting(true)} disabled={busy}>
-              <Scissors size={16} aria-hidden="true" /> Chia hóa đơn
+              <Scissors size={16} aria-hidden="true" /> Công cụ chia tiền
             </button>
           )}
           {order && !paid && can.cash(props.role) && (
@@ -988,7 +1054,7 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
     return map
   })
 
-  const evenAmount = Math.ceil((order.totalAmount ?? 0) / people)
+  const evenShares = splitEvenly(order.totalAmount ?? 0, people)
 
   function assignItem(itemId: number, personIdx: number) {
     setAssignments((prev) => {
@@ -1009,11 +1075,11 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
   const unassigned = activeItems.filter((it) => !Object.values(assignments).some((s) => s.has(it.id!)))
 
   return (
-    <div className="split-overlay" role="dialog" aria-modal="true" aria-label="Chia hóa đơn">
+    <div className="split-overlay" role="dialog" aria-modal="true" aria-label="Công cụ chia tiền">
       <div className="split-card">
         <div className="split-head">
           <div>
-            <strong>Chia hóa đơn</strong>
+            <strong>Công cụ chia tiền</strong>
             <div className="split-code">{order.code} · {money(order.totalAmount)}</div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
@@ -1035,16 +1101,13 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
               </div>
             </label>
             <div className="split-result-list">
-              {Array.from({ length: people }, (_, i) => (
+              {evenShares.map((amount, i) => (
                 <div key={i} className="split-person-row">
                   <span>Người {i + 1}</span>
-                  <strong className="num">{money(evenAmount)}</strong>
+                  <strong className="num">{money(amount)}</strong>
                 </div>
               ))}
             </div>
-            {(order.totalAmount ?? 0) % people !== 0 && (
-              <div className="split-rounding">Làm tròn lên — người cuối trả {money(order.totalAmount ?? 0 - evenAmount * (people - 1))}</div>
-            )}
           </div>
         ) : (
           <div className="split-body">
@@ -1091,6 +1154,7 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
         )}
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--rule)' }}>
+          <p className="split-disclaimer">Đây chỉ là công cụ tính số tiền từng người. Hóa đơn vẫn thanh toán một lần.</p>
           <button className="btn btn-primary btn-block" onClick={onClose}>Đóng — thu tiền bình thường</button>
         </div>
       </div>
@@ -1098,7 +1162,7 @@ function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => v
   )
 }
 
-function ReadyMadeStock({ items, branchId, onChanged }: { items: BranchMenuItemResponse[]; branchId: number; onChanged: () => Promise<void> }) {
+function ReadyMadeStock({ items, branchId, canToggle, onChanged }: { items: BranchMenuItemResponse[]; branchId: number; canToggle: boolean; onChanged: () => Promise<void> }) {
   const toast = useToast()
   const [busy, setBusy] = useState<number | null>(null)
   async function toggle(m: BranchMenuItemResponse) {
@@ -1117,17 +1181,23 @@ function ReadyMadeStock({ items, branchId, onChanged }: { items: BranchMenuItemR
     <section className="ready-made panel panel-pad" aria-label="Món có sẵn">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <strong>Đồ uống & món có sẵn</strong>
-        <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>Bấm để báo hết / bán lại. Món gắn kho tự hết khi kho hết.</span>
+        <span className="muted" style={{ fontSize: 'var(--fs-13)' }}>{canToggle ? 'Bấm để báo hết / bán lại. Món gắn kho tự hết khi kho hết.' : 'Tình trạng do hệ thống cập nhật; tài khoản hiện tại chỉ có quyền xem.'}</span>
       </div>
       {items.length === 0 ? <span className="muted">Chưa có món nào được đặt là "Có sẵn" trong Menu chung.</span> : (
         <div className="row">
-          {items.map((m) => (
+          {items.map((m) => canToggle ? (
             <button key={m.menuItemId} className="chip-toggle on-light" aria-pressed={!m.available} disabled={busy === m.menuItemId || m.outOfStock}
               title={m.outOfStock ? 'Hết trong kho: nhập thêm hàng ở Kho' : m.available ? 'Bấm để báo hết' : 'Bấm để bán lại'} onClick={() => toggle(m)}>
               <DishThumb src={m.imageUrl} name={m.name} size="sm" />
               <Strikable on={!m.available}>{m.name}</Strikable>
               {m.outOfStock && <span className="state state-bad">hết kho</span>}
             </button>
+          ) : (
+            <span key={m.menuItemId} className="chip-toggle on-light" aria-label={`${m.name}: ${m.available ? 'đang bán' : 'hết món'}`}>
+              <DishThumb src={m.imageUrl} name={m.name} size="sm" />
+              <Strikable on={!m.available}>{m.name}</Strikable>
+              <span className={`state ${m.available ? 'state-ok' : 'state-bad'}`}>{m.outOfStock ? 'hết kho' : m.available ? 'đang bán' : 'hết món'}</span>
+            </span>
           ))}
         </div>
       )}

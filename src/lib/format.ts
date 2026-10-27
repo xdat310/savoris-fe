@@ -97,10 +97,10 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
 }
 
 export const ITEM_STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Chờ bếp',
+  PENDING: 'Chờ nấu',
   COOKING: 'Đang nấu',
-  VOID_REQUESTED: 'Yêu cầu huỷ',
-  READY: 'Xong, chờ bưng',
-  SERVED: 'Đã bưng',
-  CANCELLED: 'Đã huỷ',
+  VOID_REQUESTED: 'Đang chờ bếp xử lý yêu cầu hủy',
+  READY: 'Có món ra',
+  SERVED: 'Đã phục vụ',
+  CANCELLED: 'Đã hủy',
 }

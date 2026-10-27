@@ -26,11 +26,29 @@ describe('SupportInbox', () => {
     ] as never)
 
     render(<SupportInbox />)
-    expect(await screen.findByText('SV-ABC12345')).toBeInTheDocument()
+    expect((await screen.findAllByText('SV-ABC12345')).length).toBeGreaterThan(0)
     expect(await screen.findByText('Xin chào, tôi là Trợ lí alibibee.')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'Trả lời khách' }), { target: { value: 'Món này không có đậu phộng.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Gửi phản hồi' }))
     expect(await screen.findByText('Món này không có đậu phộng.')).toBeInTheDocument()
     expect(api).toHaveBeenCalledWith('POST', '/support-tickets/41/messages', { body: 'Món này không có đậu phộng.' })
+  })
+
+  it('filters the inbox by status and search text', async () => {
+    const tickets = [
+      { id: 41, referenceCode: 'SV-ABC12345', customerName: 'Nguyễn An', customerPhone: '0912345678', branchId: 3, issue: 'Món ăn có đậu phộng không?', status: 'OPEN', createdAt: '2026-10-26T10:00:00' },
+      { id: 42, referenceCode: 'SV-XYZ98765', customerName: 'Trần Bình', customerPhone: '0987654321', branchId: 3, issue: 'Đơn giao bị chậm', status: 'RESOLVED', createdAt: '2026-10-26T11:00:00' },
+    ]
+    vi.mocked(get).mockImplementation(async path => path === '/support-tickets' ? tickets as never : [] as never)
+    render(<SupportInbox />)
+    expect(await screen.findByRole('button', { name: /SV-ABC12345/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /SV-XYZ98765/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Mới\d+$/ }))
+    expect(screen.getByRole('button', { name: /SV-ABC12345/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /SV-XYZ98765/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Tất cả\d+$/ }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tìm yêu cầu hỗ trợ' }), { target: { value: '0987654321' } })
+    expect(screen.getByRole('button', { name: /SV-XYZ98765/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /SV-ABC12345/ })).not.toBeInTheDocument()
   })
 })

@@ -73,15 +73,17 @@ export function CustomerSupport() {
     return senderType === 'CUSTOMER' ? 'Bạn' : senderType === 'STAFF' ? 'Nhân viên Savoris' : 'Trợ lí alibibee'
   }
 
-  return <main className="guest-page" style={{ maxWidth: 680, margin: '4rem auto', padding: '1.5rem' }}>
-    <p className="eyebrow">SAVORIS · CHĂM SÓC KHÁCH HÀNG</p>
-    <h1>Để đội ngũ Savoris hỗ trợ bạn</h1>
-    <p>Tạo cuộc trò chuyện với Savoris. Nhân viên sẽ phản hồi bạn ngay trong khung chat này.</p>
+  return <main className="customer-support">
+    <header className="customer-support__hero"><a href="/" className="customer-support__brand">SAVORIS <span>HOSPITALITY</span></a><p className="customer-support__eyebrow">CHĂM SÓC KHÁCH HÀNG</p>
+      <h1>{activeTicket ? 'Cuộc trò chuyện của bạn' : 'Chúng tôi luôn sẵn sàng lắng nghe'}</h1>
+      <p>{activeTicket ? 'Nhân viên Savoris sẽ tiếp tục hỗ trợ bạn trong khung chat này.' : 'Gửi yêu cầu đến đội ngũ Savoris. Cuộc trò chuyện được lưu trong phiên trình duyệt này.'}</p>
+    </header>
     {activeTicket ? <section className="support-chat" aria-label={`Cuộc trò chuyện ${activeTicket.referenceCode}`}>
-      <div className="support-chat__ticket"><strong>Yêu cầu {activeTicket.referenceCode}</strong><span>Nhân viên sẽ phản hồi ngay trong cuộc trò chuyện này.</span></div>
+      <div className="support-chat__ticket"><span className="customer-support__eyebrow">YÊU CẦU CỦA BẠN</span><strong>{activeTicket.referenceCode}</strong><span>Trợ lí alibibee đã chuyển yêu cầu đến nhân viên Savoris.</span></div>
       <div className="support-chat__messages" aria-live="polite">
+        {messages.length === 0 && <p className="support-chat__waiting">Đang kết nối với nhân viên hỗ trợ…</p>}
         {messages.map(message => <article key={message.id} className={`support-chat__message support-chat__message--${message.senderType.toLowerCase()}`}>
-          <small>{senderName(message.senderType)}</small><p>{message.body}</p>
+          <small>{senderName(message.senderType)}{message.createdAt && <time>{new Date(message.createdAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</time>}</small><p>{message.body}</p>
         </article>)}
       </div>
       {error && <p role="status">{error}</p>}
@@ -91,13 +93,13 @@ export function CustomerSupport() {
         <button type="submit" disabled={!chatDraft.trim() || chatBusy}>{chatBusy ? 'Đang gửi…' : 'Gửi'}</button>
       </form>
     </section> :
-      <form onSubmit={submit} style={{ display: 'grid', gap: '1rem' }}>
+      <form className="customer-support__form" onSubmit={submit}>
         <label>Họ và tên<input required maxLength={100} value={name} onChange={e => setName(e.target.value)} /></label>
         <label>Số điện thoại<input required minLength={8} maxLength={20} value={phone} onChange={e => setPhone(e.target.value)} /></label>
         <label>Chi nhánh liên quan (nếu có)<select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="">Chưa chọn</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label>
         <label>Bạn cần hỗ trợ gì?<textarea required maxLength={2000} rows={5} value={issue} onChange={e => setIssue(e.target.value)} /></label>
-        <p className="support-chat__intro"><strong>Trợ lí alibibee:</strong> Xin chào, tôi sẽ chuyển cuộc trò chuyện này cho nhân viên Savoris. Cho tôi xin tên và số điện thoại để nhân viên hỗ trợ bạn nhé.</p>
-        {handoff.answer && <details><summary>Ngữ cảnh từ trợ lý</summary><p>{handoff.answer}</p></details>}
+        <p className="support-chat__intro"><strong>Trợ lí alibibee</strong><br />Xin chào, tôi sẽ chuyển cuộc trò chuyện này cho nhân viên Savoris. Cho tôi xin tên và số điện thoại để nhân viên hỗ trợ bạn nhé.</p>
+        {handoff.answer && <details className="customer-support__context"><summary>Ngữ cảnh từ trợ lý</summary><p>{handoff.answer}</p></details>}
         {error && <p role="alert">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? 'Đang gửi…' : 'Gửi yêu cầu hỗ trợ'}</button>
       </form>}
