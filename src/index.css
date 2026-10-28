@@ -3271,3 +3271,120 @@ table.data tr.row-danger td:first-child { box-shadow: inset 3px 0 0 var(--danger
   .kds-void-actions { width: 100%; }
   .kds-void-actions .btn { flex: 1 1 140px; }
 }
+
+/* KDS operations surface */
+.kds-ops { --kds-line: rgba(255,255,255,.10); height: calc(100vh - 56px); min-height: 620px; padding: 12px 16px 16px; gap: 12px; overflow: hidden; }
+.kds-ops .kds-head { flex: none; grid-template-columns: minmax(220px,1fr) auto auto; padding: 0 0 10px; gap: 16px; }
+.kds-ops .kds-head-context h1 { margin: 0; font: 600 20px var(--font-ui); letter-spacing: -.02em; }
+.kds-ops .kds-head-context h1 span { color: var(--text-muted); font-weight: 400; }
+.kds-ops .kds-head-context p { margin: 3px 0 0; color: var(--text-muted); font-size: 11px; }
+.kds-head-status { display: flex; align-items: center; gap: 16px; }
+.kds-ops .kds-state { height: 36px; border-radius: 6px; }
+.kds-ops .kds-state i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.kds-ops .kds-clock { font-size: 22px; }
+.kds-rush-switch { min-height: 48px; display: inline-flex; align-items: center; gap: 9px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-1); color: var(--text-muted); font: 600 12px var(--font-ui); cursor: pointer; }
+.kds-rush-switch span { margin-left: 4px; color: var(--text-subtle); font-size: 10px; font-weight: 400; }
+.kds-rush-switch.is-on { border-color: rgba(245,165,36,.48); color: var(--warning); background: rgba(245,165,36,.08); }
+.kds-ops-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(210px, .72fr) minmax(0, 2.4fr) minmax(270px, .9fr); gap: 12px; }
+.kds-summary,.kds-cancellations { min-width: 0; min-height: 0; overflow-y: auto; padding: 14px; border: 1px solid var(--kds-line); border-radius: 8px; background: var(--surface-1); }
+.kds-panel-title { min-height: 34px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
+.kds-panel-title h2 { flex: 1; margin: 0; color: var(--text); font-size: 13px; font-weight: 600; }
+.kds-summary-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 18px; }
+.kds-summary-metrics div { display: grid; gap: 2px; padding: 10px; border: 1px solid var(--kds-line); border-radius: 6px; background: var(--surface-2); }
+.kds-summary-metrics strong { color: var(--text); font-size: 25px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kds-summary-metrics span,.kds-load-row,.kds-wait-estimate { color: var(--text-muted); font-size: 10px; }
+.kds-load-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.kds-load-row strong { color: var(--text); font-weight: 600; text-align: right; }
+.kds-ops .kds-capacity-track { height: 7px; margin: 0; border-radius: 99px; overflow: hidden; background: var(--surface-3); }
+.kds-ops .kds-capacity-track span { height: 100%; display: block; border-radius: inherit; background: var(--success); }
+.kds-ops .kds-capacity-track span.is-busy { background: var(--warning); }
+.kds-ops .kds-capacity-track span.is-overloaded { background: var(--danger); }
+.kds-wait-estimate { margin: 8px 0 18px; }
+.kds-wait-estimate strong { color: var(--text); }
+.kds-summary h3 { margin: 0 0 7px; color: var(--text-muted); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.kds-dish-totals { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.kds-dish-totals li { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--kds-line); }
+.kds-dish-totals li > div { min-width: 0; display: grid; gap: 4px; }
+.kds-dish-totals strong { color: var(--text); font-size: 12px; line-height: 1.35; }
+.kds-dish-totals small { color: var(--text-muted); font-size: 10px; line-height: 1.35; }
+.kds-dish-totals b { flex: none; color: var(--accent); font-size: 15px; }
+.kds-side-empty { margin: 12px 0; color: var(--text-muted); font-size: 11px; }
+.kds-board { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--kds-line); border-radius: 8px; background: var(--surface-1); }
+.kds-board-head { flex: none; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--kds-line); }
+.kds-board-head > div { display: flex; align-items: baseline; gap: 10px; }
+.kds-board-head h2 { margin: 0; color: var(--text); font-size: 13px; font-weight: 600; }
+.kds-board-head span { color: var(--text-muted); font-size: 10px; }
+.kds-rush-indicator { display: inline-flex; align-items: center; gap: 6px; color: var(--warning); font-size: 10px; }
+.kds-ticket-grid { min-height: 0; flex: 1; display: grid; grid-template-columns: repeat(3,minmax(220px,1fr)); grid-auto-rows: max-content; align-content: start; gap: 8px; overflow-y: auto; padding: 8px; overscroll-behavior: contain; }
+.kds-order-ticket { min-width: 0; border: 1px solid var(--kds-line); border-radius: 7px; background: #19191b; }
+.kds-order-ticket > header { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border-bottom: 1px solid var(--kds-line); }
+.kds-order-ticket > header > div { min-width: 0; display: grid; gap: 2px; }
+.kds-order-ticket > header strong { color: var(--text); font-size: 13px; }
+.kds-order-ticket > header span,.kds-order-ticket > header time { color: var(--text-muted); font-size: 10px; }
+.kds-order-ticket > header time { flex: none; font-variant-numeric: tabular-nums; }
+.kds-order-ticket ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.kds-order-ticket li { padding: 9px; border-bottom: 1px solid var(--kds-line); }
+.kds-order-ticket li:last-child { border-bottom: 0; }
+.kds-order-ticket li.is-soon { background: rgba(245,165,36,.07); }
+.kds-order-ticket li.is-late { background: rgba(240,82,90,.10); }
+.kds-item-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; }
+.kds-item-main > div { min-width: 0; display: grid; gap: 3px; }
+.kds-item-main strong { color: var(--text); font-size: 12px; line-height: 1.4; }
+.kds-item-main span { color: var(--text-muted); font-size: 10px; }
+.kds-item-main .kds-cooking-mark { flex: none; color: var(--accent); font-size: 9px; font-weight: 600; }
+.kds-item-note { margin: 7px 0 0; padding: 6px 7px; border-radius: 4px; background: rgba(245,165,36,.08); color: #e8d9bb; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.kds-item-note b { color: var(--warning); }
+.kds-ready-button { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 8px; border: 0; border-radius: 5px; background: var(--success); color: #071c13; font: 700 12px var(--font-ui); cursor: pointer; touch-action: manipulation; }
+.kds-ready-button:disabled,.kds-void-actions button:disabled { opacity: .55; cursor: wait; }
+.kds-void-panel { padding: 0; border: 0; background: transparent; }
+.kds-cancellations .kds-panel-title { position: sticky; top: -14px; z-index: 1; min-height: 40px; margin: -14px -14px 10px; padding: 8px 12px; border-bottom: 1px solid rgba(240,82,90,.26); background: #241719; color: var(--danger-text); }
+.kds-cancellations .kds-panel-title b { display: grid; min-width: 27px; height: 27px; place-items: center; border-radius: 5px; background: var(--danger); color: #21090b; font-size: 13px; }
+.kds-cancellations.has-pending { border-color: rgba(240,82,90,.45); }
+.kds-void-list { display: grid; gap: 9px; }
+.kds-void-ticket { display: grid; gap: 7px; padding: 10px; border: 1px solid var(--kds-line); border-radius: 6px; background: var(--surface-2); }
+.kds-void-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 10px; }
+.kds-void-meta strong { color: var(--text); }
+.kds-void-ticket h3 { display: flex; justify-content: space-between; gap: 5px; margin: 0; color: var(--text); font-size: 13px; }
+.kds-void-ticket h3 b { flex: none; color: var(--accent); }
+.kds-void-ticket p { margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.kds-void-ticket .kds-void-reason { color: var(--danger-text); }
+.kds-void-ticket time { color: var(--text-subtle); font-size: 9px; }
+.kds-void-actions { display: grid; gap: 6px; margin-top: 3px; }
+.kds-void-actions button { min-height: 52px; padding: 7px; border: 0; border-radius: 5px; color: #120b0b; font: 700 11px var(--font-ui); cursor: pointer; touch-action: manipulation; }
+.kds-void-actions .accept { background: var(--danger); color: #fff; }
+.kds-void-actions .reject { border: 1px solid var(--border-strong); background: var(--surface-3); color: var(--text); }
+.kds-board-empty { margin: auto; padding: 24px; color: var(--text-muted); text-align: center; }
+.kds-ops.is-rush .kds-ticket-grid { gap: 6px; padding: 6px; }
+.kds-ops.is-rush .kds-order-ticket > header { min-height: 40px; }
+.kds-ops.is-rush .kds-order-ticket li { padding: 7px; }
+@media (min-width: 1750px) { .kds-ops.is-rush .kds-ticket-grid { grid-template-columns: repeat(4,minmax(190px,1fr)); } }
+@media (max-width: 1180px) {
+  .kds-ops { height: auto; min-height: calc(100vh - 56px); overflow: visible; }
+  .kds-ops-layout { grid-template-columns: 1fr; }
+  .kds-summary { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px 14px; }
+  .kds-summary-metrics { margin: 0; }
+  .kds-summary h3,.kds-dish-totals,.kds-wait-estimate { display: none; }
+  .kds-summary .kds-load-row { margin: 0; }
+  .kds-cancellations { max-height: 220px; order: 2; }
+  .kds-board { min-height: 60vh; order: 3; }
+  .kds-ticket-grid { grid-template-columns: repeat(2,minmax(220px,1fr)); }
+}
+@media (max-width: 700px) {
+  .kds-ops { padding: 10px; gap: 9px; }
+  .kds-ops .kds-head { grid-template-columns: 1fr auto; gap: 8px; }
+  .kds-ops .kds-head-context h1 { font-size: 16px; }
+  .kds-head-status { gap: 8px; }
+  .kds-ops .kds-state { min-height: 35px; padding: 0 8px; font-size: 10px; }
+  .kds-ops .kds-clock { font-size: 16px; }
+  .kds-rush-switch { grid-column: 1 / -1; justify-content: center; width: 100%; min-height: 48px; }
+  .kds-summary { grid-template-columns: 1fr; gap: 7px; padding: 10px; }
+  .kds-panel-title { min-height: 30px; }
+  .kds-summary-metrics div { padding: 7px 9px; }
+  .kds-summary-metrics strong { font-size: 20px; }
+  .kds-summary .kds-load-row { display: flex; }
+  .kds-board { min-height: 55vh; }
+  .kds-board-head { align-items: flex-start; flex-direction: column; }
+  .kds-ticket-grid { grid-template-columns: 1fr; padding: 7px; }
+  .kds-cancellations { max-height: 290px; padding: 10px; }
+  .kds-cancellations .kds-panel-title { top: -10px; margin: -10px -10px 9px; }
+}

@@ -90,6 +90,50 @@ export function getSession() {
   return current
 }
 
+export function subscribeEvents(path: string, onUpdate: () => void, onConnection: (connected: boolean) => void) {
+  let stopped = false
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let controller: AbortController | undefined
+  const connect = async () => {
+    controller = new AbortController()
+    try {
+      const headers: Record<string, string> = { Accept: 'text/event-stream' }
+      if (current?.accessToken) headers.Authorization = `Bearer ${current.accessToken}`
+      let response = await fetch(apiUrl(path), { headers, credentials: 'include', cache: 'no-store', signal: controller.signal })
+      if (response.status === 401 && await refresh()) {
+        if (!stopped) return void connect()
+      }
+      if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`)
+      onConnection(true)
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let eventName = ''
+      while (!stopped) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split(/\r?\n/)
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim()
+          else if (line === '') {
+            if (eventName === 'queue-updated') onUpdate()
+            eventName = ''
+          }
+        }
+      }
+      await reader.cancel()
+      if (!stopped) onConnection(false)
+    } catch {
+      if (!stopped) onConnection(false)
+    }
+    if (!stopped) retryTimer = setTimeout(connect, 2000)
+  }
+  void connect()
+  return () => { stopped = true; controller?.abort(); if (retryTimer) clearTimeout(retryTimer) }
+}
+
 let refreshing: Promise<boolean> | null = null
 
 // Access tokens last an hour; on a 401 try the refresh token once before giving up
