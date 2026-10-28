@@ -4,6 +4,9 @@ const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/
 export function apiOrigin() {
   return new URL(BASE, window.location.origin).origin
 }
+export function apiUrl(path: string) {
+  return `${BASE}${path}`
+}
 export interface Session {
   staff: StaffResponse
   accessToken?: string

@@ -6,6 +6,14 @@
 .kitchen-forecast__head p { max-width: 62ch; margin: 6px 0 0; color: var(--text-subtle); font-size: 13px; line-height: 1.5; }
 .kitchen-forecast__head button { flex: 0 0 auto; }
 .kitchen-forecast__head button svg { width: 16px; height: 16px; }
+.kitchen-forecast__upload { position: relative; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.kitchen-forecast__upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.kitchen-forecast__templates { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--text-subtle); font-size: 12px; }
+.kitchen-forecast__templates a { color: var(--accent); font-weight: 600; }
+.kitchen-forecast__upload { position: relative; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.kitchen-forecast__upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.kitchen-forecast__templates { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--text-subtle); font-size: 12px; }
+.kitchen-forecast__templates a { color: var(--accent); font-weight: 600; }
 .kitchen-forecast__spin { animation: assistant-spin 1.1s linear infinite; }
 .kitchen-forecast__empty { margin: 0; padding: 18px; color: var(--text-subtle); background: var(--surface-2); border: 1px solid var(--rule); font-size: 13px; }
 .kitchen-forecast__error { margin: 0; padding: 12px 14px; color: var(--red-ink); background: var(--red-wash); font-size: 13px; line-height: 1.5; }

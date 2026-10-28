@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { get } from '../api/client'
 import { KitchenForecast } from './KitchenForecast'
 
-vi.mock('../api/client', () => ({ get: vi.fn() }))
+vi.mock('../api/client', () => ({ get: vi.fn(), post: vi.fn(), apiUrl: (path: string) => `/api/v1${path}` }))
 const load = vi.mocked(get)
 
 describe('KitchenForecast', () => {
@@ -24,7 +24,7 @@ describe('KitchenForecast', () => {
 
     expect(await screen.findByText('Bếp có nguy cơ quá tải lúc 19h')).toBeInTheDocument()
     expect(screen.getByText('110%')).toBeInTheDocument()
-    expect(screen.getByText('Quá tải')).toBeInTheDocument()
+    expect(screen.getAllByText('Quá tải')).toHaveLength(2)
     expect(load).toHaveBeenCalledWith('/dashboard/branch/4/kitchen-forecast')
   })
 

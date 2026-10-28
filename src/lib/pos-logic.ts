@@ -2,13 +2,13 @@ import type { BranchMenuItemResponse, OrderResponse, TableResponse } from '../ap
 
 export type PosTableState = 'EMPTY' | 'SERVING' | 'READY' | 'SERVED' | 'WAITING_PAYMENT'
 export type PosTableFilter = 'ALL' | PosTableState
-export type PosCourse = 1 | 2 | 3
 
-export interface PosDraftLine {
-  menuItemId: number
-  quantity: number
-  course: PosCourse
-  notes: string
+export const READY_DISH_WARNING_MINUTES = 10
+
+export interface OverdueReadyDish {
+  order: OrderResponse
+  item: NonNullable<OrderResponse['items']>[number]
+  minutes: number
 }
 
 export function getPosTableState(table: Pick<TableResponse, 'status'>, orders: Pick<OrderResponse, 'id' | 'status' | 'items'>[], paymentStatus: ReadonlyMap<number, string> = new Map()): PosTableState {
@@ -26,20 +26,18 @@ export function getPosTableState(table: Pick<TableResponse, 'status'>, orders: P
   return 'EMPTY'
 }
 
-export function getCoursePayload(lines: PosDraftLine[], course: PosCourse) {
-  return lines.filter((line) => line.course === course).map(({ menuItemId, quantity, notes }) => ({
-    menuItemId,
-    quantity,
-    ...(notes.trim() ? { notes: notes.trim() } : {}),
-  }))
+export function getOverdueReadyDishes(orders: OrderResponse[], now = Date.now()): OverdueReadyDish[] {
+  return orders.flatMap((order) => {
+    if (order.status !== 'OPEN' || order.orderType !== 'DINE_IN' || order.tableId == null) return []
+    return (order.items ?? []).flatMap((item) => {
+      if (item.status !== 'READY' || !item.readyAt) return []
+      const readyAt = Date.parse(item.readyAt)
+      const minutes = Math.floor((now - readyAt) / 60_000)
+      return Number.isFinite(readyAt) && minutes >= READY_DISH_WARNING_MINUTES ? [{ order, item, minutes }] : []
+    })
+  }).sort((a, b) => b.minutes - a.minutes)
 }
 
-export function splitEvenly(total: number, people: number): number[] {
-  const count = Math.max(1, Math.floor(people))
-  const each = Math.floor(total / count)
-  const remainder = total - each * count
-  return Array.from({ length: count }, (_, index) => each + (index < remainder ? 1 : 0))
-}
 
 export function filterPosMenu(
   items: BranchMenuItemResponse[],

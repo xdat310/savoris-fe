@@ -19,6 +19,7 @@ const tables = [{ id: 10, areaId: 1, name: 'B01', capacity: 4, status: 'AVAILABL
 const menu = [
   { menuItemId: 7, categoryId: 4, name: 'Phở bò', price: 85000, available: true, needsKitchen: true },
   { menuItemId: 8, categoryId: 5, name: 'Trà đào', price: 45000, available: false, needsKitchen: false },
+  { menuItemId: 9, categoryId: 5, name: 'Cà phê sữa đá', price: 30000, available: true, needsKitchen: true },
 ]
 const openOrder: OrderResponse = { id: 99, tableId: 10, code: 'SV-100', orderType: 'DINE_IN', status: 'OPEN', totalAmount: 85000, items: [] }
 
@@ -40,14 +41,15 @@ function setupApi(order: OrderResponse = openOrder, options: { loadStatus?: stri
 describe('Pos', () => {
   afterEach(() => { cleanup(); vi.clearAllMocks() })
 
-  it('offers table filters with live counts and searchable menu categories', async () => {
+  it('offers table filters, searchable menu, and no category filter bar', async () => {
     setupApi()
     render(<Pos />)
 
     expect(await screen.findByRole('button', { name: 'Trống 0' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Đang phục vụ 1' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Tìm món' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Đồ uống' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Lọc danh mục món' })).not.toBeInTheDocument()
+    expect(screen.getByText('Món chính')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Trà đào, hết món' })).toBeDisabled()
     expect(document.querySelector('.pos-left')).toBeInTheDocument()
     expect(document.querySelector('.pos-center')).toBeInTheDocument()
@@ -57,18 +59,37 @@ describe('Pos', () => {
     expect(screen.queryByRole('button', { name: 'Trà đào, hết món' })).not.toBeInTheDocument()
   })
 
-  it('keeps each draft note with its item and sends it with the chosen course', async () => {
+  it('sends all dishes in one batch without asking staff to assign courses', async () => {
     setupApi()
     render(<Pos />)
-    await screen.findByRole('button', { name: 'Bàn B01, đang phục vụ' })
-    fireEvent.click(screen.getByRole('button', { name: 'Bàn B01, đang phục vụ' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bàn B01, đang phục vụ' }))
     fireEvent.click(screen.getByRole('button', { name: 'Thêm Phở bò, 85.000 ₫' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Ghi chú Phở bò' }), { target: { value: 'Không hành' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Gửi đợt Món chính' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm Cà phê sữa đá, 30.000 ₫' }))
 
+    expect(screen.queryByRole('group', { name: 'Đợt gọi món' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi món xuống bếp' }))
     await waitFor(() => expect(post).toHaveBeenCalledWith('/orders/99/items', {
-      items: [{ menuItemId: 7, quantity: 1, notes: 'Không hành' }],
+      items: [
+        { menuItemId: 7, quantity: 1, notes: 'Không hành' },
+        { menuItemId: 9, quantity: 1 },
+      ],
     }))
+  })
+
+  it('starts a walk-in takeaway order directly from the POS toolbar', async () => {
+    setupApi()
+    vi.mocked(post).mockResolvedValue({ id: 101, orderType: 'TAKEAWAY', status: 'OPEN' } as never)
+    render(<Pos />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Tạo đơn mang đi' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm Phở bò, 85.000 ₫' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo đơn & gửi bếp' }))
+
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/orders', expect.objectContaining({
+      branchId: 2,
+      orderType: 'TAKEAWAY',
+      items: [{ menuItemId: 7, quantity: 1 }],
+    })))
   })
 
   it('allows a paid ready item to be served and keeps completion blocked until served', async () => {
@@ -92,13 +113,18 @@ describe('Pos', () => {
     await waitFor(() => expect(put).toHaveBeenCalledWith('/kitchen/items/501/served'))
   })
 
-  it('describes split as a calculator and warns that the bill is paid once', async () => {
-    const orderWithItem: OrderResponse = { ...openOrder, items: [{ id: 501, itemName: 'Phở bò', quantity: 1, amount: 85000, status: 'SERVED' }] }
-    setupApi(orderWithItem)
+
+  it('warns about dine-in dishes that have been ready and unserved for ten minutes', async () => {
+    const staleReady: OrderResponse = {
+      ...openOrder,
+      items: [{ id: 501, itemName: 'Phở bò', quantity: 1, status: 'READY', readyAt: new Date(Date.now() - 11 * 60_000).toISOString() }],
+    }
+    setupApi(staleReady)
     render(<Pos />)
-    fireEvent.click(await screen.findByRole('button', { name: /Bàn B01/ }))
-    fireEvent.click(await screen.findByRole('button', { name: /Công cụ chia tiền/ }))
-    expect(await screen.findByText(/Hóa đơn vẫn thanh toán một lần/)).toBeInTheDocument()
+
+    expect(await screen.findByRole('region', { name: /Món chờ bưng quá lâu/ })).toHaveTextContent('Phở bò')
+    expect(screen.getByRole('region', { name: /Món chờ bưng quá lâu/ })).toHaveTextContent('Bàn B01')
+    expect(screen.getByRole('region', { name: /Món chờ bưng quá lâu/ })).toHaveTextContent('11 phút')
   })
 
   it('collects cash once and sends the received amount for backend change calculation', async () => {
@@ -153,7 +179,7 @@ describe('Pos', () => {
     setupApi(openOrder, { loadStatus: 'OVERLOADED', acceptingTakeaway: false })
     render(<Pos />)
     fireEvent.click(screen.getByRole('button', { name: /Mang đi · Giao hàng/ }))
-    expect(await screen.findByRole('button', { name: 'Đơn mang đi mới' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Tạo đơn mang đi' })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Tại bàn' }))
     expect(screen.getByRole('button', { name: /Bàn B01/ })).toBeEnabled()
   })

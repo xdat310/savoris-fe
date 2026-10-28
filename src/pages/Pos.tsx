@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Bell, Check, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Scissors, Search, Send, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, Wallet, X } from 'lucide-react'
+import { AlertTriangle, Ban, Bell, Check, Clock, CupSoda, Globe, HandPlatter, Landmark, Minus, Plus, Search, Send, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, Wallet, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type {
@@ -19,7 +19,7 @@ import { ITEM_STATUS_LABEL, ORDER_TYPE_LABEL, money, time } from '../lib/format'
 import { useData } from '../lib/useData'
 import { Counter } from '../components/Counter'
 import { confirmDialog } from '../components/ui/Dialog'
-import { countPosTableStates, filterPosMenu, filterPosTables, getCoursePayload, getPosTableState, splitEvenly, type PosCourse, type PosTableFilter } from '../lib/pos-logic'
+import { countPosTableStates, filterPosMenu, filterPosTables, getOverdueReadyDishes, getPosTableState, type PosTableFilter } from '../lib/pos-logic'
 import './pos.css'
 
 type Selection =
@@ -28,10 +28,7 @@ type Selection =
   | { kind: 'new'; type: 'TAKEAWAY' | 'DELIVERY' }
   | null
 
-type Course = PosCourse
-interface DraftLine { menuItemId: number; quantity: number; course: Course; notes: string }
-
-const COURSE_LABEL: Record<Course, string> = { 1: 'Khai vị', 2: 'Món chính', 3: 'Tráng miệng' }
+interface DraftLine { menuItemId: number; quantity: number; notes: string }
 const QUICK_CASH = [500000, 1000000]
 
 export function Pos() {
@@ -40,12 +37,10 @@ export function Pos() {
   const [mode, setMode] = useState<'floor' | 'takeaway'>('floor')
   const [selection, setSelection] = useState<Selection>(null)
   const [draft, setDraft] = useState<DraftLine[]>([])
-  const [activeCourse, setActiveCourse] = useState<Course>(2)
   const [flashReadyTables, setFlashReadyTables] = useState<Set<number>>(new Set())
   const [tableFilter, setTableFilter] = useState<PosTableFilter>('ALL')
   const [tableSearch, setTableSearch] = useState('')
   const [menuSearch, setMenuSearch] = useState('')
-  const [menuCategory, setMenuCategory] = useState<number | 'ALL'>('ALL')
 
   const tables = useData(() => get<TableResponse[]>(`/branches/${branchId}/tables`), [branchId], 10000)
   const orders = useData(() => get<OrderResponse[]>(`/orders/branch/${branchId}`), [branchId], 8000)
@@ -138,15 +133,15 @@ export function Pos() {
         : undefined
   const tableOrders = selection?.kind === 'table' ? ordersByTable.get(selection.tableId) ?? [] : []
 
-  function select(next: Selection) { setSelection(next); setDraft([]) }
+  function select(next: Selection) { setSelection(next); setDraft(() => []) }
 
   function addDish(item: BranchMenuItemResponse) {
     if (!selection) { toast('Chọn bàn hoặc tạo đơn mang đi trước', true); return }
     setDraft((d) => {
-      const existing = d.find((l) => l.menuItemId === item.menuItemId && l.course === activeCourse)
+      const existing = d.find((line) => line.menuItemId === item.menuItemId)
       return existing
-        ? d.map((l) => (l.menuItemId === item.menuItemId && l.course === activeCourse ? { ...l, quantity: l.quantity + 1 } : l))
-        : [...d, { menuItemId: item.menuItemId!, quantity: 1, course: activeCourse, notes: '' }]
+        ? d.map((line) => line.menuItemId === item.menuItemId ? { ...line, quantity: line.quantity + 1 } : line)
+        : [...d, { menuItemId: item.menuItemId!, quantity: 1, notes: '' }]
     })
   }
 
@@ -158,6 +153,7 @@ export function Pos() {
   const [stockPanel, setStockPanel] = useState(false)
   const readyMadeOut = (menu.data ?? []).filter((m) => !m.needsKitchen && !m.available).length
   const waitingWeb = openOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length
+  const overdueReadyDishes = getOverdueReadyDishes(openOrders)
 
   return (
     <div className="pos">
@@ -169,6 +165,10 @@ export function Pos() {
               {waitingWeb > 0 && <span className="seg-badge" aria-label={`${waitingWeb} đơn web chờ thanh toán`}>{waitingWeb}</span>}
             </button>
           </div>
+          <button className="btn btn-accent" disabled={!!takeawayPaused}
+            onClick={() => { setMode('takeaway'); select({ kind: 'new', type: 'TAKEAWAY' }) }}>
+            <ShoppingBag size={16} aria-hidden="true" /> Tạo đơn mang đi
+          </button>
           <button className="btn btn-sm" aria-expanded={stockPanel} onClick={() => setStockPanel(!stockPanel)}>
             <CupSoda size={15} aria-hidden="true" /> Hết hàng
             {readyMadeOut > 0 && <span className="seg-badge" style={{ background: 'var(--red)' }}>{readyMadeOut}</span>}
@@ -185,6 +185,8 @@ export function Pos() {
       </div>
 
       <div className="pos-notices">
+        <ReadyDishAlerts alerts={overdueReadyDishes} tableName={(id) => tables.data?.find((table) => table.id === id)?.name ?? `#${id}`}
+          onOpen={(orderId) => { setMode('floor'); select({ kind: 'order', orderId }) }} />
         <GuestOrderAlerts alerts={guestOrders.alerts} onDismiss={guestOrders.dismiss}
           tableName={(id) => `Bàn ${tables.data?.find((t) => t.id === id)?.name ?? ''}`.trim()}
           onOpen={(tableId) => { setMode('floor'); select({ kind: 'table', tableId }) }} />
@@ -222,25 +224,7 @@ export function Pos() {
         )}
       </section>
 
-      <section className="pos-center" aria-label="Thực đơn và đợt gọi món">
-          {selection && (
-            <div className="course-tabs" role="group" aria-label="Đợt gọi món">
-              {([1, 2, 3] as Course[]).map((c) => {
-                const count = draft.filter((l) => l.course === c).length
-                return (
-                  <button
-                    key={c}
-                    className={`course-tab${activeCourse === c ? ' course-tab--on' : ''}`}
-                    onClick={() => setActiveCourse(c)}
-                    aria-pressed={activeCourse === c}
-                  >
-                    {COURSE_LABEL[c]}
-                    {count > 0 && <span className="course-tab-badge">{count}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+      <section className="pos-center" aria-label="Thực đơn">
           <MenuBoard
             items={menu.data}
             categories={categories.data}
@@ -249,8 +233,6 @@ export function Pos() {
             disabled={!selection || currentOrder?.status === 'AWAITING_PAYMENT'}
             search={menuSearch}
             onSearch={setMenuSearch}
-            category={menuCategory}
-            onCategory={setMenuCategory}
           />
       </section>
 
@@ -274,6 +256,28 @@ export function Pos() {
         onClosed={() => { refreshAll(); select(null) }}
       />
     </div>
+  )
+}
+
+function ReadyDishAlerts({ alerts, tableName, onOpen }: {
+  alerts: ReturnType<typeof getOverdueReadyDishes>
+  tableName: (tableId: number) => string
+  onOpen: (orderId: number) => void
+}) {
+  if (alerts.length === 0) return null
+  return (
+    <section className="takeaway-alerts" aria-live="polite" aria-label="Món chờ bưng quá lâu">
+      {alerts.map(({ order, item, minutes }) => (
+        <div key={`${order.id}-${item.id}`} className="t-alert t-alert-uncollected">
+          <Clock size={18} aria-hidden="true" />
+          <div className="t-alert-text">
+            <strong>{item.itemName} · Bàn {tableName(order.tableId!)} chờ bưng {minutes} phút</strong>
+            <span>Món đã sẵn sàng nhưng chưa được xác nhận đã bưng.</span>
+          </div>
+          <button className="btn btn-sm btn-primary" onClick={() => onOpen(order.id!)}>Mở đơn</button>
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -396,9 +400,6 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
         </div>
       )}
       <div className="row" style={{ marginBottom: 14 }}>
-        <button className="btn btn-accent" onClick={() => onNew('TAKEAWAY')} disabled={paused}>
-          <ShoppingBag size={18} aria-hidden="true" /> Đơn mang đi mới
-        </button>
         <button className="btn" onClick={() => onNew('DELIVERY')} disabled={paused}>Đơn giao hàng mới</button>
       </div>
       {orders.some((o) => o.status === 'AWAITING_PAYMENT') && (
@@ -441,15 +442,14 @@ function TakeawayList({ orders, paused, wait, selected, onNew, onSelect }: {
 
 // ---------------------------------------------------------------- menu board
 
-function MenuBoard({ items, categories, error, onAdd, disabled, search, onSearch, category, onCategory }: {
+function MenuBoard({ items, categories, error, onAdd, disabled, search, onSearch }: {
   items?: BranchMenuItemResponse[]; categories?: MenuCategoryResponse[]; error: string | null
   onAdd: (item: BranchMenuItemResponse) => void; disabled: boolean
   search: string; onSearch: (value: string) => void
-  category: number | 'ALL'; onCategory: (category: number | 'ALL') => void
 }) {
   if (error) return <ErrorNotice message={error} />
   if (!items) return <Loading label="Đang tải menu…" />
-  const filteredItems = filterPosMenu(items, category, search)
+  const filteredItems = filterPosMenu(items, 'ALL', search)
   const groups = new Map<number, BranchMenuItemResponse[]>()
   for (const it of filteredItems) groups.set(it.categoryId!, [...(groups.get(it.categoryId!) ?? []), it])
   const catName = (id: number) => categories?.find((c) => c.id === id)?.name ?? 'Món'
@@ -465,11 +465,7 @@ function MenuBoard({ items, categories, error, onAdd, disabled, search, onSearch
         <span className="sr-only">Tìm món</span>
         <input aria-label="Tìm món" placeholder="Tìm món…" value={search} onChange={(event) => onSearch(event.target.value)} />
       </label>
-      <div className="pos-menu-categories" role="group" aria-label="Lọc danh mục món">
-        <button className={`pos-filter${category === 'ALL' ? ' is-active' : ''}`} aria-pressed={category === 'ALL'} onClick={() => onCategory('ALL')}>Tất cả</button>
-        {(categories ?? []).map((cat) => <button key={cat.id} className={`pos-filter${category === cat.id ? ' is-active' : ''}`} aria-pressed={category === cat.id} onClick={() => onCategory(cat.id!)}>{cat.name}</button>)}
-      </div>
-      {filteredItems.length === 0 && <Empty title="Không có món phù hợp">Đổi từ khóa hoặc chọn danh mục khác.</Empty>}
+      {filteredItems.length === 0 && <Empty title="Không có món phù hợp">Thử đổi từ khóa tìm món.</Empty>}
       {[...groups.entries()].map(([catId, list]) => (
         <div key={catId}>
           <div className="menu-cat">{catName(catId)}</div>
@@ -511,7 +507,6 @@ function OrderColumn(props: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
-  const [splitting, setSplitting] = useState(false)
   const [voidItemId, setVoidItemId] = useState<number | null>(null)
   const [voidReason, setVoidReason] = useState('')
 
@@ -551,17 +546,20 @@ function OrderColumn(props: {
     finally { setBusy(false) }
   }
 
-  // Send items for a specific course to kitchen
-  const sendCourse = (course: Course) => {
-    const courseItems = getCoursePayload(draft, course)
-    if (courseItems.length === 0) return
+  const sendDraft = () => {
+    if (draft.length === 0) return
+    const itemsToSend = draft.map(({ menuItemId, quantity, notes }) => ({
+      menuItemId,
+      quantity,
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+    }))
 
     if (order) {
       run(async () => {
-        await post(`/orders/${order.id}/items`, { items: courseItems })
-        setDraft((d) => d.filter((x) => x.course !== course))
+        await post(`/orders/${order.id}/items`, { items: itemsToSend })
+        setDraft(() => [])
         await props.onChanged()
-      }, `Đã gửi đợt ${COURSE_LABEL[course]} xuống bếp`)
+      }, 'Đã gửi món xuống bếp')
     } else {
       run(async () => {
         const created = await post<OrderResponse>('/orders', {
@@ -571,11 +569,11 @@ function OrderColumn(props: {
           customerId: customer?.id,
           promotionCode: promoCheck ? promo.trim() : undefined,
           pointsToUse: points > 0 ? points : undefined,
-          items: courseItems,
+          items: itemsToSend,
         })
         props.onCreated(created)
-        setDraft((d) => d.filter((x) => x.course !== course))
-      }, `Đã tạo đơn & gửi đợt ${COURSE_LABEL[course]} xuống bếp`)
+        setDraft(() => [])
+      }, 'Đã tạo đơn & gửi món xuống bếp')
     }
   }
 
@@ -638,12 +636,6 @@ function OrderColumn(props: {
 
   const title = selection.kind === 'table' ? props.tableName ?? ''
     : order?.code ?? (selection.kind === 'new' ? ORDER_TYPE_LABEL[selection.type] : '')
-
-  // Group existing items by course for display
-  const groupedDraft = ([1, 2, 3] as Course[]).map((c) => ({
-    course: c,
-    lines: draft.filter((l) => l.course === c),
-  })).filter((g) => g.lines.length > 0)
 
   return (
     <aside className="pos-order" aria-label="Đơn hàng">
@@ -742,65 +734,54 @@ function OrderColumn(props: {
           )
         })}
 
-        {/* ── Draft grouped by course ── */}
-        {groupedDraft.map(({ course, lines }) => (
-          <div key={course} className="course-group">
-            <div className="course-group-head">
-              <span className="course-group-label">{COURSE_LABEL[course]}</span>
-              <button
-                className="btn btn-sm btn-accent course-send-btn"
-                disabled={busy}
-                onClick={() => sendCourse(course)}
-              >
-                <Send size={13} aria-hidden="true" />
-                {order ? `Gửi đợt ${COURSE_LABEL[course]}` : `Tạo đơn & gửi ${COURSE_LABEL[course]}`}
-              </button>
-            </div>
-            {lines.map((l) => {
-              const m = priceOf(l.menuItemId)
-              return (
-                <div key={`${l.menuItemId}-${course}`} className="line">
-                  <span className="lname with-thumb">
-                    <DishThumb src={m?.imageUrl} name={m?.name} size="sm" />
-                    {m?.name}
-                  </span>
-                  <span className="lamt">{money((m?.price ?? 0) * l.quantity)}</span>
-                  <span className="lsub">
-                    <Chip tone="warn">Chưa gửi bếp</Chip>
-                    <span className="qty-btns" style={{ marginLeft: 'auto' }}>
-                      <button className="icon-btn" aria-label="Bớt"
-                        onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))}>
-                        <Minus size={16} />
-                      </button>
-                      <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 'var(--fw-semibold)', color: 'var(--ink)' }}>{l.quantity}</span>
-                      <button className="icon-btn" aria-label="Thêm"
-                        onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, quantity: x.quantity + 1 } : x))}>
-                        <Plus size={16} />
-                      </button>
-                      <button className="icon-btn" aria-label="Bỏ món"
-                        onClick={() => setDraft((d) => d.filter((x) => !(x.menuItemId === l.menuItemId && x.course === course)))}>
-                        <Trash2 size={16} />
-                      </button>
-                    </span>
-                  </span>
-                  <div className="draft-notes">
-                    <label htmlFor={`draft-note-${course}-${l.menuItemId}`}>Ghi chú món</label>
-                    <div className="draft-note-presets">
-                      {['Không hành', 'Ít cay', 'Không đá', 'Medium', 'Well done'].map((preset) => (
-                        <button key={preset} type="button" className="pos-note-preset" aria-pressed={l.notes === preset}
-                          onClick={() => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, notes: x.notes === preset ? '' : preset } : x))}>
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-                    <input id={`draft-note-${course}-${l.menuItemId}`} className="input" aria-label={`Ghi chú ${m?.name ?? 'món'}`} maxLength={240} placeholder="Ghi chú riêng cho món này…"
-                      value={l.notes} onChange={(event) => setDraft((d) => d.map((x) => x.menuItemId === l.menuItemId && x.course === course ? { ...x, notes: event.target.value } : x))} />
-                  </div>
+        {draft.map((line) => {
+          const m = priceOf(line.menuItemId)
+          return (
+            <div key={line.menuItemId} className="line">
+              <span className="lname with-thumb">
+                <DishThumb src={m?.imageUrl} name={m?.name} size="sm" />
+                {m?.name}
+              </span>
+              <span className="lamt">{money((m?.price ?? 0) * line.quantity)}</span>
+              <span className="lsub">
+                <Chip tone="warn">Chưa gửi bếp</Chip>
+                <span className="qty-btns" style={{ marginLeft: 'auto' }}>
+                  <button className="icon-btn" aria-label="Bớt"
+                    onClick={() => setDraft((d) => d.map((x) => x.menuItemId === line.menuItemId ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))}>
+                    <Minus size={16} />
+                  </button>
+                  <span className="num" style={{ minWidth: 24, textAlign: 'center', fontWeight: 'var(--fw-semibold)', color: 'var(--ink)' }}>{line.quantity}</span>
+                  <button className="icon-btn" aria-label="Thêm"
+                    onClick={() => setDraft((d) => d.map((x) => x.menuItemId === line.menuItemId ? { ...x, quantity: x.quantity + 1 } : x))}>
+                    <Plus size={16} />
+                  </button>
+                  <button className="icon-btn" aria-label="Bỏ món"
+                    onClick={() => setDraft((d) => d.filter((x) => x.menuItemId !== line.menuItemId))}>
+                    <Trash2 size={16} />
+                  </button>
+                </span>
+              </span>
+              <div className="draft-notes">
+                <label htmlFor={`draft-note-${line.menuItemId}`}>Ghi chú món</label>
+                <div className="draft-note-presets">
+                  {['Không hành', 'Ít cay', 'Không đá', 'Medium', 'Well done'].map((preset) => (
+                    <button key={preset} type="button" className="pos-note-preset" aria-pressed={line.notes === preset}
+                      onClick={() => setDraft((d) => d.map((x) => x.menuItemId === line.menuItemId ? { ...x, notes: x.notes === preset ? '' : preset } : x))}>
+                      {preset}
+                    </button>
+                  ))}
                 </div>
-              )
-            })}
-          </div>
-        ))}
+                <input id={`draft-note-${line.menuItemId}`} className="input" aria-label={`Ghi chú ${m?.name ?? 'món'}`} maxLength={240} placeholder="Ghi chú riêng cho món này…"
+                  value={line.notes} onChange={(event) => setDraft((d) => d.map((x) => x.menuItemId === line.menuItemId ? { ...x, notes: event.target.value } : x))} />
+              </div>
+            </div>
+          )
+        })}
+        {draft.length > 0 && (
+          <button className="btn btn-accent btn-block" disabled={busy} onClick={sendDraft}>
+            <Send size={15} aria-hidden="true" /> {order ? 'Gửi món xuống bếp' : 'Tạo đơn & gửi bếp'}
+          </button>
+        )}
       </div>
 
       {/* Customer / promo extras for new orders */}
@@ -870,14 +851,8 @@ function OrderColumn(props: {
         />
       ) : (
         <>
-        {splitting && order && (
-          <SplitModal
-            order={order}
-            onClose={() => setSplitting(false)}
-          />
-        )}
         <div className="order-actions">
-          {/* Only show legacy "Gửi bếp all" if there are no courses in draft */}
+          {/* Staff without cashier permissions should send kitchen items before leaving the table */}
           {draft.length === 0 && order && !paid && !can.cash(props.role) && (
             <div className="notice notice-ok">{awaiting ? 'Đơn web chờ thu ngân thu tiền.' : 'Gọi món xong. Khách thanh toán tiền mặt tại quầy thu ngân.'}</div>
           )}
@@ -899,11 +874,6 @@ function OrderColumn(props: {
           {order && paid && can.cash(props.role) && (
             <button className="btn btn-primary btn-lg btn-block" onClick={complete} disabled={busy || unfinished.length > 0}>
               <Check size={18} aria-hidden="true" /> {unfinished.length > 0 ? `Còn ${unfinished.length} món chưa bưng` : 'Hoàn tất đơn, trả bàn'}
-            </button>
-          )}
-          {order && !paid && can.cash(props.role) && items.length > 0 && (
-            <button className="btn btn-block" onClick={() => setSplitting(true)} disabled={busy}>
-              <Scissors size={16} aria-hidden="true" /> Công cụ chia tiền
             </button>
           )}
           {order && !paid && can.cash(props.role) && (
@@ -1036,128 +1006,6 @@ function PayPanel({ total, branchId, orderCode, allowTransfer, busy, onPay, onCa
         </>
       )}
       <button className="btn btn-ghost btn-block" onClick={onCancel}>Quay lại</button>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------- split modal
-
-type SplitMode = 'even' | 'items'
-
-function SplitModal({ order, onClose }: { order: OrderResponse; onClose: () => void }) {
-  const activeItems = (order.items ?? []).filter((i) => i.status !== 'CANCELLED')
-  const [mode, setMode] = useState<SplitMode>('even')
-  const [people, setPeople] = useState(2)
-  const [assignments, setAssignments] = useState<Record<number, Set<number>>>(() => {
-    const map: Record<number, Set<number>> = {}
-    for (let i = 1; i <= 8; i++) map[i] = new Set()
-    return map
-  })
-
-  const evenShares = splitEvenly(order.totalAmount ?? 0, people)
-
-  function assignItem(itemId: number, personIdx: number) {
-    setAssignments((prev) => {
-      const next: Record<number, Set<number>> = {}
-      for (const k in prev) next[k] = new Set(prev[k])
-      if (next[personIdx].has(itemId)) next[personIdx].delete(itemId)
-      else { for (const k in next) next[k].delete(itemId); next[personIdx].add(itemId) }
-      return next
-    })
-  }
-
-  function personTotal(idx: number): number {
-    return activeItems
-      .filter((it) => assignments[idx]?.has(it.id!))
-      .reduce((s, it) => s + (it.amount ?? 0), 0)
-  }
-
-  const unassigned = activeItems.filter((it) => !Object.values(assignments).some((s) => s.has(it.id!)))
-
-  return (
-    <div className="split-overlay" role="dialog" aria-modal="true" aria-label="Công cụ chia tiền">
-      <div className="split-card">
-        <div className="split-head">
-          <div>
-            <strong>Công cụ chia tiền</strong>
-            <div className="split-code">{order.code} · {money(order.totalAmount)}</div>
-          </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
-        </div>
-
-        <div className="seg" role="group" aria-label="Kiểu chia" style={{ margin: '12px 16px 0' }}>
-          <button aria-pressed={mode === 'even'} onClick={() => setMode('even')}>Chia đều</button>
-          <button aria-pressed={mode === 'items'} onClick={() => setMode('items')}>Chia theo món</button>
-        </div>
-
-        {mode === 'even' ? (
-          <div className="split-body">
-            <label className="split-people-row">
-              <span>Số người</span>
-              <div className="bk-stepper">
-                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.max(2, p - 1))}>−</button>
-                <span className="bk-step-val">{people}</span>
-                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.min(10, p + 1))}>+</button>
-              </div>
-            </label>
-            <div className="split-result-list">
-              {evenShares.map((amount, i) => (
-                <div key={i} className="split-person-row">
-                  <span>Người {i + 1}</span>
-                  <strong className="num">{money(amount)}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="split-body">
-            <label className="split-people-row">
-              <span>Số người</span>
-              <div className="bk-stepper">
-                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.max(2, p - 1))}>−</button>
-                <span className="bk-step-val">{people}</span>
-                <button className="bk-step-btn" onClick={() => setPeople((p) => Math.min(8, p + 1))}>+</button>
-              </div>
-            </label>
-            <div className="split-item-list">
-              {activeItems.map((it) => {
-                const owner = Object.entries(assignments).find(([, s]) => s.has(it.id!))?.[0]
-                return (
-                  <div key={it.id} className="split-item-row">
-                    <span className="split-item-name">{it.quantity}× {it.itemName}</span>
-                    <span className="split-item-price">{money(it.amount)}</span>
-                    <div className="split-item-btns">
-                      {Array.from({ length: people }, (_, i) => (
-                        <button key={i}
-                          className={`split-person-btn${owner === String(i + 1) ? ' on' : ''}`}
-                          onClick={() => assignItem(it.id!, i + 1)}
-                          aria-pressed={owner === String(i + 1)}
-                        >{i + 1}</button>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            {unassigned.length > 0 && (
-              <div className="split-warn"><AlertTriangle size={14} aria-hidden="true" /> {unassigned.length} món chưa gán cho ai</div>
-            )}
-            <div className="split-result-list" style={{ marginTop: 8 }}>
-              {Array.from({ length: people }, (_, i) => (
-                <div key={i} className="split-person-row">
-                  <span>Người {i + 1}</span>
-                  <strong className="num">{money(personTotal(i + 1))}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--rule)' }}>
-          <p className="split-disclaimer">Đây chỉ là công cụ tính số tiền từng người. Hóa đơn vẫn thanh toán một lần.</p>
-          <button className="btn btn-primary btn-block" onClick={onClose}>Đóng — thu tiền bình thường</button>
-        </div>
-      </div>
     </div>
   )
 }

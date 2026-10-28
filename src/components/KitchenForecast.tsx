@@ -1,6 +1,6 @@
-import { AlertTriangle, Clock3, LoaderCircle, RefreshCw, UsersRound } from 'lucide-react'
+import { AlertTriangle, Clock3, LoaderCircle, RefreshCw, Upload, UsersRound } from 'lucide-react'
 import { useState } from 'react'
-import { ApiError, get } from '../api/client'
+import { ApiError, apiUrl, get, post } from '../api/client'
 import type { KitchenForecastResponse } from '../api/types'
 import './kitchen-forecast.css'
 
@@ -8,7 +8,36 @@ export function KitchenForecast({ branchId }: { branchId: number }) {
   const [data, setData] = useState<KitchenForecastResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [fileLoading, setFileLoading] = useState(false)
 
+  async function importWorkbook(file?: File) {
+    if (!file) return
+    setFileLoading(true)
+    setError('')
+    try {
+      const readXlsxFile = (await import('read-excel-file/browser')).default
+      const sheets = await readXlsxFile(file) as { sheet: string; data: unknown[][] }[]
+      const scenarioRows = sheets.find(sheet => sheet.sheet === 'Scenario')?.data
+      const historyRows = sheets.find(sheet => sheet.sheet === 'History')?.data
+      if (!scenarioRows || !historyRows) throw new Error('File cần có hai sheet tên Scenario và History.')
+      const values = new Map(scenarioRows.slice(1).filter(row => row.length >= 2).map(row => [String(row[0]), row[1]]))
+      const number = (key: string) => {
+        const value = values.get(key)
+        const parsed = typeof value === 'number' ? value : Number(value)
+        if (value === undefined || value === null || value === '' || !Number.isFinite(parsed) || parsed < 0) throw new Error(`Giá trị “${key}” phải là số không âm.`)
+        return parsed
+      }
+      const header = historyRows[0]?.map(value => String(value).trim())
+      if (header?.join(',') !== 'hour,averageOrders,averagePortions' || historyRows.length !== 25) throw new Error('Sheet History cần đủ 24 dòng giờ (0–23) và đúng các cột hour, averageOrders, averagePortions.')
+      const history = historyRows.slice(1).map(row => ({ hour: Number(row[0]), averageOrders: Number(row[1]), averagePortions: Number(row[2]) }))
+      if (history.some((row, index) => row.hour !== index || !Number.isFinite(row.averageOrders) || row.averageOrders < 0 || !Number.isFinite(row.averagePortions) || row.averagePortions < 0)) throw new Error('Dữ liệu History phải có giờ 0–23 theo thứ tự và số liệu không âm.')
+      setData(await post<KitchenForecastResponse>(`/dashboard/branch/${branchId}/kitchen-forecast/demo`, {
+        kitchenCapacity: number('kitchenCapacity'), pendingPortions: number('pendingPortions'), cookingPortions: number('cookingPortions'),
+        currentLoadPercent: number('currentLoadPercent'), activeChefAccounts: number('activeChefAccounts'), history,
+      }))
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Không đọc được file Excel.') }
+    finally { setFileLoading(false) }
+  }
   async function analyze(sampleData = false) {
     setLoading(true)
     setError('')
@@ -34,8 +63,16 @@ export function KitchenForecast({ branchId }: { branchId: number }) {
           <button type="button" className="btn btn-ghost" onClick={() => void analyze(true)} disabled={loading}>
             Thử AI với dữ liệu mẫu
           </button>
+          <label className="btn btn-ghost kitchen-forecast__upload" aria-busy={fileLoading}>
+            {fileLoading ? <LoaderCircle aria-hidden="true" className="kitchen-forecast__spin" /> : <Upload aria-hidden="true" />}
+            {fileLoading ? 'Đang đọc Excel' : 'Tải Excel demo'}
+            <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={event => { void importWorkbook(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} disabled={fileLoading || loading} />
+          </label>
         </div>
       </div>
+      <nav className="kitchen-forecast__templates" aria-label="Tải file Excel mẫu">
+        <span>File mẫu:</span>{[['tai-thap.xlsx', 'Tải thấp'], ['cao-diem.xlsx', 'Cao điểm'], ['qua-tai.xlsx', 'Quá tải']].map(([file, label]) => <a key={file} href={apiUrl(`/demo/kitchen-forecast/${file}`)}>{label}</a>)}
+      </nav>
       {error && <p className="kitchen-forecast__error" role="alert">{error}</p>}
       {!data && !error && <p className="kitchen-forecast__empty">Nhấn “Phân tích tải bếp” để xem dự báo mới nhất.</p>}
       {data && (

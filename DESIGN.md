@@ -98,6 +98,14 @@ typography:
     lineHeight: 1.05
     letterSpacing: "0.06em"
     fontVariation: "'wdth' 68"
+  staff-page-title:
+    fontFamily: "Noto Serif Display Variable, Noto Serif, Georgia, serif"
+    fontSize: "38px"
+    mobileFontSize: "32px"
+    fontWeight: 400
+    lineHeight: 1.05
+    letterSpacing: "-0.02em"
+    fontVariation: "'wdth' 68"
 rounded:
   sm: "4px"
   md: "6px"

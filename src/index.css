@@ -177,24 +177,6 @@
 .order-head .big svg.lucide { width: 20px; height: 20px; color: var(--accent); }
 .order-head .code { margin-top: var(--space-1); font-size: var(--fs-13); font-weight: var(--fw-medium); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-.course-tabs { display: flex; gap: var(--space-1); padding: var(--space-1); margin-bottom: var(--space-3); border-radius: var(--radius-full); border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
-.course-tab {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3);
-  border-radius: var(--radius-full); border: 1px solid transparent; background: none; color: var(--text-muted); cursor: pointer;
-  font-size: var(--fs-14); font-weight: var(--fw-medium); transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.course-tab:hover { color: var(--text); }
-.course-tab--on { background: var(--glass-gold-bg); border-color: rgba(220,192,138,0.5); color: #FFF6E4; box-shadow: var(--glass-shadow-sm); }
-.course-tab-badge {
-  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: var(--radius-full);
-  background: rgba(0,0,0,0.3); font-size: var(--fs-12); font-weight: var(--fw-semibold); color: inherit;
-}
-.course-group { margin: var(--space-3) 0 0; }
-.course-group-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-6);
-  background: var(--accent-soft); border-block: 1px solid rgba(201,169,110,0.25);
-}
-.course-group-label { font-size: var(--fs-12); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent-strong); }
 
 .order-lines { flex: 1; overflow-y: auto; padding: var(--space-2) var(--space-6); min-height: 120px; }
 .line { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countPosTableStates, filterPosMenu, filterPosTables, getPosTableState, getCoursePayload, splitEvenly } from './pos-logic'
+import { countPosTableStates, filterPosMenu, filterPosTables, getPosTableState } from './pos-logic'
 
 describe('POS service helpers', () => {
   it('prioritizes an item ready to serve when deriving table state', () => {
@@ -10,16 +10,7 @@ describe('POS service helpers', () => {
     expect(getPosTableState({ status: 'OCCUPIED' }, [{ status: 'OPEN', items: [{ status: 'SERVED' }, { status: 'PENDING' }] }])).toBe('SERVING')
   })
 
-  it('sends each course item note with its own line', () => {
-    expect(getCoursePayload([
-      { menuItemId: 8, quantity: 2, course: 1, notes: 'Không hành' },
-      { menuItemId: 9, quantity: 1, course: 2, notes: '' },
-    ], 1)).toEqual([{ menuItemId: 8, quantity: 2, notes: 'Không hành' }])
-  })
 
-  it('splits the exact amount without losing remainder', () => {
-    expect(splitEvenly(1001, 3)).toEqual([334, 334, 333])
-  })
 
   it('filters menu by Vietnamese name and backend category while retaining sold-out state', () => {
     const items = [
