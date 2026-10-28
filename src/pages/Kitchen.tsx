@@ -25,7 +25,6 @@ export function Kitchen() {
   const [now, setNow] = useState(() => new Date())
   const [connected, setConnected] = useState(false)
   const [hasConnected, setHasConnected] = useState(false)
-  const [rushOverride, setRushOverride] = useState<boolean | null>(null)
   const busyRef = useRef(new Set<number>())
   const channelRef = useRef<BroadcastChannel | null>(null)
   const refresh = () => { void Promise.all([reloadQueue(), reloadVoids(), reloadLoad()]) }
@@ -68,12 +67,15 @@ export function Kitchen() {
     }
     return [...map.values()].sort((a, b) => b.quantity - a.quantity)
   }, [activeItems])
-  const tableName = (id?: number) => tables.data?.find((table) => table.id === id)?.name ?? `#${id ?? '—'}`
+  const tableName = (id?: number) => tables.data?.find((table) => table.id === id)?.name ?? `${id ?? '—'}`
+  const ticketLocation = (item: Pick<KitchenTicketResponse, 'orderType' | 'tableId' | 'orderCode'>) => item.orderType === 'DINE_IN'
+    ? `Bàn ${tableName(item.tableId)}`
+    : item.orderType === 'DELIVERY' ? `Giao hàng · ${item.orderCode ?? '—'}` : `Mang về · ${item.orderCode ?? '—'}`
   const incompleteOrderCount = new Set(tickets.filter((item) => item.status === 'PENDING' || item.status === 'COOKING' || item.status === 'VOID_REQUESTED' || item.status === 'READY').map((item) => item.orderId)).size
   const portions = activeItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0)
   const loadPct = load.data?.loadPercent ?? 0
   const rushSuggested = loadPct >= 70 || (load.data?.estimatedWaitMinutes ?? 0) >= 20 || activeItems.filter((item) => item.status === 'PENDING').some((item) => item.waitingMinutes != null && item.waitingMinutes >= (load.data?.estimatedWaitMinutes ?? Infinity))
-  const rush = rushOverride ?? rushSuggested
+  const rush = rushSuggested
   const loadLabel = load.data?.status === 'OVERLOADED' ? 'Quá tải' : load.data?.status === 'BUSY' ? 'Tải cao' : 'Bình thường'
 
   async function markReady(item: KitchenTicketResponse) {
@@ -103,9 +105,9 @@ export function Kitchen() {
     <header className="kds-head">
       <div className="kds-head-context"><h1>{branches.find((branch) => branch.id === branchId)?.name ?? 'Bếp'} <span>/ KDS</span></h1><p>{connected ? 'Đang đồng bộ trực tiếp' : hasConnected ? 'Đang kết nối lại · tự đồng bộ định kỳ' : 'Đang kết nối · tự đồng bộ định kỳ'}</p></div>
       <div className="kds-head-status"><span className={`kds-state ${load.data?.status?.toLowerCase() ?? 'normal'}`}><i />{loadLabel} · {loadPct}%</span><time className="kds-clock">{time(now)}</time></div>
-      <button type="button" className={`kds-rush-switch${rush ? ' is-on' : ''}`} aria-pressed={rush} onClick={() => setRushOverride((value) => rushSuggested ? true : value === null ? true : !value)}>
-        <Flame size={19} />{rush ? 'Giờ cao điểm' : 'Chế độ thường'}<span>{rushSuggested ? 'Tải bếp cao' : 'Tự động'}</span>
-      </button>
+      {rush && <div className="kds-rush-auto" role="status" aria-label="Giờ cao điểm tự động: tải từ 70%, chờ từ 20 phút hoặc món chạm thời gian chờ dự kiến">
+        <Flame size={18} />Giờ cao điểm · tự động
+      </div>}
     </header>
     {queue.error && <div className="kds-error" role="alert">Không tải được hàng đợi. <button onClick={refresh}>Thử tải lại</button></div>}
     <div className="kds-ops-layout">
@@ -122,7 +124,7 @@ export function Kitchen() {
         <div className="kds-board-head"><div><h2>Hàng đợi bếp</h2><span>{ticketGroups.length} đơn · {activeItems.length} dòng món</span></div>{rush && <strong className="kds-rush-indicator"><Flame size={16} />Ưu tiên món sắp quá hạn</strong>}</div>
         {queue.loading && !queue.data ? <p className="kds-board-empty">Đang tải hàng đợi…</p> : ticketGroups.length === 0 ? <p className="kds-board-empty">Không còn món cần chế biến</p> : <div className="kds-ticket-grid">
           {ticketGroups.map((ticket) => <article key={ticket.orderId} className="kds-order-ticket" data-order-id={ticket.orderId}>
-            <header><div><strong>{ticket.orderCode}</strong><span>{ticket.orderType === 'DINE_IN' ? `Bàn ${tableName(ticket.tableId)}` : ticket.orderType === 'DELIVERY' ? 'Giao hàng' : 'Mang về'}</span></div><time>{elapsed(ticket.orderedAt, now)}</time></header>
+            <header><div><strong>{ticketLocation(ticket)}</strong></div><time>{elapsed(ticket.orderedAt, now)}</time></header>
             <ul>{ticket.items.map((item) => {
               const late = item.status === 'PENDING' && load.data?.estimatedWaitMinutes != null && (item.waitingMinutes ?? 0) >= load.data.estimatedWaitMinutes
               const soon = item.status === 'PENDING' && load.data?.estimatedWaitMinutes != null && (item.waitingMinutes ?? 0) >= load.data.estimatedWaitMinutes * .8
@@ -135,16 +137,16 @@ export function Kitchen() {
           </article>)}
         </div>}
       </section>
-      <aside className={`kds-cancellations${(voids.data?.length ?? 0) ? ' has-pending' : ''}`} aria-label="Yêu cầu hủy món">
-        <div className="kds-panel-title"><AlertTriangle size={19} /><h2>Chờ xác nhận hủy</h2><b>{voids.data?.length ?? 0}</b></div>
-        {!voids.data?.length ? <p className="kds-side-empty">Không có yêu cầu chờ</p> : <div className="kds-void-list">{voids.data.map((item) => <article className="kds-void-ticket" key={item.itemId}>
-          <div className="kds-void-meta"><strong>{item.orderCode}</strong><span>{item.orderType === 'DINE_IN' ? `Bàn ${tableName(item.tableId)}` : item.orderType === 'DELIVERY' ? 'Giao hàng' : 'Mang về'}</span></div>
+      <aside className={`kds-cancellations${(voids.data?.length ?? 0) ? ' has-pending' : ' is-empty'}`} aria-label={`Yêu cầu hủy món: ${voids.data?.length ?? 0} đang chờ`}>
+        <div className="kds-panel-title"><AlertTriangle size={19} /><h2>{voids.data?.length ? 'Chờ xác nhận hủy' : 'Chờ hủy'}</h2><b>{voids.data?.length ?? 0}</b></div>
+        {voids.data?.length ? <div className="kds-void-list">{voids.data.map((item) => <article className="kds-void-ticket" key={item.itemId}>
+          <div className="kds-void-meta"><strong>{ticketLocation(item)}</strong></div>
           <h3>{item.itemName} <b>×{item.quantity ?? 1}</b></h3>
           {item.note && <p><b>Ghi chú món:</b> {item.note}</p>}
           <p className="kds-void-reason"><b>Lý do:</b> {item.voidReason || 'Không ghi lý do'}</p>
           <time>Gửi lúc {item.voidRequestedAt ? time(new Date(item.voidRequestedAt)) : '—'} · {item.status === 'VOID_REQUESTED' ? 'Đang chờ bếp' : ''}</time>
           {canOperate && <div className="kds-void-actions"><button type="button" className="accept" disabled={busyId === item.itemId} onClick={() => void resolveVoid(item, 'ACCEPT')}>CHẤP NHẬN HỦY</button><button type="button" className="reject" disabled={busyId === item.itemId} onClick={() => void resolveVoid(item, 'REJECT')}>TỪ CHỐI HỦY</button></div>}
-        </article>)}</div>}
+        </article>)}</div> : null}
       </aside>
     </div>
   </main>

@@ -6,7 +6,7 @@ import { Pos } from './Pos'
 
 vi.mock('../auth', () => ({
   can: { pos: () => true, cash: () => true, cancelCooking: () => false },
-  useAuth: () => ({ branchId: 2, role: 'STAFF' }),
+  useAuth: () => ({ branchId: 2, role: 'STAFF', branches: [{ id: 2, name: 'Cầu Giấy' }] }),
 }))
 vi.mock('../components/Toast', () => ({ useToast: () => vi.fn() }))
 
@@ -16,6 +16,7 @@ vi.mock('../api/client', async importOriginal => {
 })
 
 const tables = [{ id: 10, areaId: 1, name: 'B01', capacity: 4, status: 'AVAILABLE' }]
+const areas = [{ id: 1, branchId: 2, name: 'Sảnh chính', floorName: 'Tầng 1', floorSortOrder: 1 }]
 const menu = [
   { menuItemId: 7, categoryId: 4, name: 'Phở bò', price: 85000, available: true, needsKitchen: true },
   { menuItemId: 8, categoryId: 5, name: 'Trà đào', price: 45000, available: false, needsKitchen: false },
@@ -26,6 +27,7 @@ const openOrder: OrderResponse = { id: 99, tableId: 10, code: 'SV-100', orderTyp
 function setupApi(order: OrderResponse = openOrder, options: { loadStatus?: string; acceptingTakeaway?: boolean } = {}) {
   vi.mocked(get).mockImplementation(async path => {
     if (path === '/branches/2/tables') return tables as never
+    if (path === '/branches/2/areas') return areas as never
     if (path === '/orders/branch/2') return [order] as never
     if (path === '/branches/2/menu') return menu as never
     if (path === '/menu-categories/search?q=') return [{ id: 4, name: 'Món chính' }, { id: 5, name: 'Đồ uống' }] as never
@@ -41,19 +43,24 @@ function setupApi(order: OrderResponse = openOrder, options: { loadStatus?: stri
 describe('Pos', () => {
   afterEach(() => { cleanup(); vi.clearAllMocks() })
 
-  it('offers table filters, searchable menu, and no category filter bar', async () => {
+  it('shows branch floors and keeps the menu closed until staff asks to add dishes', async () => {
     setupApi()
     render(<Pos />)
 
     expect(await screen.findByRole('button', { name: 'Trống 0' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Đang phục vụ 1' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Tìm món' })).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Lọc danh mục món' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Tầng 1/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sảnh chính' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Tìm món' })).not.toBeInTheDocument()
+    expect(document.querySelector('.pos-left')).toBeInTheDocument()
+    expect(document.querySelector('.pos-center')).not.toBeInTheDocument()
+    expect(document.querySelector('.pos-order')).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: /Bàn B01/ }))
+    expect(await screen.findByRole('button', { name: /Gọi thêm món/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Gọi thêm món/ }))
+    expect(await screen.findByRole('textbox', { name: 'Tìm món' })).toBeInTheDocument()
     expect(screen.getByText('Món chính')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Trà đào, hết món' })).toBeDisabled()
-    expect(document.querySelector('.pos-left')).toBeInTheDocument()
-    expect(document.querySelector('.pos-center')).toBeInTheDocument()
-    expect(document.querySelector('.pos-order')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'Tìm món' }), { target: { value: 'phở' } })
     expect(screen.getByRole('button', { name: 'Thêm Phở bò, 85.000 ₫' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Trà đào, hết món' })).not.toBeInTheDocument()
@@ -63,6 +70,7 @@ describe('Pos', () => {
     setupApi()
     render(<Pos />)
     fireEvent.click(await screen.findByRole('button', { name: 'Bàn B01, đang phục vụ' }))
+    fireEvent.click(screen.getByRole('button', { name: /Gọi thêm món/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Thêm Phở bò, 85.000 ₫' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Ghi chú Phở bò' }), { target: { value: 'Không hành' } })
     fireEvent.click(screen.getByRole('button', { name: 'Thêm Cà phê sữa đá, 30.000 ₫' }))
@@ -82,6 +90,7 @@ describe('Pos', () => {
     vi.mocked(post).mockResolvedValue({ id: 101, orderType: 'TAKEAWAY', status: 'OPEN' } as never)
     render(<Pos />)
     fireEvent.click(await screen.findByRole('button', { name: 'Tạo đơn mang đi' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Gọi thêm món/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Thêm Phở bò, 85.000 ₫' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tạo đơn & gửi bếp' }))
 
@@ -97,6 +106,7 @@ describe('Pos', () => {
     setupApi(paidReady)
     vi.mocked(get).mockImplementation(async path => {
       if (path === '/branches/2/tables') return tables as never
+      if (path === '/branches/2/areas') return areas as never
       if (path === '/orders/branch/2') return [paidReady] as never
       if (path === '/branches/2/menu') return menu as never
       if (path === '/menu-categories/search?q=') return [{ id: 4, name: 'Món chính' }] as never
@@ -143,6 +153,7 @@ describe('Pos', () => {
     setupApi()
     vi.mocked(get).mockImplementation(async path => {
       if (path === '/branches/2/tables') return tables as never
+      if (path === '/branches/2/areas') return areas as never
       if (path === '/orders/branch/2') return [openOrder] as never
       if (path === '/branches/2/menu') return menu as never
       if (path === '/menu-categories/search?q=') return [{ id: 4, name: 'Món chính' }] as never
@@ -171,7 +182,7 @@ describe('Pos', () => {
     fireEvent.click(await screen.findByRole('button', { name: /SV-100/ }))
     expect(await screen.findByText(/Đang chờ SePay xác nhận giao dịch/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Đã nhận chuyển khoản/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Thêm Phở bò/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Gọi thêm món/ })).toBeDisabled()
     expect(post).not.toHaveBeenCalled()
   })
 
@@ -200,6 +211,7 @@ describe('Pos', () => {
     setupApi(servedOrder)
     vi.mocked(get).mockImplementation(async path => {
       if (path === '/branches/2/tables') return tables as never
+      if (path === '/branches/2/areas') return areas as never
       if (path === '/orders/branch/2') return [servedOrder] as never
       if (path === '/branches/2/menu') return menu as never
       if (path === '/menu-categories/search?q=') return [{ id: 4, name: 'Món chính' }] as never

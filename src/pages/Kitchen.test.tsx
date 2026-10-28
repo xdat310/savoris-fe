@@ -38,6 +38,7 @@ describe('Kitchen KDS', () => {
     expect(screen.getByText('2 đơn · 2 dòng món')).toBeInTheDocument()
     expect(screen.getByText('Bàn A08')).toBeInTheDocument()
     expect(screen.getByText('Bàn A03')).toBeInTheDocument()
+    expect(screen.queryByText('SV-001')).not.toBeInTheDocument()
     expect(screen.getAllByText('Không hành').length).toBeGreaterThan(0)
     expect(screen.getByText('Chín kỹ')).toBeInTheDocument()
     expect(screen.getByText('×2')).toBeInTheDocument()
@@ -75,7 +76,8 @@ describe('Kitchen KDS', () => {
 
   it('switches to rush density automatically from backend kitchen load', async () => {
     setup([pending], { ...normalLoad, loadPercent: 82, status: 'BUSY', estimatedWaitMinutes: 25 })
-    expect(await screen.findByRole('button', { name: /Giờ cao điểm/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('status', { name: /tải từ 70%/ })).toHaveTextContent('Giờ cao điểm · tự động')
+    expect(screen.queryByText('Chế độ thường')).not.toBeInTheDocument()
     expect(screen.getByText(/Ưu tiên món sắp quá hạn/)).toBeInTheDocument()
   })
 
@@ -87,13 +89,28 @@ describe('Kitchen KDS', () => {
     setup(flood, { ...normalLoad, pendingPortions: 200, loadPercent: 250, status: 'OVERLOADED' })
     expect(await screen.findByText('100 đơn · 100 dòng món')).toBeInTheDocument()
     expect(screen.getAllByText('Dị ứng đậu phộng · nước dùng để riêng').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /Giờ cao điểm/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('status', { name: /tải từ 70%/ })).toHaveTextContent('Giờ cao điểm · tự động')
   })
 
   it('keeps cancellation requests visible while the normal queue remains on screen', async () => {
     setup([pending], normalLoad, [voidRequest])
     expect(await screen.findByText('Khách đổi món')).toBeInTheDocument()
-    expect(screen.getAllByText('SV-001').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Bàn A08').length).toBeGreaterThan(0)
+    expect(screen.queryByText('SV-001')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'CHẤP NHẬN HỦY' })).toBeInTheDocument()
+  })
+
+  it('collapses the cancellation panel when there are no pending requests', async () => {
+    setup()
+    expect((await screen.findAllByText(/Không hành/)).length).toBeGreaterThan(0)
+    const panel = screen.getByLabelText('Yêu cầu hủy món: 0 đang chờ')
+    expect(panel).toHaveClass('is-empty')
+    expect(panel).toHaveTextContent('Chờ hủy')
+    expect(panel).toHaveTextContent('0')
+  })
+
+  it('keeps a dedicated order code on takeaway tickets', async () => {
+    setup([{ ...pending, orderType: 'TAKEAWAY', orderCode: 'B1-261028-0001' }])
+    expect(await screen.findByText('Mang về · B1-261028-0001')).toBeInTheDocument()
   })
 })

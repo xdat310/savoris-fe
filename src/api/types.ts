@@ -18,12 +18,16 @@ export interface AddOrderItemsRequest {
 
 export interface AreaRequest {
   name: string;
+  floorName?: string;
+  floorSortOrder?: number;
 }
 
 export interface AreaResponse {
   id?: number;
   branchId?: number;
   name?: string;
+  floorName?: string;
+  floorSortOrder?: number;
 }
 
 export interface AssignShiftRequest {
@@ -727,6 +731,9 @@ export interface SupplierResponse {
 export interface TableRequest {
   name: string;
   capacity: number;
+  positionX?: number;
+  positionY?: number;
+  sortOrder?: number;
 }
 
 export interface TableResponse {
@@ -734,6 +741,9 @@ export interface TableResponse {
   areaId?: number;
   name?: string;
   capacity?: number;
+  positionX?: number;
+  positionY?: number;
+  sortOrder?: number;
   status?: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
   qrToken?: string;
 }

@@ -6,6 +6,11 @@ describe('POS service helpers', () => {
     expect(getPosTableState({ status: 'OCCUPIED' }, [{ status: 'OPEN', items: [{ status: 'READY' }] }])).toBe('READY')
   })
 
+  it('keeps reserved and cleaning table states separate from active service', () => {
+    expect(getPosTableState({ status: 'RESERVED' }, [])).toBe('RESERVED')
+    expect(getPosTableState({ status: 'CLEANING' }, [])).toBe('CLEANING')
+  })
+
   it('does not mark paid orders complete while any item is not served or cancelled', () => {
     expect(getPosTableState({ status: 'OCCUPIED' }, [{ status: 'OPEN', items: [{ status: 'SERVED' }, { status: 'PENDING' }] }])).toBe('SERVING')
   })

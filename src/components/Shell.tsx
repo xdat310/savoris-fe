@@ -39,6 +39,7 @@ export function Shell() {
   const branch = branches.find((b) => b.id === branchId)
   // The kitchen route is a focused KDS screen for every role; management navigation stays in /admin.
   const isFullscreen = pathname === `${STAFF}/bep` || FULLSCREEN_ROLES.includes(role ?? '')
+  const isKitchen = pathname === `${STAFF}/bep`
   const pageTitle = TITLES[pathname] ?? 'Savoris'
   // Unread count is not provided by the API yet; the bell shows a number as soon as one is passed here
   const unread = 0
@@ -109,10 +110,10 @@ export function Shell() {
         <a className="btn btn-sm ad-top-site" href="/" target="_blank" rel="noopener noreferrer" aria-label="Xem website (mở tab mới)">
           <Icon icon={ExternalLink} /> <span className="ad-top-site-label">Xem website</span>
         </a>
-        <button className="btn btn-ghost btn-icon ad-bell" aria-label={unread ? `Thông báo, ${unread} chưa đọc` : 'Thông báo'} data-tip="Thông báo">
+        {!isKitchen && <button className="btn btn-ghost btn-icon ad-bell" aria-label={unread ? `Thông báo, ${unread} chưa đọc` : 'Thông báo'} data-tip="Thông báo">
           <Icon icon={Bell} size={20} />
           {unread > 0 && <span className="ad-bell-count">{unread > 99 ? '99+' : unread}</span>}
-        </button>
+        </button>}
         {isFullscreen && (
           <>
             <span className="ad-top-who" title={`${staff.fullName} · ${roleLabel}`}>

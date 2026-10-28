@@ -1,6 +1,6 @@
 import type { BranchMenuItemResponse, OrderResponse, TableResponse } from '../api/types'
 
-export type PosTableState = 'EMPTY' | 'SERVING' | 'READY' | 'SERVED' | 'WAITING_PAYMENT'
+export type PosTableState = 'EMPTY' | 'SERVING' | 'READY' | 'SERVED' | 'WAITING_PAYMENT' | 'RESERVED' | 'CLEANING'
 export type PosTableFilter = 'ALL' | PosTableState
 
 export const READY_DISH_WARNING_MINUTES = 10
@@ -22,6 +22,8 @@ export function getPosTableState(table: Pick<TableResponse, 'status'>, orders: P
   if (liveItems.length > 0 && liveItems.every((item) => item.status === 'SERVED') && allOrdersServed) {
     return orders.some((order) => paymentStatus.get(order.id ?? -1) === 'PENDING') ? 'WAITING_PAYMENT' : 'SERVED'
   }
+  if (table.status === 'RESERVED') return 'RESERVED'
+  if (table.status === 'CLEANING') return 'CLEANING'
   if (orders.length > 0 || table.status !== 'AVAILABLE') return 'SERVING'
   return 'EMPTY'
 }
@@ -74,5 +76,5 @@ export function countPosTableStates(tables: TableResponse[], ordersByTable: Map<
     counts.ALL += 1
     counts[state] += 1
     return counts
-  }, { ALL: 0, EMPTY: 0, SERVING: 0, READY: 0, SERVED: 0, WAITING_PAYMENT: 0 })
+  }, { ALL: 0, EMPTY: 0, SERVING: 0, READY: 0, SERVED: 0, WAITING_PAYMENT: 0, RESERVED: 0, CLEANING: 0 })
 }

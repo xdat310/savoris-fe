@@ -2,7 +2,7 @@ import { AlertTriangle, Ban, Bell, Check, Clock, CupSoda, Globe, HandPlatter, La
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, get, post, put } from '../api/client'
 import type {
-  BranchLoadResponse, BranchMenuItemResponse, CustomerResponse, MenuCategoryResponse, OrderItemResponse,
+  AreaResponse, BranchLoadResponse, BranchMenuItemResponse, CustomerResponse, MenuCategoryResponse, OrderItemResponse,
   OrderResponse, PaymentResponse, PromotionCheckResponse, TableResponse, TransferQrSetting,
 } from '../api/types'
 import { mediaUrl } from '../api/site'
@@ -32,7 +32,7 @@ interface DraftLine { menuItemId: number; quantity: number; notes: string }
 const QUICK_CASH = [500000, 1000000]
 
 export function Pos() {
-  const { branchId, role } = useAuth()
+  const { branchId, role, branches } = useAuth()
   const toast = useToast()
   const [mode, setMode] = useState<'floor' | 'takeaway'>('floor')
   const [selection, setSelection] = useState<Selection>(null)
@@ -41,12 +41,18 @@ export function Pos() {
   const [tableFilter, setTableFilter] = useState<PosTableFilter>('ALL')
   const [tableSearch, setTableSearch] = useState('')
   const [menuSearch, setMenuSearch] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(null)
+  const [selectedArea, setSelectedArea] = useState<number | 'ALL'>('ALL')
+  const [viewBranchId, setViewBranchId] = useState(branchId)
 
   const tables = useData(() => get<TableResponse[]>(`/branches/${branchId}/tables`), [branchId], 10000)
+  const areas = useData(() => get<AreaResponse[]>(`/branches/${branchId}/areas`), [branchId], 30000)
   const orders = useData(() => get<OrderResponse[]>(`/orders/branch/${branchId}`), [branchId], 8000)
   const menu   = useData(() => get<BranchMenuItemResponse[]>(`/branches/${branchId}/menu`), [branchId], 30000)
   const categories = useData(() => get<MenuCategoryResponse[]>('/menu-categories/search?q='), [])
   const load   = useData(() => get<BranchLoadResponse>(`/kitchen/branches/${branchId}/load`), [branchId], 15000)
+  const branchDataReady = viewBranchId === branchId && !tables.loading && !areas.loading && !orders.loading
 
   const openOrders = useMemo(() => (orders.data ?? []).filter((order) => order.status !== 'COMPLETED' && order.status !== 'CANCELLED'), [orders.data])
   const servedOrders = useMemo(() => openOrders.filter((order) => {
@@ -84,6 +90,17 @@ export function Pos() {
   }
 
   useEffect(() => unlockSound(), [])
+
+  useEffect(() => {
+    setViewBranchId(branchId)
+    setSelection(null)
+    setDraft([])
+    setMenuOpen(false)
+    setSelectedFloor(null)
+    setSelectedArea('ALL')
+    setTableFilter('ALL')
+    setTableSearch('')
+  }, [branchId])
 
   // Immediate bell + toast when kitchen marks dish ready
   useEffect(() => {
@@ -132,8 +149,10 @@ export function Pos() {
       : selection?.kind === 'table' ? ordersByTable.get(selection.tableId)?.[0]
         : undefined
   const tableOrders = selection?.kind === 'table' ? ordersByTable.get(selection.tableId) ?? [] : []
+  const selectedTable = selection?.kind === 'table' ? tables.data?.find((table) => table.id === selection.tableId) : undefined
+  const selectedAreaInfo = areas.data?.find((area) => area.id === selectedTable?.areaId)
 
-  function select(next: Selection) { setSelection(next); setDraft(() => []) }
+  function select(next: Selection) { setSelection(next); setDraft(() => []); setMenuOpen(false) }
 
   function addDish(item: BranchMenuItemResponse) {
     if (!selection) { toast('Chọn bàn hoặc tạo đơn mang đi trước', true); return }
@@ -146,7 +165,7 @@ export function Pos() {
   }
 
   async function refreshAll() {
-    await Promise.all([orders.reload(), tables.reload(), load.reload(), menu.reload()])
+    await Promise.all([orders.reload(), tables.reload(), load.reload(), menu.reload(), areas.reload()])
   }
 
   const takeawayPaused = load.data && !load.data.acceptingTakeaway
@@ -154,6 +173,7 @@ export function Pos() {
   const readyMadeOut = (menu.data ?? []).filter((m) => !m.needsKitchen && !m.available).length
   const waitingWeb = openOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length
   const overdueReadyDishes = getOverdueReadyDishes(openOrders)
+  const branchName = branches.find((branch) => branch.id === branchId)?.name ?? `Chi nhánh #${branchId ?? '—'}`
 
   return (
     <div className="pos">
@@ -198,9 +218,12 @@ export function Pos() {
       </div>
 
       <section className="pos-left" aria-label={mode === 'floor' ? 'Chọn bàn' : 'Đơn mang đi'}>
-        {mode === 'floor' ? (
+        {!branchDataReady ? <Loading label={`Đang tải dữ liệu ${branchName}…`} /> : mode === 'floor' ? (
           <FloorPlan
+            branchName={branchName}
             tables={tables.data}
+            areas={areas.data}
+            areasError={areas.error}
             error={tables.error}
             ordersByTable={ordersByTable}
             flashReadyTables={flashReadyTables}
@@ -211,6 +234,10 @@ export function Pos() {
             onTableSearch={setTableSearch}
             selectedTable={selection?.kind === 'table' ? selection.tableId ?? undefined : undefined}
             onSelect={(tableId) => select({ kind: 'table', tableId })}
+            selectedFloor={selectedFloor}
+            onSelectFloor={(floor) => { setSelectedFloor(floor); setSelectedArea('ALL') }}
+            selectedArea={selectedArea}
+            onSelectArea={setSelectedArea}
           />
         ) : (
           <TakeawayList
@@ -224,19 +251,7 @@ export function Pos() {
         )}
       </section>
 
-      <section className="pos-center" aria-label="Thực đơn">
-          <MenuBoard
-            items={menu.data}
-            categories={categories.data}
-            error={menu.error}
-            onAdd={addDish}
-            disabled={!selection || currentOrder?.status === 'AWAITING_PAYMENT'}
-            search={menuSearch}
-            onSearch={setMenuSearch}
-          />
-      </section>
-
-      <OrderColumn
+      {selection && branchDataReady && <OrderColumn
         key={selection ? JSON.stringify(selection) + (currentOrder?.id ?? '') : 'none'}
         role={role}
         branchId={branchId!}
@@ -245,6 +260,11 @@ export function Pos() {
         siblingOrders={tableOrders}
         onPickSibling={(orderId) => select({ kind: 'order', orderId })}
         tableName={selection?.kind === 'table' ? tables.data?.find((t) => t.id === selection.tableId)?.name : undefined}
+        tableCapacity={selectedTable?.capacity}
+        tableArea={selectedAreaInfo?.name}
+        tableFloor={selectedAreaInfo?.floorName}
+        onDismiss={() => select(null)}
+        onOpenMenu={() => { setMenuOpen(true); setMenuSearch('') }}
         menu={menu.data ?? []}
         draft={draft}
         setDraft={setDraft}
@@ -254,7 +274,18 @@ export function Pos() {
           if (order.orderType !== 'DINE_IN') setSelection({ kind: 'order', orderId: order.id! })
         }}
         onClosed={() => { refreshAll(); select(null) }}
-      />
+      />}
+
+      {menuOpen && selection && branchDataReady && (
+        <section className="pos-menu-overlay" aria-label="Thực đơn">
+          <div className="pos-menu-overlay-head">
+            <strong>Chọn món · {selection.kind === 'table' ? `Bàn ${selectedTable?.name ?? ''}` : 'Đơn mới'}</strong>
+            <button className="btn btn-ghost" onClick={() => setMenuOpen(false)} aria-label="Đóng thực đơn">Đóng</button>
+          </div>
+          <MenuBoard items={menu.data} categories={categories.data} error={menu.error} onAdd={addDish}
+            disabled={currentOrder?.status === 'AWAITING_PAYMENT'} search={menuSearch} onSearch={setMenuSearch} />
+        </section>
+      )}
     </div>
   )
 }
@@ -283,8 +314,11 @@ function ReadyDishAlerts({ alerts, tableName, onOpen }: {
 
 // ---------------------------------------------------------------- floor plan
 
-function FloorPlan({ tables, error, ordersByTable, flashReadyTables, paymentStatus, tableFilter, onTableFilter, tableSearch, onTableSearch, selectedTable, onSelect }: {
+function FloorPlan({ branchName, tables, areas, areasError, error, ordersByTable, flashReadyTables, paymentStatus, tableFilter, onTableFilter, tableSearch, onTableSearch, selectedTable, onSelect, selectedFloor, onSelectFloor, selectedArea, onSelectArea }: {
+  branchName: string
   tables?: TableResponse[]
+  areas?: AreaResponse[]
+  areasError: string | null
   error: string | null
   ordersByTable: Map<number, OrderResponse[]>
   flashReadyTables: Set<number>
@@ -295,52 +329,82 @@ function FloorPlan({ tables, error, ordersByTable, flashReadyTables, paymentStat
   onTableSearch: (search: string) => void
   selectedTable?: number
   onSelect: (id: number) => void
+  selectedFloor: string | null
+  onSelectFloor: (floor: string) => void
+  selectedArea: number | 'ALL'
+  onSelectArea: (area: number | 'ALL') => void
 }) {
   if (error) return <ErrorNotice message={error} />
   if (!tables) return <Loading label="Đang tải sơ đồ bàn…" />
   if (tables.length === 0) return <Empty title="Chi nhánh chưa có bàn">Quản lý cần tạo khu vực và bàn.</Empty>
+  if (areasError) return <ErrorNotice message={areasError} />
+  if (!areas) return <Loading label="Đang tải tầng và khu vực…" />
 
-  const visibleTables = filterPosTables(tables, ordersByTable, tableFilter, tableSearch, paymentStatus)
+  const areaById = new Map(areas.map((area) => [area.id, area]))
+  const floors = [...new Map(areas.map((area) => [area.floorName ?? area.name ?? '', {
+    name: area.floorName ?? area.name ?? 'Tầng', order: area.floorSortOrder ?? 999,
+  }])).values()].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'vi'))
+  const activeFloor = floors.find((floor) => floor.name === selectedFloor)?.name ?? floors[0]?.name
+  const floorAreas = areas.filter((area) => (area.floorName ?? area.name) === activeFloor)
+  const floorAreaIds = new Set(floorAreas.map((area) => area.id))
+  const floorTables = tables.filter((table) => floorAreaIds.has(table.areaId))
+  const visibleTables = filterPosTables(floorTables, ordersByTable, tableFilter, tableSearch, paymentStatus)
+    .filter((table) => selectedArea === 'ALL' || table.areaId === selectedArea)
   const counts = countPosTableStates(tables, ordersByTable, paymentStatus)
-  const areas = new Map<number, TableResponse[]>()
-  for (const t of visibleTables) areas.set(t.areaId!, [...(areas.get(t.areaId!) ?? []), t])
+  const floorCounts = countPosTableStates(floorTables, ordersByTable, paymentStatus)
   const filterLabels: Record<PosTableFilter, string> = {
-    ALL: 'Tất cả', EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán',
+    ALL: 'Tất cả', EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán', RESERVED: 'Đã đặt', CLEANING: 'Đang dọn',
   }
-  const stateLabels = { EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán' } as const
+  const stateLabels = { EMPTY: 'Trống', SERVING: 'Đang phục vụ', READY: 'Có món ra', SERVED: 'Đã lên đủ món', WAITING_PAYMENT: 'Chờ thanh toán', RESERVED: 'Đã đặt', CLEANING: 'Đang dọn' } as const
+  const areaGroups = new Map<number, TableResponse[]>()
+  for (const table of visibleTables) areaGroups.set(table.areaId!, [...(areaGroups.get(table.areaId!) ?? []), table])
+  const allKitchenPortions = [...ordersByTable.values()].flat().reduce((sum, order) => sum + (order.items ?? [])
+    .filter((item) => item.status === 'PENDING' || item.status === 'COOKING').reduce((quantity, item) => quantity + (item.quantity ?? 0), 0), 0)
+  const openTableCount = [...ordersByTable.keys()].filter((tableId) => (ordersByTable.get(tableId) ?? []).length > 0).length
 
   return (
     <div className="floor-areas">
-      <div className="pos-table-tools">
-        <label className="pos-search">
-          <Search size={16} aria-hidden="true" />
-          <span className="sr-only">Tìm bàn</span>
+      <header className="pos-floor-header">
+        <div><span className="pos-kicker">BÁN HÀNG / SƠ ĐỒ BÀN</span><h1>{branchName}</h1></div>
+        <label className="pos-search"><Search size={16} aria-hidden="true" /><span className="sr-only">Tìm bàn</span>
           <input aria-label="Tìm bàn" placeholder="Tìm bàn…" value={tableSearch} onChange={(event) => onTableSearch(event.target.value)} />
         </label>
+      </header>
+      <div className="pos-table-stats" aria-label="Tổng hợp bàn">
+        <div><span>TỔNG BÀN</span><strong>{tables.length}</strong></div>
+        <div><span>TRỐNG</span><strong className="is-empty">{counts.EMPTY}</strong></div>
+        <div><span>ĐANG PHỤC VỤ</span><strong className="is-serving">{counts.SERVING}</strong></div>
+        <div><span>CÓ MÓN READY</span><strong className="is-ready">{counts.READY}</strong></div>
+        <div><span>CHỜ THANH TOÁN</span><strong className="is-payment">{counts.WAITING_PAYMENT}</strong></div>
+        <div><span>PHẦN CẦN LÀM</span><strong>{allKitchenPortions}</strong></div>
+        <div><span>ĐƠN ĐANG MỞ</span><strong>{openTableCount}</strong></div>
+      </div>
+      <div className="pos-table-tools">
         <div className="pos-table-filters" role="group" aria-label="Lọc bàn">
           {(Object.keys(filterLabels) as PosTableFilter[]).map((key) => (
             <button key={key} className={`pos-filter${tableFilter === key ? ' is-active' : ''}`} aria-pressed={tableFilter === key} onClick={() => onTableFilter(key)}>
-              {filterLabels[key]} <span>{counts[key]}</span>
+              {filterLabels[key]} <span>{floorCounts[key]}</span>
             </button>
           ))}
         </div>
       </div>
-      <div className="floor-legend" aria-hidden="true">
-        <span style={{ '--tone': 'var(--success)' } as React.CSSProperties}><i /> Trống</span>
-        <span style={{ '--tone': 'var(--info)' } as React.CSSProperties}><i /> Đang phục vụ</span>
-        <span style={{ '--tone': 'var(--violet)' } as React.CSSProperties}><i /> Đã lên đủ món</span>
-        <span style={{ '--tone': 'var(--warning)' } as React.CSSProperties}><i /> Chờ thanh toán</span>
-        <span style={{ '--tone': 'var(--accent)' } as React.CSSProperties}><i /> Có món ra</span>
+      <div className="pos-floor-tabs" role="tablist" aria-label="Chọn tầng">
+        {floors.map((floor) => <button key={floor.name} role="tab" aria-selected={activeFloor === floor.name}
+          className={activeFloor === floor.name ? 'is-active' : ''} onClick={() => onSelectFloor(floor.name)}>
+          {floor.name}<span>{tables.filter((table) => areas.some((area) => area.id === table.areaId && (area.floorName ?? area.name) === floor.name)).length}</span>
+        </button>)}
       </div>
-      {visibleTables.length === 0 && <Empty title="Không tìm thấy bàn phù hợp">Thử đổi trạng thái lọc hoặc từ khóa.</Empty>}
-      {[...areas.entries()].map(([areaId, list], i) => (
-        <section key={areaId}>
-          <h2 className="area-title">Khu {i + 1}</h2>
-          <div
-            className={`floor${selectedTable ? ' has-focus compact' : ''}`}
-            style={{ '--cols': Math.min(list.length, 10), '--cols-narrow': Math.ceil(Math.min(list.length, 10) / 2) } as React.CSSProperties}
-          >
-            {list.map((t) => {
+      <div className="pos-area-tabs" role="group" aria-label="Lọc khu vực">
+        <button aria-pressed={selectedArea === 'ALL'} className={selectedArea === 'ALL' ? 'is-active' : ''} onClick={() => onSelectArea('ALL')}>Tất cả khu</button>
+        {floorAreas.map((area) => <button key={area.id} aria-pressed={selectedArea === area.id} className={selectedArea === area.id ? 'is-active' : ''}
+          onClick={() => onSelectArea(area.id!)}>{area.name}</button>)}
+      </div>
+      {visibleTables.length === 0 && <Empty title="Không tìm thấy bàn phù hợp">Thử đổi tầng, khu vực, trạng thái hoặc từ khóa.</Empty>}
+      {[...areaGroups.entries()].map(([areaId, list]) => (
+        <section key={areaId} className="pos-area-section">
+          <div className="pos-area-heading"><h2 className="area-title">{areaById.get(areaId)?.name ?? 'Khu vực'}</h2><span>{list.length} bàn</span></div>
+          <div className="floor pos-table-grid">
+            {[...list].sort((a, b) => (a.positionY ?? 0) - (b.positionY ?? 0) || (a.positionX ?? 0) - (b.positionX ?? 0) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map((t) => {
               const open     = ordersByTable.get(t.id!) ?? []
               const occupied = open.length > 0 || t.status === 'OCCUPIED'
               const total    = open.reduce((s, o) => s + (o.totalAmount ?? 0), 0)
@@ -498,7 +562,8 @@ function MenuBoard({ items, categories, error, onAdd, disabled, search, onSearch
 
 function OrderColumn(props: {
   role?: string; branchId: number; selection: Selection; order?: OrderResponse; siblingOrders: OrderResponse[]
-  onPickSibling: (id: number) => void; tableName?: string; menu: BranchMenuItemResponse[]
+  onPickSibling: (id: number) => void; tableName?: string; tableCapacity?: number; tableArea?: string; tableFloor?: string
+  onOpenMenu: () => void; onDismiss: () => void; menu: BranchMenuItemResponse[]
   draft: DraftLine[]; setDraft: (fn: (d: DraftLine[]) => DraftLine[]) => void
   onChanged: () => Promise<void> | void; onCreated: (o: OrderResponse) => void; onClosed: () => void
 }) {
@@ -524,13 +589,7 @@ function OrderColumn(props: {
     order?.status === 'AWAITING_PAYMENT' ? 4000 : undefined,
   )
 
-  if (!selection) {
-    return (
-      <aside className="pos-order" aria-label="Đơn hàng">
-        <Empty title="Chưa chọn bàn">Chạm vào một bàn trên sơ đồ, hoặc tạo đơn mang đi.</Empty>
-      </aside>
-    )
-  }
+  if (!selection) return null
 
   const priceOf = (id: number) => menu.find((m) => m.menuItemId === id)
   const draftSubtotal = draft.reduce((s, l) => s + (priceOf(l.menuItemId)?.price ?? 0) * l.quantity, 0)
@@ -644,11 +703,16 @@ function OrderColumn(props: {
           {selection.kind === 'table'
             ? <div className="big"><UtensilsCrossed size={16} style={{ verticalAlign: '-2px', marginRight: 6 }} />Bàn {title}</div>
             : <div style={{ fontWeight: 'var(--fw-semibold)', fontSize: 'var(--fs-20)' }}>{title}</div>}
-          <div className="code">
-            {order ? `${order.code} · ${ORDER_TYPE_LABEL[order.orderType!]} · mở lúc ${time(order.createdAt)}` : 'Đơn mới'}
-          </div>
+          <div className="code">{order ? `${order.code} · ${ORDER_TYPE_LABEL[order.orderType!]} · mở lúc ${time(order.createdAt)}` : 'Đơn mới'}</div>
+          {selection.kind === 'table' && <div className="pos-table-context">{props.tableFloor ?? 'Chưa gán tầng'} · {props.tableArea ?? 'Chưa gán khu'} · {props.tableCapacity ?? 0} chỗ</div>}
         </div>
-        {paid && <Chip tone="ok"><Check size={14} aria-hidden="true" /> Đã thu tiền</Chip>}
+        <div className="pos-order-head-actions">
+          {paid && <Chip tone="ok"><Check size={14} aria-hidden="true" /> Đã thu tiền</Chip>}
+          <button className="btn btn-accent pos-add-dish" onClick={props.onOpenMenu} disabled={awaiting}>
+            <Plus size={18} aria-hidden="true" /> Gọi thêm món
+          </button>
+          <button className="pos-drawer-close" aria-label="Đóng chi tiết bàn" onClick={props.onDismiss}><X size={20} /></button>
+        </div>
       </div>
 
       {order?.guestName && (
